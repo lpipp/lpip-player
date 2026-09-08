@@ -73,6 +73,28 @@ export interface BackgroundConfig {
 }
 
 /**
+ * 窗口左侧滑出气泡弹窗微调配置项
+ */
+export interface SidebarConfig {
+  /** 是否启用左侧边缘悬浮抽屉/气泡弹窗 (默认 true) */
+  enabled: boolean
+  /** 触发范围/感应热区宽度 (单位 px, 范围 4 ~ 120, 默认 30) */
+  triggerWidth: number
+  /** 关闭范围/移出抽屉的安全缓冲范围 (单位 px, 范围 0 ~ 200, 默认 30) */
+  closeBuffer: number
+  /** 鼠标悬停触发延迟 (单位 ms, 范围 0 ~ 2000, 默认 80) */
+  triggerDelay: number
+  /** 鼠标移出自动收起延迟 (单位 ms, 范围 0 ~ 3000, 默认 300) */
+  closeDelay: number
+  /** 滑出/收起动画过渡时长 (单位 ms, 范围 100 ~ 1000, 默认 280) */
+  animationDuration: number
+  /** 动画缓动函数 (默认 'cubic-bezier(0.16, 1, 0.3, 1)') */
+  animationEasing: string
+  /** 气泡弹窗展开宽度 (单位 px, 范围 160 ~ 480, 默认 260) */
+  width: number
+}
+
+/**
  * 窗口相关配置项
  */
 export interface WindowConfig {
@@ -86,6 +108,10 @@ export interface WindowConfig {
    * 窗口背景效果 (统一承载云母、壁纸等效果)
    */
   background: BackgroundConfig
+  /**
+   * 左侧滑出气泡弹窗抽屉配置
+   */
+  sidebar: SidebarConfig
   /**
    * 向下兼容字段: 云母效果配置
    */
@@ -141,12 +167,27 @@ export const DEFAULT_BACKGROUND_CONFIG: BackgroundConfig = {
 }
 
 /**
+ * 默认侧边气泡弹窗抽屉配置
+ */
+export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
+  enabled: true,
+  triggerWidth: 30,
+  closeBuffer: 30,
+  triggerDelay: 80,
+  closeDelay: 300,
+  animationDuration: 280,
+  animationEasing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+  width: 260
+}
+
+/**
  * 默认配置 (当配置文件不存在或缺省字段时使用)
  */
 export const DEFAULT_CONFIG: AppConfig = {
   window: {
     immersive: false,
     background: DEFAULT_BACKGROUND_CONFIG,
+    sidebar: DEFAULT_SIDEBAR_CONFIG,
     mica: DEFAULT_MICA_CONFIG
   },
   mpd: {
@@ -288,6 +329,52 @@ export function parseBackgroundConfig(rawBackground: unknown, legacyMica: unknow
 }
 
 /**
+ * 解析并校验侧边气泡弹窗抽屉配置项
+ */
+export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
+  if (typeof rawSidebar === 'boolean') {
+    return {
+      ...DEFAULT_SIDEBAR_CONFIG,
+      enabled: rawSidebar
+    }
+  }
+
+  if (typeof rawSidebar === 'object' && rawSidebar !== null) {
+    const obj = rawSidebar as Record<string, unknown>
+    const rawCloseBuffer = typeof obj['closeBuffer'] === 'number'
+      ? obj['closeBuffer']
+      : typeof obj['closeWidth'] === 'number'
+        ? obj['closeWidth']
+        : DEFAULT_SIDEBAR_CONFIG.closeBuffer
+
+    return {
+      enabled: typeof obj['enabled'] === 'boolean' ? obj['enabled'] : DEFAULT_SIDEBAR_CONFIG.enabled,
+      triggerWidth: typeof obj['triggerWidth'] === 'number'
+        ? clamp(obj['triggerWidth'], 4, 120)
+        : DEFAULT_SIDEBAR_CONFIG.triggerWidth,
+      closeBuffer: clamp(rawCloseBuffer, 0, 200),
+      triggerDelay: typeof obj['triggerDelay'] === 'number'
+        ? clamp(obj['triggerDelay'], 0, 2000)
+        : DEFAULT_SIDEBAR_CONFIG.triggerDelay,
+      closeDelay: typeof obj['closeDelay'] === 'number'
+        ? clamp(obj['closeDelay'], 0, 3000)
+        : DEFAULT_SIDEBAR_CONFIG.closeDelay,
+      animationDuration: typeof obj['animationDuration'] === 'number'
+        ? clamp(obj['animationDuration'], 100, 1000)
+        : DEFAULT_SIDEBAR_CONFIG.animationDuration,
+      animationEasing: typeof obj['animationEasing'] === 'string' && obj['animationEasing'].trim().length > 0
+        ? obj['animationEasing'].trim()
+        : DEFAULT_SIDEBAR_CONFIG.animationEasing,
+      width: typeof obj['width'] === 'number'
+        ? clamp(obj['width'], 160, 480)
+        : DEFAULT_SIDEBAR_CONFIG.width
+    }
+  }
+
+  return DEFAULT_SIDEBAR_CONFIG
+}
+
+/**
  * 剥除 JSON 文本中的单行与多行注释 (支持 JSONC)
  * 严格保护字符串字面量内的斜杠与转义符 (例如 "http://..." 不会被破坏)
  */
@@ -386,6 +473,7 @@ export function loadConfig(customPath?: string): AppConfig {
     const cleanJson = stripJsonComments(raw)
     const parsed = JSON.parse(cleanJson) as Partial<AppConfig>
     const background = parseBackgroundConfig(parsed.window?.background, parsed.window?.mica)
+    const sidebar = parseSidebarConfig(parsed.window?.sidebar)
 
     return {
       window: {
@@ -393,6 +481,7 @@ export function loadConfig(customPath?: string): AppConfig {
           ? parsed.window.immersive
           : DEFAULT_CONFIG.window.immersive,
         background,
+        sidebar,
         mica: background.mica
       },
       mpd: {

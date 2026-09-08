@@ -135,9 +135,3 @@ body {
   transition: background-color 0.3s ease;
 }
 
-/* 确保舞台内的后续组件与内容层永远置于壁纸与遮罩上方 */
-.stage > * {
-  position: relative;
-  z-index: 2;
-}
-

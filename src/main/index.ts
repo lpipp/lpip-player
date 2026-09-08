@@ -72,6 +72,29 @@ function createWindow(): void {
          document.documentElement.removeAttribute('data-mica');`
       )
     }
+
+    // 注入左侧滑出气泡弹窗配置 (CSS 变量与触发参数)
+    const { sidebar } = config.window
+    if (sidebar.enabled) {
+      win.webContents.insertCSS(
+        `:root {
+          --sidebar-width: ${sidebar.width}px;
+          --sidebar-trigger-width: ${sidebar.triggerWidth}px;
+          --sidebar-close-buffer: ${sidebar.closeBuffer}px;
+          --sidebar-duration: ${sidebar.animationDuration}ms;
+          --sidebar-easing: ${sidebar.animationEasing};
+        }`
+      )
+      win.webContents.executeJavaScript(
+        `document.documentElement.setAttribute('data-sidebar-enabled', 'true');
+         document.documentElement.setAttribute('data-sidebar-trigger-delay', '${sidebar.triggerDelay}');
+         document.documentElement.setAttribute('data-sidebar-close-delay', '${sidebar.closeDelay}');`
+      )
+    } else {
+      win.webContents.executeJavaScript(
+        `document.documentElement.setAttribute('data-sidebar-enabled', 'false');`
+      )
+    }
   })
 
   // 渲染完成再显示, 避免白屏闪烁

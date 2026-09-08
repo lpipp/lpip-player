@@ -1,0 +1,171 @@
+/* ============================================================
+   左侧滑出气泡抽屉弹窗 (SidebarBubble) 样式
+   遵循设计规范: 液态玻璃质感 (深空黑底 + backdrop blur + 0.12 半透明发光边框 + 16px 气泡圆角 + #6ee7b7 强调色)
+   ============================================================ */
+
+/* 触发感应热区: 贴紧屏幕左边缘, 宽度由配置项 --sidebar-trigger-width 控制 (默认 30px) */
+.sidebar-trigger-zone {
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100vh !important;
+  width: var(--sidebar-trigger-width, 30px) !important;
+  z-index: 9999 !important;
+  background: transparent;
+  pointer-events: auto !important;
+  cursor: pointer;
+  /* 边缘常驻极细微光指示条, 帮助用户看清感应区位置 */
+  border-left: 2px solid rgba(110, 231, 183, 0.35);
+  transition: all 0.2s ease;
+}
+
+/* 鼠标接近边缘时高亮为翡翠微光并向右柔和漫射, 提示可交互感 */
+.sidebar-trigger-zone:hover {
+  border-left-color: #6ee7b7;
+  background: linear-gradient(90deg, rgba(110, 231, 183, 0.2) 0%, transparent 100%);
+  box-shadow: 2px 0 12px rgba(110, 231, 183, 0.4);
+}
+
+/* 展开状态右侧关闭缓冲安全区: 宽度由 --sidebar-close-buffer 控制 (默认 30px) */
+.sidebar-close-buffer-zone {
+  position: fixed !important;
+  left: var(--sidebar-width, 260px) !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  height: 100vh !important;
+  width: var(--sidebar-close-buffer, 30px) !important;
+  z-index: 9999 !important;
+  background: transparent;
+  pointer-events: auto !important;
+}
+
+/* 气泡抽屉容器: 悬浮于窗口左侧 */
+.sidebar-bubble {
+  position: fixed !important;
+  left: 0 !important;
+  top: 18px !important;
+  bottom: 18px !important;
+  height: calc(100vh - 36px) !important;
+  width: var(--sidebar-width, 260px) !important;
+  max-width: 90vw !important;
+  z-index: 10000 !important;
+
+  /* 液态玻璃材质核心 */
+  background: rgba(13, 15, 23, 0.76);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+
+  /* 气泡造型: 右侧大圆角, 左侧贴紧屏幕边缘 */
+  border-radius: 0 16px 16px 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: none;
+
+  /* 实体石板微阴影与顶部棱线高光 */
+  box-shadow:
+    8px 0 32px -4px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.3);
+
+  /* 滑入/滑出动画: 完全由配置文件参数驱动 */
+  transform: translateX(-100%);
+  transition: transform var(--sidebar-duration, 280ms) var(--sidebar-easing, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: transform;
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 展开状态 */
+.sidebar-bubble.open {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* 抽屉内部头部 */
+.sidebar-header {
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* 品牌微光呼吸指示点 */
+.sidebar-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 10px #6ee7b7;
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+}
+
+/* 抽屉主体导航/菜单区域 */
+.sidebar-content {
+  flex: 1;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+/* 液态玻璃菜单项 */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* 菜单项悬停态: 凸显液态通透质感 */
+.sidebar-item:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateX(3px);
+}
+
+/* 菜单项激活态: 仅在高亮态引入 #6ee7b7 品牌薄荷绿 */
+.sidebar-item.active {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.24);
+  font-weight: 500;
+}
+
+.sidebar-item-icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+/* 抽屉底部微缩状态区 */
+.sidebar-footer {
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
