@@ -5,7 +5,7 @@ import type { WallpaperConfig } from './config'
 /**
  * 常见图片扩展名到 MIME 类型的映射字典
  */
-const EXT_TO_MIME: Record<string, string> = {
+export const EXT_TO_MIME: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -16,15 +16,17 @@ const EXT_TO_MIME: Record<string, string> = {
 }
 
 /**
- * 最大支持加载的壁纸单文件尺寸 (30MB), 避免超大非图片文件撑爆内存
+ * 最大支持加载的壁纸单文件尺寸 (50MB), 避免超大非图片文件撑爆内存
  */
-const MAX_WALLPAPER_BYTES = 30 * 1024 * 1024
+const MAX_WALLPAPER_BYTES = 50 * 1024 * 1024
 
 /**
  * 壁纸解析与样式注入模型
  */
 export interface WallpaperStylePayload {
-  /** 图片安全 base64 Data URI */
+  /** 图片安全 URL (基于 app-media:// 特权流协议) */
+  imageUrl: string
+  /** 向下兼容字段 */
   dataUri: string
   /** 高斯模糊半径 (单位 px) */
   blur: number
@@ -36,7 +38,8 @@ export interface WallpaperStylePayload {
 
 /**
  * 读取本地壁纸文件并生成安全的渲染数据
- * 若文件不存在、无法读取或超过尺寸限制, 则返回 null 并回退
+ * 基于 app-media:// 特权协议直接将本地图片交由 Chromium 与 GPU 流式渲染，
+ * 彻底杜绝超大 base64 字符串导致的 Chromium CSS parser 丢弃和内存暴涨问题。
  * 
  * @param config 壁纸配置项
  */
@@ -60,18 +63,21 @@ export function resolveWallpaperPayload(config: WallpaperConfig): WallpaperStyle
     }
 
     if (stat.size > MAX_WALLPAPER_BYTES) {
-      console.warn(`[lpip-player:wallpaper] 壁纸文件过大 (${(stat.size / 1024 / 1024).toFixed(1)}MB), 超过 30MB 限制`)
+      console.warn(`[lpip-player:wallpaper] 壁纸文件过大 (${(stat.size / 1024 / 1024).toFixed(1)}MB), 超过 50MB 限制`)
       return null
     }
 
     const ext = extname(filePath).toLowerCase()
-    const mime = EXT_TO_MIME[ext] || 'image/png'
-    const buffer = readFileSync(filePath)
-    const base64 = buffer.toString('base64')
-    const dataUri = `data:${mime};base64,${base64}`
+    if (!EXT_TO_MIME[ext]) {
+      console.warn(`[lpip-player:wallpaper] 不支持的壁纸文件扩展名: ${ext}`)
+      return null
+    }
+
+    const imageUrl = `app-media://${encodeURI(filePath)}`
 
     return {
-      dataUri,
+      imageUrl,
+      dataUri: imageUrl,
       blur,
       overlayOpacity,
       fit

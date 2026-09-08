@@ -1,8 +1,24 @@
-import { join } from 'node:path'
-import { app, BrowserWindow } from 'electron'
+import { existsSync, readFileSync } from 'node:fs'
+import { extname, join } from 'node:path'
+import { app, BrowserWindow, protocol } from 'electron'
 
 import { loadConfig } from './config'
-import { resolveWallpaperPayload } from './wallpaper'
+import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
+
+// 注册特权协议 app-media 用于高效流式加载本地壁纸与媒体文件
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app-media',
+    privileges: {
+      standard: true,
+      secure: true,
+      bypassCSP: true,
+      supportFetchAPI: true,
+      stream: true,
+      corsEnabled: true
+    }
+  }
+])
 
 function createWindow(): void {
   // 读取运行时配置, 判定是否开启沉浸式效果
@@ -50,7 +66,7 @@ function createWindow(): void {
       if (payload) {
         win.webContents.insertCSS(
           `:root {
-            --wallpaper-image: url("${payload.dataUri}");
+            --wallpaper-image: url("${payload.imageUrl}");
             --wallpaper-blur: ${payload.blur}px;
             --wallpaper-overlay-opacity: ${payload.overlayOpacity};
             --wallpaper-fit: ${payload.fit};
@@ -113,6 +129,27 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // 注册特权流式本地媒体协议处理器
+  protocol.handle('app-media', async (request) => {
+    let filePath = decodeURIComponent(request.url.replace(/^app-media:\/\//, ''))
+    if (!filePath.startsWith('/')) {
+      filePath = '/' + filePath
+    }
+    if (!existsSync(filePath)) {
+      return new Response('File Not Found', { status: 404 })
+    }
+    try {
+      const data = readFileSync(filePath)
+      const ext = extname(filePath).toLowerCase()
+      const mime = EXT_TO_MIME[ext] || 'image/png'
+      return new Response(data, {
+        headers: { 'Content-Type': mime }
+      })
+    } catch {
+      return new Response('Read Error', { status: 500 })
+    }
+  })
+
   createWindow()
 
   // macOS: 点击 dock 图标时若无窗口则重建
