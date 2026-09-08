@@ -1,0 +1,5 @@
+# pnpm 11: 构建设置用 allowBuilds (旧 onlyBuiltDependencies 已移除)
+# 未列入的包默认禁止运行构建脚本
+allowBuilds:
+  electron: true
+  esbuild: true
