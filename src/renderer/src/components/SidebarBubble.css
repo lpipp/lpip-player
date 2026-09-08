@@ -1,9 +1,9 @@
-/* ============================================================
-   左侧滑出气泡抽屉弹窗 (SidebarBubble) 样式
-   遵循设计规范: 液态玻璃质感 (深空黑底 + backdrop blur + 0.12 半透明发光边框 + 16px 气泡圆角 + #6ee7b7 强调色)
-   ============================================================ */
+/* ============================================================================
+   【保留方案样式：左侧悬停触发滑出气泡弹窗样式（已卸载备用，请勿删除）】
+   说明：根据用户要求，此方案已卸载但完整保留于代码中，以备后续按需回退。
+   ============================================================================ */
 
-/* 触发感应热区: 贴紧屏幕左边缘, 宽度由配置项 --sidebar-trigger-width 控制 (默认 30px) */
+/*
 .sidebar-trigger-zone {
   position: fixed !important;
   left: 0 !important;
@@ -15,19 +15,71 @@
   background: transparent;
   pointer-events: auto !important;
   cursor: pointer;
-  /* 边缘常驻极细微光指示条, 帮助用户看清感应区位置 */
-  border-left: 2px solid rgba(110, 231, 183, 0.35);
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
-/* 鼠标接近边缘时高亮为翡翠微光并向右柔和漫射, 提示可交互感 */
 .sidebar-trigger-zone:hover {
-  border-left-color: #6ee7b7;
-  background: linear-gradient(90deg, rgba(110, 231, 183, 0.2) 0%, transparent 100%);
-  box-shadow: 2px 0 12px rgba(110, 231, 183, 0.4);
+  background: linear-gradient(90deg, rgba(110, 231, 183, 0.08) 0%, transparent 100%);
 }
 
-/* 展开状态右侧关闭缓冲安全区: 宽度由 --sidebar-close-buffer 控制 (默认 30px) */
+.sidebar-beacon {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 56px;
+  border-radius: 0 4px 4px 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(110, 231, 183, 0.2) 0%,
+    rgba(110, 231, 183, 0.85) 50%,
+    rgba(99, 102, 241, 0.6) 100%
+  );
+  box-shadow:
+    1px 0 8px 1px rgba(110, 231, 183, 0.45),
+    3px 0 20px 2px rgba(110, 231, 183, 0.25),
+    0 0 10px rgba(99, 102, 241, 0.35);
+  animation: beacon-breath 3.6s ease-in-out infinite;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes beacon-breath {
+  0%, 100% {
+    opacity: 0.45;
+    height: 50px;
+    box-shadow:
+      1px 0 6px rgba(110, 231, 183, 0.3),
+      2px 0 14px rgba(110, 231, 183, 0.15);
+  }
+  50% {
+    opacity: 0.95;
+    height: 68px;
+    box-shadow:
+      2px 0 12px 2px rgba(110, 231, 183, 0.65),
+      4px 0 26px 4px rgba(110, 231, 183, 0.35),
+      0 0 14px rgba(99, 102, 241, 0.4);
+  }
+}
+
+.sidebar-trigger-zone:hover .sidebar-beacon {
+  width: 6px;
+  height: 76px;
+  opacity: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(110, 231, 183, 0.4) 0%,
+    #6ee7b7 50%,
+    rgba(99, 102, 241, 0.8) 100%
+  );
+  box-shadow:
+    2px 0 16px 2px rgba(110, 231, 183, 0.8),
+    5px 0 32px 5px rgba(110, 231, 183, 0.45),
+    0 0 18px rgba(99, 102, 241, 0.5);
+  animation-play-state: paused;
+}
+
 .sidebar-close-buffer-zone {
   position: fixed !important;
   left: var(--sidebar-width, 260px) !important;
@@ -40,7 +92,6 @@
   pointer-events: auto !important;
 }
 
-/* 气泡抽屉容器: 悬浮于窗口左侧 */
 .sidebar-bubble {
   position: fixed !important;
   left: 0 !important;
@@ -50,41 +101,30 @@
   width: var(--sidebar-width, 260px) !important;
   max-width: 90vw !important;
   z-index: 10000 !important;
-
-  /* 液态玻璃材质核心 */
   background: rgba(13, 15, 23, 0.76);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
-
-  /* 气泡造型: 右侧大圆角, 左侧贴紧屏幕边缘 */
   border-radius: 0 16px 16px 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-left: none;
-
-  /* 实体石板微阴影与顶部棱线高光 */
   box-shadow:
     8px 0 32px -4px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 0 rgba(0, 0, 0, 0.3);
-
-  /* 滑入/滑出动画: 完全由配置文件参数驱动 */
   transform: translateX(-100%);
   transition: transform var(--sidebar-duration, 280ms) var(--sidebar-easing, cubic-bezier(0.16, 1, 0.3, 1));
   will-change: transform;
-
   display: flex;
   flex-direction: column;
   overflow: hidden;
   pointer-events: none;
 }
 
-/* 展开状态 */
 .sidebar-bubble.open {
   transform: translateX(0);
   pointer-events: auto;
 }
 
-/* 抽屉内部头部 */
 .sidebar-header {
   padding: 18px 20px 14px;
   display: flex;
@@ -93,7 +133,6 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* 品牌微光呼吸指示点 */
 .sidebar-status-dot {
   width: 8px;
   height: 8px;
@@ -110,7 +149,6 @@
   text-transform: uppercase;
 }
 
-/* 抽屉主体导航/菜单区域 */
 .sidebar-content {
   flex: 1;
   padding: 16px 12px;
@@ -120,7 +158,6 @@
   overflow-y: auto;
 }
 
-/* 液态玻璃菜单项 */
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -137,7 +174,6 @@
   user-select: none;
 }
 
-/* 菜单项悬停态: 凸显液态通透质感 */
 .sidebar-item:hover {
   color: rgba(255, 255, 255, 0.95);
   background: rgba(255, 255, 255, 0.08);
@@ -145,7 +181,6 @@
   transform: translateX(3px);
 }
 
-/* 菜单项激活态: 仅在高亮态引入 #6ee7b7 品牌薄荷绿 */
 .sidebar-item.active {
   color: #6ee7b7;
   background: rgba(110, 231, 183, 0.12);
@@ -159,7 +194,6 @@
   opacity: 0.85;
 }
 
-/* 抽屉底部微缩状态区 */
 .sidebar-footer {
   padding: 12px 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -169,3 +203,4 @@
   align-items: center;
   justify-content: space-between;
 }
+*/

@@ -81,14 +81,18 @@ function createWindow(): void {
           --sidebar-width: ${sidebar.width}px;
           --sidebar-trigger-width: ${sidebar.triggerWidth}px;
           --sidebar-close-buffer: ${sidebar.closeBuffer}px;
+          --sidebar-vertical-extension: ${sidebar.verticalExtension}px;
           --sidebar-duration: ${sidebar.animationDuration}ms;
           --sidebar-easing: ${sidebar.animationEasing};
         }`
       )
       win.webContents.executeJavaScript(
         `document.documentElement.setAttribute('data-sidebar-enabled', 'true');
+         document.documentElement.setAttribute('data-sidebar-glow-hint', '${sidebar.glowHint}');
          document.documentElement.setAttribute('data-sidebar-trigger-delay', '${sidebar.triggerDelay}');
-         document.documentElement.setAttribute('data-sidebar-close-delay', '${sidebar.closeDelay}');`
+         document.documentElement.setAttribute('data-sidebar-close-delay', '${sidebar.closeDelay}');
+         document.documentElement.setAttribute('data-sidebar-close-buffer', '${sidebar.closeBuffer}');
+         document.documentElement.setAttribute('data-sidebar-vertical-extension', '${sidebar.verticalExtension}');`
       )
     } else {
       win.webContents.executeJavaScript(

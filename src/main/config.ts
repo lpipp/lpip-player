@@ -78,6 +78,8 @@ export interface BackgroundConfig {
 export interface SidebarConfig {
   /** 是否启用左侧边缘悬浮抽屉/气泡弹窗 (默认 true) */
   enabled: boolean
+  /** 是否启用左侧边缘动态微光提示 (默认 true) */
+  glowHint: boolean
   /** 触发范围/感应热区宽度 (单位 px, 范围 4 ~ 120, 默认 30) */
   triggerWidth: number
   /** 关闭范围/移出抽屉的安全缓冲范围 (单位 px, 范围 0 ~ 200, 默认 30) */
@@ -90,8 +92,10 @@ export interface SidebarConfig {
   animationDuration: number
   /** 动画缓动函数 (默认 'cubic-bezier(0.16, 1, 0.3, 1)') */
   animationEasing: string
-  /** 气泡弹窗展开宽度 (单位 px, 范围 160 ~ 480, 默认 260) */
+  /** 气泡弹窗展开宽度 (单位 px, 范围 160 ~ 480, 默认 360) */
   width: number
+  /** 抽屉展开时上下各延伸的像素幅度 (单位 px, 范围 0 ~ 200, 默认 50) */
+  verticalExtension: number
 }
 
 /**
@@ -171,13 +175,15 @@ export const DEFAULT_BACKGROUND_CONFIG: BackgroundConfig = {
  */
 export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
   enabled: true,
+  glowHint: true,
   triggerWidth: 30,
-  closeBuffer: 30,
+  closeBuffer: 40,
   triggerDelay: 80,
   closeDelay: 300,
   animationDuration: 280,
   animationEasing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-  width: 260
+  width: 360,
+  verticalExtension: 50
 }
 
 /**
@@ -341,14 +347,17 @@ export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
 
   if (typeof rawSidebar === 'object' && rawSidebar !== null) {
     const obj = rawSidebar as Record<string, unknown>
-    const rawCloseBuffer = typeof obj['closeBuffer'] === 'number'
-      ? obj['closeBuffer']
-      : typeof obj['closeWidth'] === 'number'
-        ? obj['closeWidth']
-        : DEFAULT_SIDEBAR_CONFIG.closeBuffer
+    const rawCloseBuffer = typeof obj['closeDistance'] === 'number'
+      ? obj['closeDistance']
+      : typeof obj['closeBuffer'] === 'number'
+        ? obj['closeBuffer']
+        : typeof obj['closeWidth'] === 'number'
+          ? obj['closeWidth']
+          : DEFAULT_SIDEBAR_CONFIG.closeBuffer
 
     return {
       enabled: typeof obj['enabled'] === 'boolean' ? obj['enabled'] : DEFAULT_SIDEBAR_CONFIG.enabled,
+      glowHint: typeof obj['glowHint'] === 'boolean' ? obj['glowHint'] : DEFAULT_SIDEBAR_CONFIG.glowHint,
       triggerWidth: typeof obj['triggerWidth'] === 'number'
         ? clamp(obj['triggerWidth'], 4, 120)
         : DEFAULT_SIDEBAR_CONFIG.triggerWidth,
@@ -367,7 +376,12 @@ export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
         : DEFAULT_SIDEBAR_CONFIG.animationEasing,
       width: typeof obj['width'] === 'number'
         ? clamp(obj['width'], 160, 480)
-        : DEFAULT_SIDEBAR_CONFIG.width
+        : DEFAULT_SIDEBAR_CONFIG.width,
+      verticalExtension: typeof obj['verticalExtension'] === 'number'
+        ? clamp(obj['verticalExtension'], 0, 200)
+        : typeof obj['verticalExpansion'] === 'number'
+          ? clamp(obj['verticalExpansion'], 0, 200)
+          : DEFAULT_SIDEBAR_CONFIG.verticalExtension
     }
   }
 

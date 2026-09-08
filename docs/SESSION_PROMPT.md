@@ -26,7 +26,7 @@
 - 运行时配置 ~/.config/lpip-player/config.json（与 config.example.json 一致，仅 mpd 段）
 
 【当前进度】
-- git 最新提交 1d5a96d（M0-1: 主窗口自定义壁纸与统一背景效果支持）；工作区干净
+- git 最新提交准备提交（M0-2: 左侧悬浮长条胶囊伸缩抽屉与子菜单联动支持）；工作区干净
 - 已完成功能：
   1. 窗口沉浸式效果（`window.immersive`，系统边框与无边框切换，无前端冗余控件）；
   2. 主窗口统一背景效果架构（`window.background`，支持 mode: "default" | "mica" | "wallpaper"，平滑向下兼容旧配置）；
@@ -34,9 +34,9 @@
   4. 主窗口自定义壁纸功能（支持本地绝对路径/`~` 展开、暗色遮罩透明度、独立高斯模糊、3 种填充缩放模式与安全降级）；
   5. 配置体系全面支持 JSONC 中文注释（零依赖状态机剥除，保护 URL）；
   6. 配置文件模板与文档已包含全量详细中文注释；
-  7. 左侧边缘悬浮滑出气泡弹窗抽屉（`SidebarBubble`，液态玻璃质感，支持 30px 触发范围、30px 离开安全缓冲范围、触发延迟、关闭延迟与动画速度全项由配置文件驱动，实机人工核验通过）。
+  7. 左侧悬浮长条胶囊伸缩抽屉（`SidebarCapsule`，收起态为 400px 长条精致胶囊，展示 6 大模块占位图标；点击任一图标向右展开为 360px 抽屉并直接呈现该模块子菜单项，上下各延伸 50px 并支持 `verticalExtension` 自定义；移出超出安全距离 `closeBuffer` / `closeDistance` 40px 后倒计时 300ms 自动平滑收起，移回即刻打断；彻底隐藏所有横纵滚动条/拖动条，移除右上角 `✕` 按键，界面极致纯净；原悬停滑出气泡方案 `SidebarBubble` 作为备用方案完整注释保留；实机人工核验通过）。
 - 源码状态：
-  main 窗口骨架、配置加载与参数桥接 / preload 空实现 / App.tsx 挂载 SidebarBubble / components 包含 SidebarBubble / global.css 包含背景材质
+  main 窗口骨架、配置加载与参数桥接 / preload 空实现 / App.tsx 挂载 SidebarCapsule（保留 SidebarBubble 注释） / components 包含 SidebarCapsule 与保留的 SidebarBubble / global.css 包含背景材质
 - 下一步任务：M0-2 第一个主内容液态玻璃面板 GlassPanel 与居中布局骨架
 
 【工作方式（严格遵守）】

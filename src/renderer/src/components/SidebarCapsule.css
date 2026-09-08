@@ -1,0 +1,371 @@
+/* ============================================================
+   窗口左侧加长型长条胶囊伸缩抽屉 (SidebarCapsule)
+   遵循设计规范: 深空黑曜石底 + backdrop blur + 0.12 半透明高光边框 + #6ee7b7 强调色
+   ============================================================ */
+
+/* 悬浮胶囊主容器 */
+.sidebar-capsule {
+  position: fixed !important;
+  left: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 10000 !important;
+
+  /* 物理材质: 深空黑曜石液态高透玻璃 */
+  background: rgba(14, 16, 24, 0.82);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+
+  /* 细腻内高光棱线与微弱轮廓 */
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 16px 44px -6px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.35);
+
+  display: flex;
+  flex-direction: row;
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: auto;
+
+  /* 核心平滑伸展与收缩动画 */
+  transition:
+    width 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 340ms ease,
+    background 340ms ease;
+}
+
+/* ------------------------------------------------------------
+   状态 1: 收起态 (垂直精致长条悬浮胶囊)
+   ------------------------------------------------------------ */
+.sidebar-capsule.collapsed {
+  width: 56px;
+  height: var(--sidebar-base-height, 400px);
+  border-radius: 28px;
+}
+
+/* 悬停未展开胶囊时微弱提亮, 赋予实体触觉感 */
+.sidebar-capsule.collapsed:hover {
+  background: rgba(18, 21, 32, 0.88);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 20px 48px -6px rgba(0, 0, 0, 0.65),
+    0 0 20px 2px rgba(110, 231, 183, 0.14),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+}
+
+/* ------------------------------------------------------------
+   状态 2: 展开态 (向右伸长并上下各延展 verticalExtension px)
+   ------------------------------------------------------------ */
+.sidebar-capsule.expanded {
+  width: var(--sidebar-width, 360px);
+  height: calc(var(--sidebar-base-height, 400px) + calc(var(--sidebar-vertical-extension, 50px) * 2));
+  border-radius: 22px;
+  background: rgba(12, 14, 22, 0.93);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 24px 60px -8px rgba(0, 0, 0, 0.72),
+    0 0 28px 2px rgba(110, 231, 183, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+/* ------------------------------------------------------------
+   左侧固定图标导轨 (Capsule Rail)
+   ------------------------------------------------------------ */
+.capsule-rail {
+  width: 56px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.sidebar-capsule.expanded .capsule-rail {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* 导轨顶部呼吸光点 */
+.capsule-rail-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+}
+
+.capsule-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 10px #6ee7b7, 0 0 20px rgba(110, 231, 183, 0.4);
+  animation: dot-breath 3.6s ease-in-out infinite;
+}
+
+@keyframes dot-breath {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(0.95);
+    box-shadow: 0 0 8px rgba(110, 231, 183, 0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+    box-shadow: 0 0 14px rgba(110, 231, 183, 0.8), 0 0 24px rgba(110, 231, 183, 0.3);
+  }
+}
+
+/* 导轨图标列表 */
+.capsule-rail-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.capsule-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 19px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.capsule-icon-btn:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+}
+
+.capsule-icon-btn.active {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.14);
+  border-color: rgba(110, 231, 183, 0.28);
+  box-shadow: 0 0 14px rgba(110, 231, 183, 0.2);
+}
+
+.capsule-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 激活项右侧小指示光点 */
+.capsule-active-dot {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 6px #6ee7b7;
+}
+
+/* 导轨底部徽章 */
+.capsule-rail-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+}
+
+.capsule-model-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------
+   右侧子菜单内容区 (Subpanel)
+   ------------------------------------------------------------ */
+.capsule-subpanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 14px;
+  box-sizing: border-box;
+  animation: panelFadeIn 0.25s ease forwards;
+  overflow: hidden;
+}
+
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 子菜单头部 (隐藏关闭按钮 X，界面更纯净，依靠移出安全距离自动收起) */
+.subpanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.subpanel-title-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.subpanel-icon {
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+}
+
+.subpanel-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0;
+}
+
+/* 子菜单内容主体: 彻底隐藏所有横纵滚动条/拖动条，完全保持滚轮/手势平滑滚动 */
+.subpanel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 12px 0;
+  gap: 8px;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.subpanel-content::-webkit-scrollbar,
+.sidebar-capsule *::-webkit-scrollbar,
+.sidebar-capsule::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.sidebar-capsule,
+.sidebar-capsule * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.subpanel-section-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0 4px 4px;
+}
+
+.subpanel-config-hint {
+  font-size: 10px;
+  color: #6ee7b7;
+  opacity: 0.85;
+}
+
+.subpanel-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+/* 子菜单项卡片 */
+.subpanel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.subpanel-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(2px);
+}
+
+.subpanel-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.subpanel-item-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.subpanel-item-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.subpanel-item-badge {
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(110, 231, 183, 0.12);
+  color: #6ee7b7;
+  border: 1px solid rgba(110, 231, 183, 0.22);
+  white-space: nowrap;
+}
+
+/* 子菜单底部 */
+.subpanel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.subpanel-status-tag {
+  color: #6ee7b7;
+  font-size: 10.5px;
+  opacity: 0.85;
+}

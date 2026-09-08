@@ -149,13 +149,12 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
     },
     "sidebar": {
       "enabled": true,
-      "triggerWidth": 30,
-      "closeBuffer": 30,
-      "triggerDelay": 80,
+      "closeBuffer": 40,
       "closeDelay": 300,
       "animationDuration": 280,
       "animationEasing": "cubic-bezier(0.16, 1, 0.3, 1)",
-      "width": 260
+      "width": 360,
+      "verticalExtension": 50
     }
   },
   "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 }
@@ -166,7 +165,7 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
 - `window.background` 统一管理窗口背景效果（`mode`: `'default'` 经典深色舞台、`'mica'` 云母材质、`'wallpaper'` 自定义壁纸；支持旧版 `window.mica` 平滑向下兼容）
 - `window.background.wallpaper` 控制自定义壁纸（支持本地路径/`~` 展开、高斯模糊度 `blur`、暗色遮罩透明度 `overlayOpacity` 与填充模式 `fit`）
 - `window.background.mica` 控制云母效果（包含 `style`, `grainOpacity`, `tintOpacity`, `edgeHighlight`, `border` 微调项）
-- `window.sidebar` 控制左侧边缘悬浮滑出气泡弹窗（包含开关 `enabled`、触发范围 `triggerWidth`、关闭缓冲安全范围 `closeBuffer`、触发延迟 `triggerDelay`、收起延迟 `closeDelay`、动画时长 `animationDuration`、缓动函数 `animationEasing` 与展开宽度 `width`）
+- `window.sidebar` 控制左侧悬浮长条胶囊伸缩抽屉（包含开关 `enabled`、移出关闭距离 `closeBuffer` / `closeDistance`、移出收起延迟 `closeDelay`、动画时长 `animationDuration`、缓动函数 `animationEasing`、展开宽度 `width` 与上下延伸幅度 `verticalExtension`）
 - **格式特性**：内置零依赖注释解析，完全支持 **JSONC**（允许自由添加 `//` 与 `/* */` 中文注释，`config.example.json` 已提供全中文注释示例）
 - 主题配置（theme）留待后续 UI 阶段再引入
 - ⚠️ electron 每次运行会向 `~/.config/lpip-player/` 写 Chromium 缓存（Cache/GPUCache 等 20+ 项），
