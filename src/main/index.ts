@@ -14,7 +14,7 @@ function createWindow(): void {
     show: false,
     frame: FRAME_MODE !== 'system',
     backgroundColor: '#0a0a0f',
-    title: 'mpd-glass',
+    title: 'lpip-player',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

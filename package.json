@@ -1,5 +1,5 @@
 {
-  "name": "mpd-glass",
+  "name": "lpip-player",
   "version": "0.0.1",
   "description": "本地音乐播放器: Electron + React + MPD, 液态玻璃 UI",
   "main": "./out/main/index.js",

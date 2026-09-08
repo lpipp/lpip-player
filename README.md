@@ -1,4 +1,4 @@
-# mpd-glass
+# lpip-player
 
 本地音乐播放器 — Electron(出声) + React + 手写 MPD 客户端，液态玻璃 UI。
 
