@@ -2,6 +2,11 @@
 
 本地音乐播放器 — Electron(出声) + React + 手写 MPD 客户端，液态玻璃 UI。
 
+## 文档导航
+
+- **`docs/ENVIRONMENT.md`** — 环境与配置快照（新会话免检手册：版本锁定、MPD 后端、实测行为）
+- **`docs/STYLE.md`** — 开发风格约束与分会话工作流
+
 ## 配置文件
 
 - **运行时配置**：`~/.config/lpip-player/config.json`（XDG 约定，应用真正读取的位置）
