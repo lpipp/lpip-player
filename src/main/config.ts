@@ -12,6 +12,36 @@ import { app } from 'electron'
 export type MicaStyle = 'default' | 'cool' | 'neutral' | 'warm'
 
 /**
+ * 窗口背景效果模式
+ * 'default': 经典黑曜石纯深色渐变舞台
+ * 'mica': 云母矿物晶体微光材质
+ * 'wallpaper': 自定义本地图片壁纸
+ */
+export type BackgroundMode = 'default' | 'mica' | 'wallpaper'
+
+/**
+ * 壁纸缩放填充模式
+ * 'cover': 保持宽高比填满窗口, 裁剪超出部分 (默认)
+ * 'contain': 保持宽高比完整显示在窗口内
+ * 'fill': 强制拉伸填满整个窗口
+ */
+export type WallpaperFit = 'cover' | 'contain' | 'fill'
+
+/**
+ * 自定义壁纸详细微调配置项
+ */
+export interface WallpaperConfig {
+  /** 本地壁纸图片绝对路径或以 ~ 开头的家目录路径 */
+  path: string
+  /** 壁纸高斯模糊半径 (px, 范围 0 ~ 50, 默认 0) */
+  blur: number
+  /** 暗色遮罩不透明度 (范围 0.0 ~ 1.0, 默认 0.5) */
+  overlayOpacity: number
+  /** 缩放填充模式 (默认 'cover') */
+  fit: WallpaperFit
+}
+
+/**
  * 云母效果详细微调配置项
  */
 export interface MicaConfig {
@@ -30,6 +60,19 @@ export interface MicaConfig {
 }
 
 /**
+ * 主窗口统一背景效果配置项
+ * 整合云母、自定义壁纸等多种视觉背景，便于后续横向扩充更多效果
+ */
+export interface BackgroundConfig {
+  /** 当前激活的背景模式 */
+  mode: BackgroundMode
+  /** 云母微调配置 */
+  mica: MicaConfig
+  /** 自定义壁纸微调配置 */
+  wallpaper: WallpaperConfig
+}
+
+/**
  * 窗口相关配置项
  */
 export interface WindowConfig {
@@ -40,7 +83,11 @@ export interface WindowConfig {
    */
   immersive: boolean
   /**
-   * 主窗口云母效果配置
+   * 窗口背景效果 (统一承载云母、壁纸等效果)
+   */
+  background: BackgroundConfig
+  /**
+   * 向下兼容字段: 云母效果配置
    */
   mica: MicaConfig
 }
@@ -75,11 +122,31 @@ export const DEFAULT_MICA_CONFIG: MicaConfig = {
 }
 
 /**
+ * 默认壁纸配置
+ */
+export const DEFAULT_WALLPAPER_CONFIG: WallpaperConfig = {
+  path: '',
+  blur: 0,
+  overlayOpacity: 0.5,
+  fit: 'cover'
+}
+
+/**
+ * 默认背景配置
+ */
+export const DEFAULT_BACKGROUND_CONFIG: BackgroundConfig = {
+  mode: 'default',
+  mica: DEFAULT_MICA_CONFIG,
+  wallpaper: DEFAULT_WALLPAPER_CONFIG
+}
+
+/**
  * 默认配置 (当配置文件不存在或缺省字段时使用)
  */
 export const DEFAULT_CONFIG: AppConfig = {
   window: {
     immersive: false,
+    background: DEFAULT_BACKGROUND_CONFIG,
     mica: DEFAULT_MICA_CONFIG
   },
   mpd: {
@@ -133,6 +200,91 @@ export function parseMicaConfig(rawMica: unknown): MicaConfig {
   }
 
   return DEFAULT_MICA_CONFIG
+}
+
+/**
+ * 展开家目录路径 (~ 替换为用户家目录绝对路径)
+ */
+export function resolveHomePath(filePath: string): string {
+  if (!filePath || typeof filePath !== 'string') return ''
+  const trimmed = filePath.trim()
+  if (trimmed === '~') {
+    return app.getPath('home')
+  }
+  if (trimmed.startsWith('~/') || trimmed.startsWith('~\\')) {
+    return join(app.getPath('home'), trimmed.slice(2))
+  }
+  return trimmed
+}
+
+/**
+ * 解析并校验自定义壁纸配置
+ */
+export function parseWallpaperConfig(rawWallpaper: unknown): WallpaperConfig {
+  if (typeof rawWallpaper === 'object' && rawWallpaper !== null) {
+    const obj = rawWallpaper as Record<string, unknown>
+    const validFits: WallpaperFit[] = ['cover', 'contain', 'fill']
+    const fitCandidate = obj['fit']
+    const fit: WallpaperFit = typeof fitCandidate === 'string' && validFits.includes(fitCandidate as WallpaperFit)
+      ? (fitCandidate as WallpaperFit)
+      : DEFAULT_WALLPAPER_CONFIG.fit
+
+    return {
+      path: typeof obj['path'] === 'string' ? resolveHomePath(obj['path']) : DEFAULT_WALLPAPER_CONFIG.path,
+      blur: typeof obj['blur'] === 'number' ? clamp(obj['blur'], 0, 50) : DEFAULT_WALLPAPER_CONFIG.blur,
+      overlayOpacity: typeof obj['overlayOpacity'] === 'number'
+        ? clamp(obj['overlayOpacity'], 0, 1)
+        : DEFAULT_WALLPAPER_CONFIG.overlayOpacity,
+      fit
+    }
+  }
+
+  return DEFAULT_WALLPAPER_CONFIG
+}
+
+/**
+ * 解析并校验窗口背景统一效果配置 (支持 mode, mica, wallpaper 及其向下兼容回退)
+ */
+export function parseBackgroundConfig(rawBackground: unknown, legacyMica: unknown): BackgroundConfig {
+  // 场景 1: 显式配置了 window.background 对象
+  if (typeof rawBackground === 'object' && rawBackground !== null) {
+    const bgObj = rawBackground as Record<string, unknown>
+    const modeCandidate = bgObj['mode']
+    const validModes: BackgroundMode[] = ['default', 'mica', 'wallpaper']
+
+    let mode: BackgroundMode = 'default'
+    if (typeof modeCandidate === 'string' && validModes.includes(modeCandidate as BackgroundMode)) {
+      mode = modeCandidate as BackgroundMode
+    } else if (bgObj['wallpaper'] && typeof (bgObj['wallpaper'] as Record<string, unknown>)['path'] === 'string') {
+      mode = 'wallpaper'
+    }
+
+    const mica = parseMicaConfig(bgObj['mica'] ?? legacyMica)
+    const wallpaper = parseWallpaperConfig(bgObj['wallpaper'])
+
+    // 同步 mica.enabled 状态与当前激活的 mode
+    mica.enabled = mode === 'mica'
+
+    return {
+      mode,
+      mica,
+      wallpaper
+    }
+  }
+
+  // 场景 2: 未配置 window.background, 但配置了旧版 window.mica
+  if (legacyMica !== undefined && legacyMica !== null) {
+    const mica = parseMicaConfig(legacyMica)
+    const mode: BackgroundMode = mica.enabled ? 'mica' : 'default'
+    return {
+      mode,
+      mica,
+      wallpaper: DEFAULT_WALLPAPER_CONFIG
+    }
+  }
+
+  // 场景 3: 缺省回退
+  return DEFAULT_BACKGROUND_CONFIG
 }
 
 /**
@@ -233,13 +385,15 @@ export function loadConfig(customPath?: string): AppConfig {
     // 预先剥离单行与多行中文注释 (支持 JSONC)
     const cleanJson = stripJsonComments(raw)
     const parsed = JSON.parse(cleanJson) as Partial<AppConfig>
+    const background = parseBackgroundConfig(parsed.window?.background, parsed.window?.mica)
 
     return {
       window: {
         immersive: typeof parsed.window?.immersive === 'boolean'
           ? parsed.window.immersive
           : DEFAULT_CONFIG.window.immersive,
-        mica: parseMicaConfig(parsed.window?.mica)
+        background,
+        mica: background.mica
       },
       mpd: {
         host: typeof parsed.mpd?.host === 'string' ? parsed.mpd.host : DEFAULT_CONFIG.mpd.host,

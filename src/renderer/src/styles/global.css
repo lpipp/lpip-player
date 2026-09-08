@@ -94,3 +94,50 @@ body {
   background-repeat: repeat;
   transition: opacity 0.3s ease;
 }
+
+/* ============================================================
+   自定义壁纸背景模式 (data-bg-mode="wallpaper")
+   ============================================================ */
+
+/* 舞台容器 */
+[data-bg-mode='wallpaper'] .stage {
+  position: relative;
+  height: 100%;
+  background-color: #0a0a0f;
+  overflow: hidden;
+}
+
+/* 壁纸底层: 支持独立高斯模糊与尺寸填充模式 */
+[data-bg-mode='wallpaper'] .stage::before {
+  content: '';
+  position: absolute;
+  /* 模糊时边缘会有淡化渐隐，通过外延 20px 并配合微缩放彻底消除边缘漏光 */
+  inset: -20px;
+  background-image: var(--wallpaper-image);
+  background-size: var(--wallpaper-fit, cover);
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: blur(var(--wallpaper-blur, 0px));
+  transform: scale(1.04);
+  pointer-events: none;
+  z-index: 0;
+  transition: filter 0.3s ease;
+}
+
+/* 暗色遮罩层: 压低壁纸亮调，避免杂色文字干扰，凸显后续液态玻璃质感 */
+[data-bg-mode='wallpaper'] .stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(10, 10, 15, var(--wallpaper-overlay-opacity, 0.5));
+  pointer-events: none;
+  z-index: 1;
+  transition: background-color 0.3s ease;
+}
+
+/* 确保舞台内的后续组件与内容层永远置于壁纸与遮罩上方 */
+.stage > * {
+  position: relative;
+  z-index: 2;
+}
+

@@ -131,13 +131,21 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
 {
   "window": {
     "immersive": false,
-    "mica": {
-      "enabled": false,
-      "style": "default",
-      "grainOpacity": 0.035,
-      "tintOpacity": 0.05,
-      "edgeHighlight": 0.08,
-      "border": false
+    "background": {
+      "mode": "default",
+      "wallpaper": {
+        "path": "",
+        "blur": 0,
+        "overlayOpacity": 0.5,
+        "fit": "cover"
+      },
+      "mica": {
+        "style": "default",
+        "grainOpacity": 0.035,
+        "tintOpacity": 0.05,
+        "edgeHighlight": 0.08,
+        "border": false
+      }
     }
   },
   "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 }
@@ -145,7 +153,9 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
 ```
 
 - `window.immersive` 控制沉浸式效果开关（默认 `false` 保留系统原生边框，`true` 为无边框沉浸式窗口，无最小化/最大化按钮控件）
-- `window.mica` 控制云母效果（支持布尔值或包含 `style`, `grainOpacity`, `tintOpacity`, `edgeHighlight`, `border` 的微调对象）
+- `window.background` 统一管理窗口背景效果（`mode`: `'default'` 经典深色舞台、`'mica'` 云母材质、`'wallpaper'` 自定义壁纸；支持旧版 `window.mica` 平滑向下兼容）
+- `window.background.wallpaper` 控制自定义壁纸（支持本地路径/`~` 展开、高斯模糊度 `blur`、暗色遮罩透明度 `overlayOpacity` 与填充模式 `fit`）
+- `window.background.mica` 控制云母效果（包含 `style`, `grainOpacity`, `tintOpacity`, `edgeHighlight`, `border` 微调项）
 - **格式特性**：内置零依赖注释解析，完全支持 **JSONC**（允许自由添加 `//` 与 `/* */` 中文注释，`config.example.json` 已提供全中文注释示例）
 - 主题配置（theme）留待后续 UI 阶段再引入
 - ⚠️ electron 每次运行会向 `~/.config/lpip-player/` 写 Chromium 缓存（Cache/GPUCache 等 20+ 项），

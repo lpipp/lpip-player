@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
 
 import { loadConfig } from './config'
+import { resolveWallpaperPayload } from './wallpaper'
 
 function createWindow(): void {
   // 读取运行时配置, 判定是否开启沉浸式效果
@@ -25,10 +26,12 @@ function createWindow(): void {
     }
   })
 
-  // 若开启云母效果, 页面加载完成后向根节点注入微调 CSS 变量与风格标记
-  if (config.window.mica.enabled) {
-    const { grainOpacity, tintOpacity, edgeHighlight, style, border } = config.window.mica
-    win.webContents.on('did-finish-load', () => {
+  // 页面加载完成后, 根据配置注入相应的窗口背景效果 (云母、自定义壁纸或默认基底)
+  win.webContents.on('did-finish-load', () => {
+    const { background } = config.window
+
+    if (background.mode === 'mica') {
+      const { grainOpacity, tintOpacity, edgeHighlight, style, border } = background.mica
       win.webContents.insertCSS(
         `:root {
           --mica-grain-opacity: ${grainOpacity};
@@ -37,12 +40,39 @@ function createWindow(): void {
         }`
       )
       win.webContents.executeJavaScript(
-        `document.documentElement.setAttribute('data-mica', 'true');
+        `document.documentElement.setAttribute('data-bg-mode', 'mica');
+         document.documentElement.setAttribute('data-mica', 'true');
          document.documentElement.setAttribute('data-mica-style', '${style}');
          document.documentElement.setAttribute('data-mica-border', '${border}');`
       )
-    })
-  }
+    } else if (background.mode === 'wallpaper') {
+      const payload = resolveWallpaperPayload(background.wallpaper)
+      if (payload) {
+        win.webContents.insertCSS(
+          `:root {
+            --wallpaper-image: url("${payload.dataUri}");
+            --wallpaper-blur: ${payload.blur}px;
+            --wallpaper-overlay-opacity: ${payload.overlayOpacity};
+            --wallpaper-fit: ${payload.fit};
+          }`
+        )
+        win.webContents.executeJavaScript(
+          `document.documentElement.setAttribute('data-bg-mode', 'wallpaper');
+           document.documentElement.removeAttribute('data-mica');`
+        )
+      } else {
+        win.webContents.executeJavaScript(
+          `document.documentElement.setAttribute('data-bg-mode', 'default');
+           document.documentElement.removeAttribute('data-mica');`
+        )
+      }
+    } else {
+      win.webContents.executeJavaScript(
+        `document.documentElement.setAttribute('data-bg-mode', 'default');
+         document.documentElement.removeAttribute('data-mica');`
+      )
+    }
+  })
 
   // 渲染完成再显示, 避免白屏闪烁
   win.on('ready-to-show', () => win.show())
