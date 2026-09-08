@@ -6,6 +6,7 @@
 
 - **`docs/ENVIRONMENT.md`** — 环境与配置快照（新会话免检手册：版本锁定、MPD 后端、实测行为）
 - **`docs/STYLE.md`** — 开发风格约束与分会话工作流
+- **`docs/SESSION_PROMPT.md`** — 新会话开场提示词（复制粘贴即用）
 
 ## 配置文件
 
