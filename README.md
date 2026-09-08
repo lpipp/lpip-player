@@ -12,6 +12,7 @@
 
 - **运行时配置**：`~/.config/lpip-player/config.json`（XDG 约定，应用真正读取的位置）
 - **模板**：`config.example.json`（随项目版本化，同步 schema）
+- **格式支持**：全面支持 **JSONC**（可自由添加 `//` 单行中文注释与 `/* */` 块级中文注释）
 
 字段说明：
 

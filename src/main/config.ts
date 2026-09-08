@@ -136,6 +136,78 @@ export function parseMicaConfig(rawMica: unknown): MicaConfig {
 }
 
 /**
+ * 剥除 JSON 文本中的单行与多行注释 (支持 JSONC)
+ * 严格保护字符串字面量内的斜杠与转义符 (例如 "http://..." 不会被破坏)
+ */
+export function stripJsonComments(text: string): string {
+  let result = ''
+  let inString = false
+  let isEscaped = false
+  let inSingleComment = false
+  let inBlockComment = false
+  let i = 0
+
+  while (i < text.length) {
+    const char = text[i]
+    const nextChar = text[i + 1]
+
+    if (inSingleComment) {
+      if (char === '\n' || char === '\r') {
+        inSingleComment = false
+        result += char
+      }
+      i++
+      continue
+    }
+
+    if (inBlockComment) {
+      if (char === '*' && nextChar === '/') {
+        inBlockComment = false
+        i += 2
+        continue
+      }
+      i++
+      continue
+    }
+
+    if (inString) {
+      result += char
+      if (isEscaped) {
+        isEscaped = false
+      } else if (char === '\\') {
+        isEscaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      i++
+      continue
+    }
+
+    // 不在字符串内, 检查是否进入注释
+    if (char === '/' && nextChar === '/') {
+      inSingleComment = true
+      i += 2
+      continue
+    }
+
+    if (char === '/' && nextChar === '*') {
+      inBlockComment = true
+      i += 2
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+    }
+
+    result += char
+    i++
+  }
+
+  return result
+}
+
+/**
  * 获取运行时配置文件的默认绝对路径 (~/.config/lpip-player/config.json)
  */
 export function getDefaultConfigPath(): string {
@@ -158,7 +230,9 @@ export function loadConfig(customPath?: string): AppConfig {
 
   try {
     const raw = readFileSync(configPath, 'utf-8')
-    const parsed = JSON.parse(raw) as Partial<AppConfig>
+    // 预先剥离单行与多行中文注释 (支持 JSONC)
+    const cleanJson = stripJsonComments(raw)
+    const parsed = JSON.parse(cleanJson) as Partial<AppConfig>
 
     return {
       window: {
