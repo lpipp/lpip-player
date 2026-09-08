@@ -1,0 +1,16 @@
+{
+  "window": {
+    "width": 1100,
+    "height": 720,
+    "frameMode": "system"
+  },
+  "mpd": {
+    "host": "127.0.0.1",
+    "port": 6600,
+    "streamPort": 8000
+  },
+  "theme": {
+    "accent": "#6ee7b7",
+    "background": "#0a0a0f"
+  }
+}
