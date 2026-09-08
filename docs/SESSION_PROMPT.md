@@ -26,23 +26,27 @@
 - 运行时配置 ~/.config/lpip-player/config.json（与 config.example.json 一致，仅 mpd 段）
 
 【当前进度】
-- git 最新提交 f944c47（开发文档）；工作区干净；源码纯空壳
-  （main 窗口骨架 / preload 空实现 / App.tsx 仅 .stage 深色画布，无任何组件）
-- 里程碑：M0-1 空窗口✅ → M0-2 玻璃组件+布局骨架（从 GlassPanel 开始，一次一个组件）
-  → M1 手写 MPD 客户端+IPC+zustand → M2 httpd 音频流+AnalyserNode → M3 全屏 shader+透明无边框
-- 窗口形态 system|frameless|frameless-transparent 配置化留到 M3
+- git 最新提交 1aa3b2f（配置体系: 补全全量配置项详细中文注释）；工作区干净
+- 已完成功能：
+  1. 窗口沉浸式效果（`window.immersive`，系统边框与无边框切换，无前端冗余控件）；
+  2. 主窗口云母效果（`window.mica`，深色黑曜石基底 + 矿物微光 + 颗粒感 + 棱线高光 + 全周微边框，支持 4 种色调风格与全项微调，100% 遮挡后方杂乱文字）；
+  3. 配置体系全面支持 JSONC 中文注释（零依赖状态机剥除，保护 URL）；
+  4. 配置文件 ~/.config/lpip-player/config.json 与模板已包含全量详细中文注释。
+- 源码状态：
+  main 窗口骨架与配置加载 / preload 空实现 / App.tsx 仅 .stage 画布 / global.css 包含云母与微光材质
+- 下一步任务：主窗口自定义壁纸功能（配置文件驱动，支持路径、透明遮罩、模糊与缩放模式）
 
 【工作方式（严格遵守）】
-1. 分功能分会话：本会话只做一个功能；开工前先说清"做什么、怎么验收"
-2. 一次只加一个组件；每步可视化验收，用户确认通过才继续下一步
+1. 分功能分会话：本会话只做这一个功能；开工前先说清"做什么、怎么验收"
+2. 一次只加一个组件/逻辑变更；每步可视化验收，用户确认通过才继续下一步
 3. 全中文注释；TS strict 无 any；函数组件 PascalCase.tsx + 同名单 CSS；
    UI 液态玻璃：底 #0a0a0f、backdrop blur + rgba 半透明、边框 rgba(255,255,255,0.12)、
    圆角 12-16px、强调色 #6ee7b7（仅高亮态）
-4. git 提交格式：`阶段: 简述`（如 "M0-2: GlassPanel 组件"），一次提交一个逻辑变更
+4. git 提交格式：`阶段: 简述`（如 "M0-1: 自定义壁纸配置与渲染支持"），一次提交一个逻辑变更
 5. 红线：用户说"暂停开发"期间一律不动代码；用户说"继续"≠恢复开发，须先确认；
    改 ~/.config 下用户配置文件前先问；版本升级先查锁定表
 6. 环境：KDE Wayland；截图用 spectacle -b -f -o；当前模型不支持读图（需像素分析）；
    清理 electron 进程用 pkill -f "electron/dist/electron"
 
-开始前：读 docs/ENVIRONMENT.md + docs/STYLE.md + git log --oneline -5，然后等我确认本次功能。
+开始前：读 docs/ENVIRONMENT.md + docs/STYLE.md + git log --oneline -5，然后等我确认本次功能。本次功能为：主窗口自定义壁纸功能，当前阶段使用配置文件控制，不要在前端上开发控件。
 ```
