@@ -128,10 +128,14 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
 - `~/.config/lpip-player/config.json`（**与仓库 `config.example.json` 逐字节一致**）：
 
 ```json
-{ "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 } }
+{
+  "window": { "immersive": false },
+  "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 }
+}
 ```
 
-- 前端配置（window/theme）**已从配置中清除**，随 UI 开发再引入（M0-2 之后）
+- `window.immersive` 控制沉浸式效果开关（默认 `false` 保留系统原生边框，`true` 为无边框沉浸式窗口，无最小化/最大化按钮控件）
+- 主题配置（theme）留待后续 UI 阶段再引入
 - ⚠️ electron 每次运行会向 `~/.config/lpip-player/` 写 Chromium 缓存（Cache/GPUCache 等 20+ 项），
   属可再生成内容，删了不心疼；以后可考虑把 userData 重定向到 `~/.cache`
 

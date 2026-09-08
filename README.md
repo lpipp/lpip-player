@@ -17,10 +17,11 @@
 
 | 键 | 默认值 | 说明 |
 |---|---|---|
+| `window.immersive` | `false` | 沉浸式效果开关：`false` 为常规系统边框，`true` 为无边框沉浸式窗口 |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 控制协议地址 |
 | `mpd.streamPort` | `8000` | MPD httpd 音频流端口 |
 
-> 前端配置（window/theme）暂不定义，随 UI 开发再引入。
+> 主题配置（theme）暂不定义，随 UI 开发再引入。
 > MPD 自身的配置（`mpd.conf`）见 `~/.config/mpd/mpd.conf`。
 
 ## 里程碑路线

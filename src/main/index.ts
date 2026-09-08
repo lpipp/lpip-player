@@ -1,18 +1,21 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
 
-// 窗口形态: system | frameless | frameless-transparent
-// M0 阶段先用系统边框跑通, 后续做成可切换配置
-const FRAME_MODE: 'system' | 'frameless' = 'system'
+import { loadConfig } from './config'
 
 function createWindow(): void {
+  // 读取运行时配置, 判定是否开启沉浸式效果
+  const config = loadConfig()
+  const isImmersive = config.window.immersive
+
   const win = new BrowserWindow({
     width: 1100,
     height: 720,
     minWidth: 720,
     minHeight: 480,
     show: false,
-    frame: FRAME_MODE !== 'system',
+    // 沉浸式效果: 为 true 时无边框 (frame: false); 否则使用系统原生边框 (frame: true)
+    frame: !isImmersive,
     backgroundColor: '#0a0a0f',
     title: 'lpip-player',
     webPreferences: {
