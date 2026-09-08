@@ -11,12 +11,11 @@
 
 | 键 | 默认值 | 说明 |
 |---|---|---|
-| `window.frameMode` | `system` | `system` / `frameless` / `frameless-transparent` |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 控制协议地址 |
 | `mpd.streamPort` | `8000` | MPD httpd 音频流端口 |
-| `theme.accent` / `theme.background` | `#6ee7b7` / `#0a0a0f` | UI 主题色 |
 
-> MPD 自身的配置（`mpd.conf`）不在此列，见 M1 阶段的 `mpd.conf.example`。
+> 前端配置（window/theme）暂不定义，随 UI 开发再引入。
+> MPD 自身的配置（`mpd.conf`）见 `~/.config/mpd/mpd.conf`。
 
 ## 里程碑路线
 
