@@ -31,30 +31,66 @@ body {
   background: radial-gradient(ellipse at 50% 0%, #101018 0%, #0a0a0f 60%);
 }
 
-/* 云母效果材质 (当 data-mica="true" 时生效) */
+/* 云母效果基准材质 (当 data-mica="true" 时生效) */
 [data-mica='true'] .stage {
   position: relative;
   height: 100%;
   /* 黑曜石深色云母基底 */
   background-color: #0d0e15;
-  /* 多层微漫射矿物光晕: 极克制、温润的冷暖微光交织，呈现云母层理 */
-  background-image:
-    radial-gradient(circle at 18% 22%, rgba(110, 231, 183, 0.04) 0%, transparent 45%),
-    radial-gradient(circle at 82% 78%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.03) 0%, transparent 60%),
-    linear-gradient(180deg, #13141f 0%, #0d0e15 100%);
-  /* 顶部微弱内高光棱线 (刻画实体石板的微反光边界) */
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  /* 顶部内高光棱线 (可通过 --mica-edge-highlight 调节强度) */
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, var(--mica-edge-highlight, 0.08));
   overflow: hidden;
+  transition: background 0.3s ease;
 }
 
-/* 云母细微晶体颗粒感 (纯 CSS 内联 SVG 噪点，赋予温润哑光触感) */
+/* 风格 1: default (品牌翡翠青绿与冷紫蓝交织) */
+[data-mica='true'][data-mica-style='default'] .stage,
+[data-mica='true']:not([data-mica-style]) .stage {
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(110, 231, 183, var(--mica-tint-opacity, 0.05)) 0%, transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(99, 102, 241, var(--mica-tint-opacity, 0.05)) 0%, transparent 50%),
+    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, calc(var(--mica-tint-opacity, 0.05) * 0.6)) 0%, transparent 60%),
+    linear-gradient(180deg, #13141f 0%, #0d0e15 100%);
+}
+
+/* 风格 2: cool (纯冷夜蓝与深靛微光) */
+[data-mica='true'][data-mica-style='cool'] .stage {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(56, 189, 248, var(--mica-tint-opacity, 0.05)) 0%, transparent 45%),
+    radial-gradient(circle at 80% 75%, rgba(99, 102, 241, var(--mica-tint-opacity, 0.05)) 0%, transparent 50%),
+    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, calc(var(--mica-tint-opacity, 0.05) * 0.6)) 0%, transparent 60%),
+    linear-gradient(180deg, #0f1422 0%, #0a0d17 100%);
+}
+
+/* 风格 3: neutral (素雅黑白灰中性微光) */
+[data-mica='true'][data-mica-style='neutral'] .stage {
+  background-image:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, calc(var(--mica-tint-opacity, 0.05) * 0.8)) 0%, transparent 50%),
+    radial-gradient(circle at 70% 75%, rgba(255, 255, 255, calc(var(--mica-tint-opacity, 0.05) * 0.5)) 0%, transparent 55%),
+    linear-gradient(180deg, #161619 0%, #0e0e10 100%);
+}
+
+/* 风格 4: warm (微暖玄武岩与木炭色微光) */
+[data-mica='true'][data-mica-style='warm'] .stage {
+  background-image:
+    radial-gradient(circle at 20% 25%, rgba(245, 158, 11, calc(var(--mica-tint-opacity, 0.05) * 0.8)) 0%, transparent 45%),
+    radial-gradient(circle at 80% 75%, rgba(244, 63, 94, calc(var(--mica-tint-opacity, 0.05) * 0.6)) 0%, transparent 50%),
+    linear-gradient(180deg, #191414 0%, #100d0d 100%);
+}
+
+/* 全周边框微弱轮廓 (当 data-mica-border="true" 时生效) */
+[data-mica='true'][data-mica-border='true'] .stage {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* 云母细微晶体颗粒感 (通过 --mica-grain-opacity 动态控制强弱) */
 [data-mica='true'] .stage::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.035;
+  opacity: var(--mica-grain-opacity, 0.035);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   background-repeat: repeat;
+  transition: opacity 0.3s ease;
 }

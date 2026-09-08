@@ -131,14 +131,21 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
 {
   "window": {
     "immersive": false,
-    "mica": false
+    "mica": {
+      "enabled": false,
+      "style": "default",
+      "grainOpacity": 0.035,
+      "tintOpacity": 0.05,
+      "edgeHighlight": 0.08,
+      "border": false
+    }
   },
   "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 }
 }
 ```
 
 - `window.immersive` 控制沉浸式效果开关（默认 `false` 保留系统原生边框，`true` 为无边框沉浸式窗口，无最小化/最大化按钮控件）
-- `window.mica` 控制云母效果开关（默认 `false` 为默认深色画布，`true` 为深色云母矿物材质表面）
+- `window.mica` 控制云母效果（支持布尔值或包含 `style`, `grainOpacity`, `tintOpacity`, `edgeHighlight`, `border` 的微调对象）
 - 主题配置（theme）留待后续 UI 阶段再引入
 - ⚠️ electron 每次运行会向 `~/.config/lpip-player/` 写 Chromium 缓存（Cache/GPUCache 等 20+ 项），
   属可再生成内容，删了不心疼；以后可考虑把 userData 重定向到 `~/.cache`

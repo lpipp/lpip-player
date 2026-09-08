@@ -18,7 +18,13 @@
 | 键 | 默认值 | 说明 |
 |---|---|---|
 | `window.immersive` | `false` | 沉浸式效果开关：`false` 为常规系统边框，`true` 为无边框沉浸式窗口 |
-| `window.mica` | `false` | 云母效果开关：`true` 启用温润深色矿物云母表面，100% 遮挡后方杂乱文字 |
+| `window.mica` | `false` | 云母效果：支持布尔值 `true`/`false` 简写，或详细对象配置（见下） |
+| `window.mica.enabled` | `false` | 云母材质总开关 |
+| `window.mica.style` | `'default'` | 云母色调风格：`default`（翡翠冷紫）、`cool`（冷夜蓝）、`neutral`（素雅灰）、`warm`（微暖炭黑） |
+| `window.mica.grainOpacity` | `0.035` | 矿物颗粒度强弱（`0.0` ~ `0.1`） |
+| `window.mica.tintOpacity` | `0.05` | 环境微光漫射强度（`0.0` ~ `0.2`） |
+| `window.mica.edgeHighlight` | `0.08` | 顶部内高光棱线强度（`0.0` ~ `0.2`） |
+| `window.mica.border` | `false` | 全周边框微弱轮廓开关（`true`/`false`） |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 控制协议地址 |
 | `mpd.streamPort` | `8000` | MPD httpd 音频流端口 |
 

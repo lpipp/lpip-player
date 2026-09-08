@@ -1,7 +1,14 @@
 {
   "window": {
     "immersive": false,
-    "mica": false
+    "mica": {
+      "enabled": false,
+      "style": "default",
+      "grainOpacity": 0.035,
+      "tintOpacity": 0.05,
+      "edgeHighlight": 0.08,
+      "border": false
+    }
   },
   "mpd": {
     "host": "127.0.0.1",
