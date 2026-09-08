@@ -12,6 +12,12 @@ export interface WindowConfig {
    * true: 沉浸式窗口, 无系统边框, 不绘制最小化/最大化按钮
    */
   immersive: boolean
+  /**
+   * 是否启用主窗口云母效果 (Mica Effect)
+   * false: 默认深色微光舞台
+   * true: 启用温润克制的深色云母矿物材质表面, 具备细微晶体颗粒感与内棱线高光, 100% 遮挡后方杂乱文字
+   */
+  mica: boolean
 }
 
 /**
@@ -36,7 +42,8 @@ export interface AppConfig {
  */
 export const DEFAULT_CONFIG: AppConfig = {
   window: {
-    immersive: false
+    immersive: false,
+    mica: false
   },
   mpd: {
     host: '127.0.0.1',
@@ -74,7 +81,10 @@ export function loadConfig(customPath?: string): AppConfig {
       window: {
         immersive: typeof parsed.window?.immersive === 'boolean'
           ? parsed.window.immersive
-          : DEFAULT_CONFIG.window.immersive
+          : DEFAULT_CONFIG.window.immersive,
+        mica: typeof parsed.window?.mica === 'boolean'
+          ? parsed.window.mica
+          : DEFAULT_CONFIG.window.mica
       },
       mpd: {
         host: typeof parsed.mpd?.host === 'string' ? parsed.mpd.host : DEFAULT_CONFIG.mpd.host,

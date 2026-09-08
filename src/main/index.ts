@@ -25,6 +25,13 @@ function createWindow(): void {
     }
   })
 
+  // 若开启云母效果, 页面加载完成后向根节点注入 data-mica 标记
+  if (config.window.mica) {
+    win.webContents.on('did-finish-load', () => {
+      win.webContents.executeJavaScript('document.documentElement.setAttribute("data-mica", "true")')
+    })
+  }
+
   // 渲染完成再显示, 避免白屏闪烁
   win.on('ready-to-show', () => win.show())
 

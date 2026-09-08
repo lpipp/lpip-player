@@ -1,6 +1,7 @@
 {
   "window": {
-    "immersive": false
+    "immersive": false,
+    "mica": false
   },
   "mpd": {
     "host": "127.0.0.1",

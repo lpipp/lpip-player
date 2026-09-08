@@ -18,6 +18,7 @@
 | 键 | 默认值 | 说明 |
 |---|---|---|
 | `window.immersive` | `false` | 沉浸式效果开关：`false` 为常规系统边框，`true` 为无边框沉浸式窗口 |
+| `window.mica` | `false` | 云母效果开关：`true` 启用温润深色矿物云母表面，100% 遮挡后方杂乱文字 |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 控制协议地址 |
 | `mpd.streamPort` | `8000` | MPD httpd 音频流端口 |
 
