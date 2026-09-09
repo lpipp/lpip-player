@@ -96,8 +96,15 @@ journalctl --user -u mpd -f      # 日志
 
 - 曲库：`music_directory = ~/Music`（已有真实 flac 曲库，`auto_update yes`）
 - 控制协议：`bind_to_address 127.0.0.1` + `port 6600`
-- 音频输出：httpd 流 `:8000`，vorbis 320kbps，`44100:16:2`，**无本地输出**（防双声，前端出声）
+- 音频输出：httpd 流 `:8000`，**`encoder "wave"` 未压缩 PCM**，`44100:16:2`，**无本地输出**（防双声，前端出声）
+  - ⚠️ **2026-09-09 变更**：原为 `encoder "vorbis"` + `bitrate "320"`，现改为 `wave`（约 1.41 Mbps / 176 KB/s）。
+    原因：同样字节数的服务端队列，PCM 只装 vorbis 约 1/4.4 的时长，是音频卡顿归零的关键因素之一
+    （详见 `docs/PROGRESS.md` §4.8）。附带收益：不再对 FLAC 源二次有损压缩，全程无损。
+  - 备份：`~/.config/mpd/mpd.conf.bak`（改动前的 vorbis 版本）
+  - `wave` 模式下**不要写 `bitrate`**（PCM 无此概念）；前端按 `RIFF/WAVE` 头解析
 - **httpd 输出块用 `bind_to_address`，不是 `host`**（host 会报 not recognized）
+- **httpd 输出无 mixer**：`status` 不返回 `volume` 字段，`setvol` 不改变流内容
+  （曾误以为可用 `setvol 0` 作为流内容标记物来测服务端延迟，该探针无效）
 - systemd 模式忽略 `pid_file` 行（无害，可留可删）
 
 ### 实测行为（务必遵守，不要重新探测）
@@ -110,16 +117,32 @@ journalctl --user -u mpd -f      # 日志
 ### 免装客户端的协议调试法
 
 ```bash
-exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 cat <&3 && exec 3>&-
-# 常用命令: status / outputs / add "music_1/xxx.flac" / play / stop / clear
+# ⚠️ 默认 shell 是 fish/zsh, 它们没有 /dev/tcp 虚拟设备 —— 必须显式套一层 bash -c
+bash -c 'exec 3<>/dev/tcp/127.0.0.1/6600 && printf "status\nclose\n" >&3 && timeout 2 cat <&3; exec 3>&-'
+# 常用命令: status / outputs / add "music_1/xxx.flac" / play / stop / clear / seekcur <秒>
 ```
+
+- 另注：`bc` 命令**未安装**，脚本里做换算请用 `awk` 或 node
+- 复杂探测（抓流分析、时序测量）建议直接写 `.mjs` 用 node 跑，比 shell 管道可靠
 
 ### 拉流验证
 
 ```bash
-# 播放中: curl -s --max-time 3 -o /dev/null -w "%{http_code} %{content_type}" http://127.0.0.1:8000/
-# 期望: HTTP 200 audio/ogg (~320kbps)
+# 播放中: curl -s --max-time 3 -o /tmp/x.wav -w "%{http_code} %{content_type}" http://127.0.0.1:8000/
+# 期望: HTTP 200 audio/wav; 头部应为 RIFF....WAVE (xxd -l 64 /tmp/x.wav)
+# 速率应约 176 KB/s (PCM 未压缩); 3 秒约收到 528KB
 ```
+
+### CDP 调试（Electron 已开 `--remote-debugging-port=9222`）
+
+```bash
+# 在 renderer 页面内求值 (探针脚本见会话历史, 约 30 行)
+# fetch http://127.0.0.1:9222/json/list 取 webSocketDebuggerUrl → WebSocket → Runtime.evaluate
+```
+
+- ⚠️ **验证音频是否真的出声, 只能采样 `audio.currentTime` 看是否匀速前进**；
+  `playing` / `canplay` / `readyState` 事件只代表解码器收到数据，**不代表扬声器出声**
+  （详见 `docs/PROGRESS.md` §4.8 测量方法铁律）
 
 ---
 
@@ -180,6 +203,19 @@ exec 3<>/dev/tcp/127.0.0.1/6600 && printf 'outputs\nstatus\n' >&3 && timeout 2 c
 - 截图：`spectacle -b -f -o /tmp/x.png`（无 xdotool/xwd/gnome-screenshot）
 - **当前 AI 模型不支持读图**：看到截图需用像素分析（ImageMagick/脚本）替代
 - 进程清理：`pkill -f "electron/dist/electron"`（路径含 `.pnpm`，旧模式匹配不上）
+  - ⚠️ `pgrep -f` / `pkill -f` 的模式会匹配到**自己所在的命令行**导致自杀；
+    清理时用精确 PID（先 `pgrep -f "electron/dist/electron \." | head -1` 存进变量再 `kill`）
+  - `pgrep -f "electron/dist/electron \."`（末尾 ` \.`）只匹配无 `--type=` 的**主进程**
+  - 查 GPU 进程务必用 electron 完整路径过滤，否则会抓到用户开着的系统 Chrome 进程
+- 重启应用（生产构建版，更贴近真实；dev 模式有 jsxDEV 校验开销，renderer 约多 10%）：
+
+```bash
+nohup env XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE XDG_RUNTIME_DIR=/run/user/1000 \
+  WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 pnpm start > /tmp/lpip-player-start.log 2>&1 &
+```
+
+- CPU 测量：**勿用 `ps %CPU`**（它是进程生命周期累计均值，短窗实验看不出变化）；
+  用 `/proc/<pid>/stat` 的 `utime+stime` 差分，`pct = Δticks / 秒数`（`CLK_TCK=100`）
 
 ---
 
