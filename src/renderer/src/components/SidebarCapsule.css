@@ -1,27 +1,35 @@
 /* ============================================================
    窗口左侧加长型长条胶囊伸缩抽屉 (SidebarCapsule)
-   遵循设计规范: 深空黑曜石底 + backdrop blur + 0.12 半透明高光边框 + #6ee7b7 强调色
+   设计风格: 精致深空黑曜石毛玻璃 (Frosted Obsidian Glass)
+   视觉特性:
+     - 纯正柔和的高斯背景漫射模糊 (Backdrop Blur + Saturation)
+     - 极细 1px 微弱白光边框与顶部内棱线 (Subtle Rim Highlight)
+     - 优雅自然的弥散黑曜石深空投影 (Ambient Drop Shadow)
+     - 翡翠薄荷绿 (#6ee7b7) 作为唯一功能性激活高亮
    ============================================================ */
 
-/* 悬浮胶囊主容器 */
+/* 悬浮胶囊主容器: 垂直居中定位于窗口顶部与底部状态栏顶部之间 */
 .sidebar-capsule {
   position: fixed !important;
   left: 16px !important;
-  top: 50% !important;
+  top: calc((100% - var(--statusbar-height, 80px)) / 2) !important;
   transform: translateY(-50%) !important;
   z-index: 10000 !important;
 
-  /* 物理材质: 深空黑曜石液态高透玻璃 */
-  background: rgba(14, 16, 24, 0.82);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  /* 物理材质: 深空黑曜石高透毛玻璃 (不透明度通过配置文件与 --sidebar-bg 动态绑定) */
+  background: var(--sidebar-bg, rgba(14, 16, 24, var(--sidebar-opacity, 0.78)));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 
-  /* 细腻内高光棱线与微弱轮廓 */
+  /* 细腻微边框轮廓与防边缘溢色 */
   border: 1px solid rgba(255, 255, 255, 0.12);
+  background-clip: padding-box;
+
+  /* 自然环境弥散阴影与极细微顶部内棱线 (彻底消除底部单侧内凹阴影与硬投影重影) */
   box-shadow:
-    0 16px 44px -6px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.35);
+    0 16px 36px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
 
   display: flex;
   flex-direction: row;
@@ -36,7 +44,8 @@
     height 340ms cubic-bezier(0.16, 1, 0.3, 1),
     border-radius 340ms cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 340ms ease,
-    background 340ms ease;
+    background 340ms ease,
+    border-color 340ms ease;
 }
 
 /* ------------------------------------------------------------
@@ -48,13 +57,14 @@
   border-radius: 28px;
 }
 
-/* 悬停未展开胶囊时微弱提亮, 赋予实体触觉感 */
+/* 悬停未展开胶囊时微弱提亮, 赋予实体触感 */
 .sidebar-capsule.collapsed:hover {
-  background: rgba(18, 21, 32, 0.88);
+  background: var(--sidebar-bg-hover, rgba(18, 21, 32, calc(var(--sidebar-opacity, 0.78) + 0.08)));
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:
-    0 20px 48px -6px rgba(0, 0, 0, 0.65),
-    0 0 20px 2px rgba(110, 231, 183, 0.14),
+    0 20px 44px rgba(0, 0, 0, 0.55),
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    0 0 20px 2px rgba(110, 231, 183, 0.12),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
 }
 
@@ -65,19 +75,26 @@
   width: var(--sidebar-width, 360px);
   height: calc(var(--sidebar-base-height, 400px) + calc(var(--sidebar-vertical-extension, 50px) * 2));
   border-radius: 22px;
-  background: rgba(12, 14, 22, 0.93);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--sidebar-bg-expanded, rgba(12, 14, 22, calc(var(--sidebar-opacity, 0.78) + 0.12)));
+  border-color: rgba(255, 255, 255, 0.14);
   box-shadow:
-    0 24px 60px -8px rgba(0, 0, 0, 0.72),
-    0 0 28px 2px rgba(110, 231, 183, 0.08),
+    0 24px 56px rgba(0, 0, 0, 0.6),
+    0 6px 18px rgba(0, 0, 0, 0.3),
+    0 0 24px 2px rgba(110, 231, 183, 0.06),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
 }
 
 /* ------------------------------------------------------------
    左侧固定图标导轨 (Capsule Rail)
+   恒定锁定 56px 固定物理宽度，绝不随抽屉收展发生宽度突变；
+   彻底消除抽屉收回时导轨宽度变为 100% 导致图标横向突跳至弹窗中心的问题
    ------------------------------------------------------------ */
 .capsule-rail {
+  position: relative;
+  z-index: 2;
   width: 56px;
+  min-width: 56px;
+  max-width: 56px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -86,10 +103,12 @@
   padding: 16px 0;
   box-sizing: border-box;
   flex-shrink: 0;
+  border-right: 1px solid transparent;
+  transition: border-right-color 0.24s ease;
 }
 
 .sidebar-capsule.expanded .capsule-rail {
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right-color: rgba(255, 255, 255, 0.06);
 }
 
 /* 导轨顶部呼吸光点 */
@@ -132,6 +151,7 @@
   justify-content: center;
 }
 
+/* 悬浮图标按键 (毛玻璃微交互，无突兀高光环) */
 .capsule-icon-btn {
   width: 38px;
   height: 38px;
@@ -155,30 +175,26 @@
   transform: scale(1.05);
 }
 
+/* 激活项: 沉静通透的翡翠薄荷绿高亮 */
 .capsule-icon-btn.active {
   color: #6ee7b7;
   background: rgba(110, 231, 183, 0.14);
-  border-color: rgba(110, 231, 183, 0.28);
+  border-color: rgba(110, 231, 183, 0.3);
   box-shadow: 0 0 14px rgba(110, 231, 183, 0.2);
+}
+
+/* 收起状态下，胶囊按键恒定保持纯净无激活高光 */
+.sidebar-capsule.collapsed .capsule-icon-btn.active {
+  color: rgba(255, 255, 255, 0.62);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .capsule-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* 激活项右侧小指示光点 */
-.capsule-active-dot {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background-color: #6ee7b7;
-  box-shadow: 0 0 6px #6ee7b7;
 }
 
 /* 导轨底部徽章 */
@@ -199,47 +215,62 @@
 
 /* ------------------------------------------------------------
    右侧子菜单内容区 (Subpanel)
+   采用固定布局宽度 + 外层视窗裁剪展开机制 (Clip Reveal)
+   从物理上彻底消除伸展过程中由于宽度连续拉伸导致的文本换行 (Reflow) 与高度跳动
    ------------------------------------------------------------ */
 .capsule-subpanel {
-  flex: 1;
+  position: relative;
+  z-index: 1;
+  width: calc(var(--sidebar-width, 360px) - 56px);
+  min-width: calc(var(--sidebar-width, 360px) - 56px);
+  max-width: calc(var(--sidebar-width, 360px) - 56px);
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px 18px 14px;
+  padding: 16px 0 14px;
   box-sizing: border-box;
-  animation: panelFadeIn 0.25s ease forwards;
   overflow: hidden;
+  transition:
+    opacity 240ms ease,
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes panelFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+/* 收起状态: 完全透明并微左移，静默裁剪在 56px 胶囊外，禁止点击交互 */
+.sidebar-capsule.collapsed .capsule-subpanel {
+  opacity: 0;
+  transform: translateX(-16px);
+  pointer-events: none;
 }
 
-/* 子菜单头部 (隐藏关闭按钮 X，界面更纯净，依靠移出安全距离自动收起) */
+/* 展开状态: 随抽屉右展平滑淡入并滑入归位 */
+.sidebar-capsule.expanded .capsule-subpanel {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* 子菜单头部 (隐藏关闭按钮 X，依靠移出安全距离自动收起) */
 .subpanel-header {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding-bottom: 12px;
+  padding: 0 18px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
 }
 
 .subpanel-title-area {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .subpanel-icon {
   color: #6ee7b7;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .subpanel-title {
@@ -248,6 +279,9 @@
   letter-spacing: 0.5px;
   color: rgba(255, 255, 255, 0.92);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 子菜单内容主体: 彻底隐藏所有横纵滚动条/拖动条，完全保持滚轮/手势平滑滚动 */
@@ -257,7 +291,7 @@
   flex-direction: column;
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  padding: 12px 0;
+  padding: 8px 14px 14px;
   gap: 8px;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -277,19 +311,36 @@
   -ms-overflow-style: none !important;
 }
 
+.subpanel-module-switch {
+  animation: moduleSwitchFade 0.2s ease forwards;
+}
+
+@keyframes moduleSwitchFade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .subpanel-section-hint {
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 0 4px 4px;
+  color: rgba(255, 255, 255, 0.45);
+  padding: 0 6px 6px;
+  white-space: nowrap;
 }
 
 .subpanel-config-hint {
   font-size: 10px;
   color: #6ee7b7;
   opacity: 0.85;
+  white-space: nowrap;
 }
 
 .subpanel-list {
@@ -298,31 +349,66 @@
   flex-direction: column;
   gap: 6px;
   margin: 0;
-  padding: 0;
+  /* 预留四周充足内边距缓冲，彻底杜绝 scale(1.02) 放大与阴影弥散触碰边界裁剪 */
+  padding: 4px 4px 14px;
 }
 
-/* 子菜单项卡片 */
+/* 子菜单项卡片 (精致黑曜石毛玻璃卡片宿主: 保持整像素文本网格定格) */
 .subpanel-item {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   box-sizing: border-box;
   width: 100%;
   padding: 9px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.04);
   cursor: pointer;
-  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  /* 宿主不加 transform/will-change，确保内部文字与徽章 100% 对齐物理整像素网格 */
 }
 
+/* 视觉外壳图层: 承载黑曜石背景、边框、立体阴影与 1.02 等比缩放，彻底杜绝文本位图拉伸发虚 */
+.subpanel-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: var(--theme-subpanel-card-bg, rgba(255, 255, 255, 0.035));
+  border: 1px solid var(--theme-subpanel-card-border, rgba(255, 255, 255, 0.05));
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: -1;
+  transform-origin: center center;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.22s ease;
+  will-change: transform;
+}
+
+/* 悬停选中: 提升卡片层级，仅让背景视觉层微放大 1.02 (2%) 并投射立体阴影，文字绝对清晰 */
 .subpanel-item:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateX(2px);
+  z-index: 10;
+}
+
+.subpanel-item:hover::before {
+  transform: scale(1.02) translateZ(0);
+  background: var(--theme-subpanel-card-hover-bg, rgba(255, 255, 255, 0.08));
+  border-color: var(--theme-subpanel-card-hover-border, rgba(255, 255, 255, 0.18));
+  box-shadow: var(
+    --theme-subpanel-card-hover-shadow,
+    0 6px 16px -2px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2)
+  );
 }
 
 .subpanel-item-info {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -334,23 +420,32 @@
 .subpanel-item-title {
   font-size: 12.5px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subpanel-item-desc {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subpanel-item-badge {
+  position: relative;
+  z-index: 1;
   font-size: 10.5px;
   font-weight: 500;
   padding: 2px 7px;
   border-radius: 6px;
   background: rgba(110, 231, 183, 0.12);
   color: #6ee7b7;
-  border: 1px solid rgba(110, 231, 183, 0.22);
+  border: 1px solid rgba(110, 231, 183, 0.24);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* 子菜单底部 */
@@ -358,14 +453,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
+  padding: 10px 18px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
 }
 
 .subpanel-status-tag {
   color: #6ee7b7;
   font-size: 10.5px;
   opacity: 0.85;
+  white-space: nowrap;
 }

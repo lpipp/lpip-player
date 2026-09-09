@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
-import { app, BrowserWindow, protocol } from 'electron'
+import { pathToFileURL } from 'node:url'
+import { app, BrowserWindow, protocol, net } from 'electron'
 
 import { loadConfig } from './config'
 import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
@@ -66,7 +67,8 @@ function createWindow(): void {
       if (payload) {
         win.webContents.insertCSS(
           `:root {
-            --wallpaper-image: url("${payload.imageUrl}");
+            --wallpaper-image: url("${payload.mediaUrl}");
+            --wallpaper-media-url: url("${payload.mediaUrl}");
             --wallpaper-blur: ${payload.blur}px;
             --wallpaper-overlay-opacity: ${payload.overlayOpacity};
             --wallpaper-fit: ${payload.fit};
@@ -74,26 +76,56 @@ function createWindow(): void {
         )
         win.webContents.executeJavaScript(
           `document.documentElement.setAttribute('data-bg-mode', 'wallpaper');
+           document.documentElement.setAttribute('data-wallpaper-type', '${payload.mediaType}');
+           document.documentElement.setAttribute('data-wallpaper-url', '${payload.mediaUrl}');
+           document.documentElement.setAttribute('data-wallpaper-blur', '${payload.blur}');
+           document.documentElement.setAttribute('data-wallpaper-overlay-opacity', '${payload.overlayOpacity}');
+           document.documentElement.setAttribute('data-wallpaper-fit', '${payload.fit}');
+           document.documentElement.setAttribute('data-wallpaper-muted', '${payload.muted}');
+           document.documentElement.setAttribute('data-wallpaper-loop', '${payload.loop}');
+           document.documentElement.setAttribute('data-wallpaper-playback-rate', '${payload.playbackRate}');
            document.documentElement.removeAttribute('data-mica');`
         )
       } else {
         win.webContents.executeJavaScript(
           `document.documentElement.setAttribute('data-bg-mode', 'default');
+           document.documentElement.removeAttribute('data-wallpaper-type');
+           document.documentElement.removeAttribute('data-wallpaper-url');
            document.documentElement.removeAttribute('data-mica');`
         )
       }
     } else {
       win.webContents.executeJavaScript(
         `document.documentElement.setAttribute('data-bg-mode', 'default');
+         document.documentElement.removeAttribute('data-wallpaper-type');
+         document.documentElement.removeAttribute('data-wallpaper-url');
          document.documentElement.removeAttribute('data-mica');`
       )
     }
 
+    // 注入明暗主题与微调配置 (CSS 变量与 HTML 属性)
+    const { theme, sidebar } = config.window
+    win.webContents.insertCSS(
+      `:root {
+        --theme-mode: ${theme.mode};
+        --theme-brightness: ${theme.brightness};
+        --theme-contrast: ${theme.contrast};
+      }`
+    )
+    win.webContents.executeJavaScript(
+      `document.documentElement.setAttribute('data-theme', '${theme.mode}');
+       document.documentElement.setAttribute('data-theme-brightness', '${theme.brightness}');
+       document.documentElement.setAttribute('data-theme-contrast', '${theme.contrast}');`
+    )
+
     // 注入左侧滑出气泡弹窗配置 (CSS 变量与触发参数)
-    const { sidebar } = config.window
     if (sidebar.enabled) {
       win.webContents.insertCSS(
         `:root {
+          --sidebar-opacity: ${sidebar.opacity};
+          --sidebar-bg: rgba(14, 16, 24, ${sidebar.opacity});
+          --sidebar-bg-hover: rgba(18, 21, 32, ${Math.min(1, sidebar.opacity + 0.08)});
+          --sidebar-bg-expanded: rgba(12, 14, 22, ${Math.min(1, sidebar.opacity + 0.12)});
           --sidebar-width: ${sidebar.width}px;
           --sidebar-trigger-width: ${sidebar.triggerWidth}px;
           --sidebar-close-buffer: ${sidebar.closeBuffer}px;
@@ -104,6 +136,7 @@ function createWindow(): void {
       )
       win.webContents.executeJavaScript(
         `document.documentElement.setAttribute('data-sidebar-enabled', 'true');
+         document.documentElement.setAttribute('data-sidebar-opacity', '${sidebar.opacity}');
          document.documentElement.setAttribute('data-sidebar-glow-hint', '${sidebar.glowHint}');
          document.documentElement.setAttribute('data-sidebar-trigger-delay', '${sidebar.triggerDelay}');
          document.documentElement.setAttribute('data-sidebar-close-delay', '${sidebar.closeDelay}');
@@ -129,7 +162,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // 注册特权流式本地媒体协议处理器
+  // 注册特权流式本地媒体协议处理器 (支持图片与大尺寸视频 Range 请求零内存拷贝)
   protocol.handle('app-media', async (request) => {
     let filePath = decodeURIComponent(request.url.replace(/^app-media:\/\//, ''))
     if (!filePath.startsWith('/')) {
@@ -138,16 +171,9 @@ app.whenReady().then(() => {
     if (!existsSync(filePath)) {
       return new Response('File Not Found', { status: 404 })
     }
-    try {
-      const data = readFileSync(filePath)
-      const ext = extname(filePath).toLowerCase()
-      const mime = EXT_TO_MIME[ext] || 'image/png'
-      return new Response(data, {
-        headers: { 'Content-Type': mime }
-      })
-    } catch {
-      return new Response('Read Error', { status: 500 })
-    }
+    return net.fetch(pathToFileURL(filePath).toString(), {
+      headers: request.headers
+    })
   })
 
   createWindow()

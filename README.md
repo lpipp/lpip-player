@@ -19,18 +19,25 @@
 | 键 | 默认值 | 说明 |
 |---|---|---|
 | `window.immersive` | `false` | 沉浸式效果开关：`false` 为常规系统边框，`true` 为无边框沉浸式窗口 |
-| `window.mica` | `false` | 云母效果：支持布尔值 `true`/`false` 简写，或详细对象配置（见下） |
-| `window.mica.enabled` | `false` | 云母材质总开关 |
-| `window.mica.style` | `'default'` | 云母色调风格：`default`（翡翠冷紫）、`cool`（冷夜蓝）、`neutral`（素雅灰）、`warm`（微暖炭黑） |
-| `window.mica.grainOpacity` | `0.035` | 矿物颗粒度强弱（`0.0` ~ `0.1`） |
-| `window.mica.tintOpacity` | `0.05` | 环境微光漫射强度（`0.0` ~ `0.2`） |
-| `window.mica.edgeHighlight` | `0.08` | 顶部内高光棱线强度（`0.0` ~ `0.2`） |
-| `window.mica.border` | `false` | 全周边框微弱轮廓开关（`true`/`false`） |
+| `window.theme.mode` | `'dark'` | 主题模式：`dark`（深色黑曜石）/ `light`（浅色白玉霜雪） |
+| `window.theme.brightness` | `0` | 明暗度微调偏移量（`-0.2` ~ `+0.2`） |
+| `window.theme.contrast` | `1.0` | 对比度微调系数（`0.8` ~ `1.2`） |
+| `window.background.mode` | `'default'` | 窗口背景模式：`default`（纯净黑曜石）/ `mica`（云母晶体）/ `wallpaper`（动静态壁纸） |
+| `window.background.wallpaper.path` | `''` | 壁纸绝对路径或以 `~` 开头路径，支持图片与视频格式（`.mp4`, `.webm` 等） |
+| `window.background.wallpaper.overlayOpacity`| `0.5` | 暗色遮罩层不透明度（`0.0` ~ `1.0`，压低壁纸亮度保真视频与文字对比） |
+| `window.background.wallpaper.blur` | `0` | 壁纸高斯模糊半径（px，`0` ~ `50`） |
+| `window.background.wallpaper.fit` | `'cover'` | 缩放填充模式：`cover` / `contain` / `fill` |
+| `window.sidebar.enabled` | `true` | 左侧悬浮长条胶囊抽屉总开关 |
+| `window.sidebar.opacity` | `0.78` | 悬浮胶囊与抽屉背景不透明度（`0.0` ~ `1.0`，实测推荐 `0.3` 通透质感） |
+| `window.sidebar.width` | `360` | 抽屉展开后的总宽度（px） |
+| `window.sidebar.verticalExtension` | `50` | 抽屉展开时上下各延伸的像素幅度（px） |
+| `window.sidebar.closeBuffer` | `40` | 鼠标离开抽屉触发收起的安全距离（px） |
+| `window.sidebar.closeDelay` | `300` | 移出安全距离后的收起倒计时时长（ms） |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 控制协议地址 |
 | `mpd.streamPort` | `8000` | MPD httpd 音频流端口 |
 
-> 主题配置（theme）暂不定义，随 UI 开发再引入。
-> MPD 自身的配置（`mpd.conf`）见 `~/.config/mpd/mpd.conf`。
+> 详细配置项与注释范例见 `config.example.json` 与 `docs/PROGRESS.md`。
+> MPD 自身的配置见 `~/.config/mpd/mpd.conf`。
 
 ## 里程碑路线
 

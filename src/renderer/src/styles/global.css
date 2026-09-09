@@ -10,8 +10,67 @@ body,
   height: 100%;
 }
 
+/* ============================================================
+   全局明暗主题变量定义 (Theme System)
+   支持深色黑曜石与浅色白玉霜雪模式，并响应 --theme-brightness / --theme-contrast
+   ============================================================ */
+:root {
+  --theme-brightness: 0;
+  --theme-contrast: 1;
+  --statusbar-height: 80px;
+}
+
+/* 深色黑曜石模式 (Dark Mode, 默认) */
+[data-theme='dark'],
+:root:not([data-theme]) {
+  --color-scheme: dark;
+  --theme-bg-body: #0a0a0f;
+  --theme-stage-bg: radial-gradient(ellipse at 50% 0%, #101018 0%, #0a0a0f 60%);
+  --theme-text-primary: rgba(255, 255, 255, 0.92);
+  --theme-text-secondary: rgba(255, 255, 255, 0.55);
+  --theme-text-muted: rgba(255, 255, 255, 0.35);
+  --theme-overlay-default: rgba(10, 10, 15, var(--wallpaper-overlay-opacity, 0.4));
+  --sidebar-base-rgb: 14, 16, 24;
+  --sidebar-base-rgb-hover: 18, 21, 32;
+  --sidebar-base-rgb-expanded: 12, 14, 22;
+  --theme-glass-border: rgba(255, 255, 255, 0.12);
+  --theme-glass-border-hover: rgba(255, 255, 255, 0.18);
+  --theme-subpanel-card-bg: rgba(255, 255, 255, 0.035);
+  --theme-subpanel-card-border: rgba(255, 255, 255, 0.05);
+  --theme-subpanel-card-hover-bg: rgba(255, 255, 255, 0.08);
+  --theme-subpanel-card-hover-border: rgba(255, 255, 255, 0.18);
+  --theme-subpanel-card-hover-shadow:
+    0 6px 16px -2px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 浅色白玉霜雪模式 (Light Mode，后续持续拓展完备) */
+[data-theme='light'] {
+  --color-scheme: light;
+  --theme-bg-body: #f1f3f7;
+  --theme-stage-bg: radial-gradient(ellipse at 50% 0%, #ffffff 0%, #e9ecf2 70%);
+  --theme-text-primary: rgba(15, 23, 42, 0.92);
+  --theme-text-secondary: rgba(51, 65, 85, 0.68);
+  --theme-text-muted: rgba(100, 116, 139, 0.55);
+  --theme-overlay-default: rgba(10, 10, 15, var(--wallpaper-overlay-opacity, 0.4));
+  --sidebar-base-rgb: 250, 252, 255;
+  --sidebar-base-rgb-hover: 255, 255, 255;
+  --sidebar-base-rgb-expanded: 243, 246, 252;
+  --theme-glass-border: rgba(0, 0, 0, 0.08);
+  --theme-glass-border-hover: rgba(0, 0, 0, 0.14);
+  --theme-subpanel-card-bg: rgba(255, 255, 255, 0.08);
+  --theme-subpanel-card-border: rgba(255, 255, 255, 0.12);
+  --theme-subpanel-card-hover-bg: rgba(255, 255, 255, 0.22);
+  --theme-subpanel-card-hover-border: rgba(255, 255, 255, 0.35);
+  --theme-subpanel-card-hover-shadow:
+    0 6px 16px -2px rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+}
+
 body {
-  background: #0a0a0f;
+  background: var(--theme-bg-body, #0a0a0f);
   overflow: hidden;
   font-family:
     system-ui,
@@ -23,12 +82,15 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  filter: brightness(calc(1 + var(--theme-brightness, 0))) contrast(var(--theme-contrast, 1));
+  transition: filter 0.25s ease, background-color 0.25s ease;
 }
 
 /* 空窗口的深色舞台 */
 .stage {
   height: 100%;
-  background: radial-gradient(ellipse at 50% 0%, #101018 0%, #0a0a0f 60%);
+  background: var(--theme-stage-bg, radial-gradient(ellipse at 50% 0%, #101018 0%, #0a0a0f 60%));
+  transition: background 0.3s ease;
 }
 
 /* 云母效果基准材质 (当 data-mica="true" 时生效) */
@@ -134,4 +196,11 @@ body {
   z-index: 1;
   transition: background-color 0.3s ease;
 }
+
+/* 当激活动态视频壁纸时，隐藏静态伪元素，由 WallpaperLayer 接管硬件加速流式播放 */
+[data-wallpaper-type='video'] .stage::before,
+[data-wallpaper-type='video'] .stage::after {
+  display: none !important;
+}
+
 

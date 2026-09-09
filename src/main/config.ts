@@ -28,10 +28,10 @@ export type BackgroundMode = 'default' | 'mica' | 'wallpaper'
 export type WallpaperFit = 'cover' | 'contain' | 'fill'
 
 /**
- * 自定义壁纸详细微调配置项
+ * 自定义壁纸详细微调配置项 (支持静态图片与动态视频格式)
  */
 export interface WallpaperConfig {
-  /** 本地壁纸图片绝对路径或以 ~ 开头的家目录路径 */
+  /** 本地壁纸图片或视频绝对路径或以 ~ 开头的家目录路径 */
   path: string
   /** 壁纸高斯模糊半径 (px, 范围 0 ~ 50, 默认 0) */
   blur: number
@@ -39,6 +39,12 @@ export interface WallpaperConfig {
   overlayOpacity: number
   /** 缩放填充模式 (默认 'cover') */
   fit: WallpaperFit
+  /** 视频壁纸是否静音 (默认 true, 避免壁纸自带音频与音乐播放冲突) */
+  muted?: boolean
+  /** 视频壁纸是否循环播放 (默认 true) */
+  loop?: boolean
+  /** 视频壁纸播放速率 (范围 0.25 ~ 2.0, 默认 1.0) */
+  playbackRate?: number
 }
 
 /**
@@ -96,6 +102,20 @@ export interface SidebarConfig {
   width: number
   /** 抽屉展开时上下各延伸的像素幅度 (单位 px, 范围 0 ~ 200, 默认 50) */
   verticalExtension: number
+  /** 悬浮胶囊与抽屉背景不透明度 (范围 0.0 ~ 1.0, 默认 0.78) */
+  opacity: number
+}
+
+/**
+ * 主题与明暗模式微调配置项
+ */
+export interface ThemeConfig {
+  /** 当前主题模式: 'dark' (深色黑曜石) | 'light' (浅色白玉霜雪) */
+  mode: 'dark' | 'light'
+  /** 明暗度微调偏移量 (范围 -0.2 ~ +0.2, 默认 0, 负值更深邃, 正值更通透) */
+  brightness: number
+  /** 对比度微调系数 (范围 0.8 ~ 1.2, 默认 1.0) */
+  contrast: number
 }
 
 /**
@@ -108,6 +128,10 @@ export interface WindowConfig {
    * true: 沉浸式窗口, 无系统边框, 不绘制最小化/最大化按钮
    */
   immersive: boolean
+  /**
+   * 主题与明暗模式微调配置
+   */
+  theme: ThemeConfig
   /**
    * 窗口背景效果 (统一承载云母、壁纸等效果)
    */
@@ -158,7 +182,10 @@ export const DEFAULT_WALLPAPER_CONFIG: WallpaperConfig = {
   path: '',
   blur: 0,
   overlayOpacity: 0.5,
-  fit: 'cover'
+  fit: 'cover',
+  muted: true,
+  loop: true,
+  playbackRate: 1.0
 }
 
 /**
@@ -168,6 +195,15 @@ export const DEFAULT_BACKGROUND_CONFIG: BackgroundConfig = {
   mode: 'default',
   mica: DEFAULT_MICA_CONFIG,
   wallpaper: DEFAULT_WALLPAPER_CONFIG
+}
+
+/**
+ * 默认主题与明暗模式配置
+ */
+export const DEFAULT_THEME_CONFIG: ThemeConfig = {
+  mode: 'dark',
+  brightness: 0,
+  contrast: 1.0
 }
 
 /**
@@ -183,7 +219,8 @@ export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
   animationDuration: 280,
   animationEasing: 'cubic-bezier(0.16, 1, 0.3, 1)',
   width: 360,
-  verticalExtension: 50
+  verticalExtension: 50,
+  opacity: 0.78
 }
 
 /**
@@ -192,6 +229,7 @@ export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
 export const DEFAULT_CONFIG: AppConfig = {
   window: {
     immersive: false,
+    theme: DEFAULT_THEME_CONFIG,
     background: DEFAULT_BACKGROUND_CONFIG,
     sidebar: DEFAULT_SIDEBAR_CONFIG,
     mica: DEFAULT_MICA_CONFIG
@@ -209,6 +247,29 @@ export const DEFAULT_CONFIG: AppConfig = {
 function clamp(val: number, min: number, max: number): number {
   if (Number.isNaN(val)) return min
   return Math.min(Math.max(val, min), max)
+}
+
+/**
+ * 解析并校验主题与明暗模式配置
+ */
+export function parseThemeConfig(rawTheme: unknown): ThemeConfig {
+  if (typeof rawTheme === 'object' && rawTheme !== null) {
+    const obj = rawTheme as Record<string, unknown>
+    const modeCandidate = obj['mode']
+    const mode: 'dark' | 'light' = modeCandidate === 'light' ? 'light' : 'dark'
+
+    return {
+      mode,
+      brightness: typeof obj['brightness'] === 'number'
+        ? clamp(obj['brightness'], -0.2, 0.2)
+        : DEFAULT_THEME_CONFIG.brightness,
+      contrast: typeof obj['contrast'] === 'number'
+        ? clamp(obj['contrast'], 0.8, 1.2)
+        : DEFAULT_THEME_CONFIG.contrast
+    }
+  }
+
+  return DEFAULT_THEME_CONFIG
 }
 
 /**
@@ -282,7 +343,12 @@ export function parseWallpaperConfig(rawWallpaper: unknown): WallpaperConfig {
       overlayOpacity: typeof obj['overlayOpacity'] === 'number'
         ? clamp(obj['overlayOpacity'], 0, 1)
         : DEFAULT_WALLPAPER_CONFIG.overlayOpacity,
-      fit
+      fit,
+      muted: typeof obj['muted'] === 'boolean' ? obj['muted'] : DEFAULT_WALLPAPER_CONFIG.muted,
+      loop: typeof obj['loop'] === 'boolean' ? obj['loop'] : DEFAULT_WALLPAPER_CONFIG.loop,
+      playbackRate: typeof obj['playbackRate'] === 'number'
+        ? clamp(obj['playbackRate'], 0.25, 2.0)
+        : DEFAULT_WALLPAPER_CONFIG.playbackRate
     }
   }
 
@@ -381,7 +447,12 @@ export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
         ? clamp(obj['verticalExtension'], 0, 200)
         : typeof obj['verticalExpansion'] === 'number'
           ? clamp(obj['verticalExpansion'], 0, 200)
-          : DEFAULT_SIDEBAR_CONFIG.verticalExtension
+          : DEFAULT_SIDEBAR_CONFIG.verticalExtension,
+      opacity: typeof obj['opacity'] === 'number'
+        ? clamp(obj['opacity'], 0, 1)
+        : typeof obj['bgOpacity'] === 'number'
+          ? clamp(obj['bgOpacity'], 0, 1)
+          : DEFAULT_SIDEBAR_CONFIG.opacity
     }
   }
 
@@ -486,6 +557,7 @@ export function loadConfig(customPath?: string): AppConfig {
     // 预先剥离单行与多行中文注释 (支持 JSONC)
     const cleanJson = stripJsonComments(raw)
     const parsed = JSON.parse(cleanJson) as Partial<AppConfig>
+    const theme = parseThemeConfig(parsed.window?.theme)
     const background = parseBackgroundConfig(parsed.window?.background, parsed.window?.mica)
     const sidebar = parseSidebarConfig(parsed.window?.sidebar)
 
@@ -494,6 +566,7 @@ export function loadConfig(customPath?: string): AppConfig {
         immersive: typeof parsed.window?.immersive === 'boolean'
           ? parsed.window.immersive
           : DEFAULT_CONFIG.window.immersive,
+        theme,
         background,
         sidebar,
         mica: background.mica

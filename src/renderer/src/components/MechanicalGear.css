@@ -1,0 +1,189 @@
+/* ============================================================
+   精密机械表齿轮组组件 (MechanicalGear)
+   包含:
+     - 1号齿轮: 直径 500px，圆心距右边框 30px，垂直居中
+     - 2号齿轮: 直径 180px，圆心距右边框 70px，位于1号齿轮上方 200px
+     - 3号齿轮: 直径 200px，圆心距右边框 0px，位于1号齿轮下方 280px
+     - 飞轮 (摆轮): 直径 250px，圆心与3号齿轮水平，向左累计偏移70px (圆心距右边框 170px)，往复摆动
+   设计风格: 高级制表工艺纯线条蓝图工程风 (High Horology Line Blueprint)
+   ============================================================ */
+
+.mechanical-gears-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--statusbar-height, 80px);
+  pointer-events: none;
+  z-index: 10;
+  overflow: visible;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------
+   1号齿轮: 直径 500px，圆心距右边框 30px，垂直居中
+   ------------------------------------------------------------ */
+.gear-1-container {
+  position: absolute;
+  /* 圆心距右边框 30px: 半径 250px，则容器右边界位于 right: 30px - 250px = -220px */
+  right: calc(30px - 250px);
+  /* 垂直居中于可用高度中轴线 */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 500px;
+  height: 500px;
+  min-width: 500px;
+  min-height: 500px;
+  max-width: 500px;
+  max-height: 500px;
+  pointer-events: none;
+}
+
+.gear-1-rotator {
+  width: 100%;
+  height: 100%;
+  transform-origin: 250px 250px;
+  animation: mechanicalGearRotate 180s linear infinite;
+  will-change: transform;
+}
+
+/* ------------------------------------------------------------
+   2号齿轮: 直径 180px，圆心距右边框 70px (向右偏移 10px)，位于1号齿轮上方 200px
+   ------------------------------------------------------------ */
+.gear-2-container {
+  position: absolute;
+  /* 圆心距右边框由 80px 向右平移 10px 至 70px: 半径 90px，容器位于 right: 70px - 90px = -20px */
+  right: calc(70px - 90px);
+  /* 位于1号齿轮中轴线上方 200px */
+  top: calc(50% - 200px);
+  transform: translateY(-50%);
+  width: 180px;
+  height: 180px;
+  min-width: 180px;
+  min-height: 180px;
+  max-width: 180px;
+  max-height: 180px;
+  pointer-events: none;
+  z-index: 11;
+}
+
+.gear-2-rotator {
+  width: 100%;
+  height: 100%;
+  transform-origin: 90px 90px;
+  /* 传动比咬合逆向旋转: 60/24 = 2.5倍速 (72s/圈) */
+  animation: mechanicalGearRotateReverse 72s linear infinite;
+  will-change: transform;
+}
+
+/* ------------------------------------------------------------
+   3号齿轮: 直径 200px，圆心距右边框 0px，位于1号齿轮下方 280px
+   ------------------------------------------------------------ */
+.gear-3-container {
+  position: absolute;
+  /* 圆心距右边框 0px: 半径 100px，容器位于 right: 0px - 100px = -100px */
+  right: calc(0px - 100px);
+  /* 位于1号齿轮中轴线下方 280px */
+  top: calc(50% + 280px);
+  transform: translateY(-50%);
+  width: 200px;
+  height: 200px;
+  min-width: 200px;
+  min-height: 200px;
+  max-width: 200px;
+  max-height: 200px;
+  pointer-events: none;
+  z-index: 11;
+}
+
+.gear-3-rotator {
+  width: 100%;
+  height: 100%;
+  transform-origin: 100px 100px;
+  /* 传动比咬合逆向旋转: 60/28 齿数比 (84s/圈) */
+  animation: mechanicalGearRotateReverse 84s linear infinite;
+  will-change: transform;
+}
+
+/* ------------------------------------------------------------
+   飞轮 (摆轮 / Flywheel): 直径 250px，圆心与3号齿轮水平 (top: calc(50% + 280px))，
+   向左累计偏移 70px，圆心距右边框 170px (距3号齿轮圆心 170px)
+   - 半径 125px，容器位于 right: 170px - 125px = 45px
+   - 运动模式: 机械钟表游丝摆轮往复谐振摆动 (Reciprocating Oscillation)
+   ------------------------------------------------------------ */
+.flywheel-container {
+  position: absolute;
+  /* 圆心距右边框 170px (再向左偏移 20px): 半径 125px，容器位于 right: 170px - 125px = 45px */
+  right: calc(170px - 125px);
+  /* 与3号齿轮严格水平对齐 */
+  top: calc(50% + 280px);
+  transform: translateY(-50%);
+  width: 250px;
+  height: 250px;
+  min-width: 250px;
+  min-height: 250px;
+  max-width: 250px;
+  max-height: 250px;
+  pointer-events: none;
+  z-index: 12;
+}
+
+.flywheel-rotator {
+  width: 100%;
+  height: 100%;
+  transform-origin: 125px 125px;
+  /* 往复谐振摆动: 周期 2.4s，拟合正弦谐波摆动 */
+  animation: flywheelOscillate 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+
+/* 纯线条高精制图 SVG */
+.mechanical-gear-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.22))
+          drop-shadow(0 2px 10px rgba(0, 0, 0, 0.35));
+}
+
+/* 顺时针旋转 (1号齿轮: 180s/圈) */
+@keyframes mechanicalGearRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 逆时针咬合旋转 (2号齿轮: 72s/圈; 3号齿轮: 84s/圈) */
+@keyframes mechanicalGearRotateReverse {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+/* 飞轮往复谐波摆动 (左右摆幅 ±65°) */
+@keyframes flywheelOscillate {
+  0% {
+    transform: rotate(-65deg);
+  }
+  50% {
+    transform: rotate(65deg);
+  }
+  100% {
+    transform: rotate(-65deg);
+  }
+}
+
+/* ------------------------------------------------------------
+   浅色主题适配 (Light Mode)
+   ------------------------------------------------------------ */
+[data-theme='light'] .mechanical-gear-svg {
+  filter: drop-shadow(0 0 6px rgba(5, 150, 105, 0.2))
+          drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}

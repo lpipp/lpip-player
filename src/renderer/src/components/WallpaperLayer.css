@@ -1,0 +1,33 @@
+/* ============================================================
+   动态视频壁纸图层 (WallpaperLayer)
+   支持本地视频流硬件加速播放、覆盖填充、高斯模糊与暗色遮罩
+   ============================================================ */
+
+.wallpaper-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 视频媒体底层: 外延 20px 并配合微缩放彻底消除高斯模糊边缘漏光与白边 */
+.wallpaper-media.wallpaper-video {
+  position: absolute;
+  inset: -20px;
+  width: calc(100% + 40px);
+  height: calc(100% + 40px);
+  pointer-events: none;
+  object-position: center center;
+  will-change: transform, filter;
+  transition: filter 0.3s ease;
+}
+
+/* 暗色遮罩层: 压低视频高光与高饱和杂色，保障前景 UI 与毛玻璃抽屉可读性 */
+.wallpaper-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: background-color 0.3s ease;
+}

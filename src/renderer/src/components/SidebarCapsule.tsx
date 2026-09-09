@@ -200,6 +200,14 @@ export default function SidebarCapsule() {
     verticalExtension: 50
   })
 
+  // 同步主进程注入的明暗主题模式与微调参数
+  const [themeInfo, setThemeInfo] = useState({
+    mode: 'dark',
+    brightness: 0,
+    contrast: 1.0,
+    opacity: 0.3
+  })
+
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 从 HTML attributes 同步配置参数
@@ -209,12 +217,23 @@ export default function SidebarCapsule() {
       const bufferAttr = docEl.getAttribute('data-sidebar-close-buffer')
       const delayAttr = docEl.getAttribute('data-sidebar-close-delay')
       const extAttr = docEl.getAttribute('data-sidebar-vertical-extension')
+      const themeAttr = docEl.getAttribute('data-theme')
+      const brightnessAttr = docEl.getAttribute('data-theme-brightness')
+      const contrastAttr = docEl.getAttribute('data-theme-contrast')
+      const opacityAttr = docEl.getAttribute('data-sidebar-opacity')
 
       configRef.current = {
         closeDistance: bufferAttr ? Number.parseInt(bufferAttr, 10) || 40 : 40,
         closeDelay: delayAttr ? Number.parseInt(delayAttr, 10) || 300 : 300,
         verticalExtension: extAttr ? Number.parseInt(extAttr, 10) || 50 : 50
       }
+
+      setThemeInfo({
+        mode: themeAttr === 'light' ? 'light' : 'dark',
+        brightness: brightnessAttr ? Number.parseFloat(brightnessAttr) || 0 : 0,
+        contrast: contrastAttr ? Number.parseFloat(contrastAttr) || 1.0 : 1.0,
+        opacity: opacityAttr ? Number.parseFloat(opacityAttr) || 0.3 : 0.3
+      })
     }
 
     syncConfig()
@@ -222,7 +241,15 @@ export default function SidebarCapsule() {
     const observer = new MutationObserver(syncConfig)
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['data-sidebar-close-buffer', 'data-sidebar-close-delay', 'data-sidebar-vertical-extension']
+      attributeFilter: [
+        'data-sidebar-close-buffer',
+        'data-sidebar-close-delay',
+        'data-sidebar-vertical-extension',
+        'data-sidebar-opacity',
+        'data-theme',
+        'data-theme-brightness',
+        'data-theme-contrast'
+      ]
     })
 
     return () => {
@@ -294,17 +321,58 @@ export default function SidebarCapsule() {
     }
   }, [isExpanded])
 
-  // 点击图标: 若未展开则展开并展示该模块子菜单; 若已展开则切换到该模块子菜单
+  // 点击图标: 若未展开则展开并展示该模块子菜单; 若已展开且点击同一图标则收起抽屉; 若点击其他图标则切换到该模块子菜单
   const handleIconClick = (id: string): void => {
     cancelCloseTimer()
+    if (isExpanded && activeModuleId === id) {
+      setIsExpanded(false)
+      return
+    }
     setActiveModuleId(id)
     if (!isExpanded) {
       setIsExpanded(true)
     }
   }
 
+  // 组装动态导航模块列表 (将实时主题与微调参数注入外观主题模块)
+  const navModules: NavModule[] = MODULES.map((mod) => {
+    if (mod.id === 'theme') {
+      const isLight = themeInfo.mode === 'light'
+      return {
+        ...mod,
+        items: [
+          {
+            id: 'thm-mode',
+            title: '明暗模式',
+            desc: isLight ? '浅色白玉霜雪模式 (Light Mode)' : '深色黑曜石模式 (Dark Mode)',
+            badge: isLight ? '浅色' : '深色'
+          },
+          {
+            id: 'thm-brightness',
+            title: '明暗度微调',
+            desc: `基准偏移量 (${themeInfo.brightness >= 0 ? '+' : ''}${themeInfo.brightness.toFixed(2)})`,
+            badge: `${themeInfo.brightness >= 0 ? '+' : ''}${themeInfo.brightness.toFixed(2)}`
+          },
+          {
+            id: 'thm-contrast',
+            title: '对比度微调',
+            desc: `明暗对比系数 (${themeInfo.contrast.toFixed(2)})`,
+            badge: `${themeInfo.contrast.toFixed(2)}`
+          },
+          {
+            id: 'thm-glass',
+            title: '胶囊不透明度',
+            desc: `毛玻璃底色通透度 (${themeInfo.opacity.toFixed(2)})`,
+            badge: `${themeInfo.opacity.toFixed(2)}`
+          }
+        ]
+      }
+    }
+    return mod
+  })
+
   // 获取当前激活的模块及其子菜单
-  const activeModule = MODULES.find((m) => m.id === activeModuleId) || MODULES[0]
+  const activeModule = navModules.find((m) => m.id === activeModuleId) || navModules[0]
 
   return (
     <aside
@@ -322,8 +390,9 @@ export default function SidebarCapsule() {
 
         {/* 6 大功能模块图标列 */}
         <nav className="capsule-rail-icons" aria-label="功能模块列表">
-          {MODULES.map((mod) => {
-            const isActive = activeModuleId === mod.id
+          {navModules.map((mod) => {
+            // 仅在抽屉展开时显示高光；退出收起后恢复纯净无高光态
+            const isActive = isExpanded && activeModuleId === mod.id
             return (
               <button
                 key={mod.id}
@@ -334,7 +403,6 @@ export default function SidebarCapsule() {
                 aria-label={mod.label}
               >
                 <span className="capsule-icon-wrapper">{mod.icon}</span>
-                {isActive && <span className="capsule-active-dot" />}
               </button>
             )
           })}
@@ -346,46 +414,47 @@ export default function SidebarCapsule() {
         </div>
       </div>
 
-      {/* 右侧子菜单内容区 (仅展开态向右伸长呈现) */}
-      {isExpanded && (
-        <section className="capsule-subpanel">
-          {/* 子菜单顶部标题栏 (根据需求隐藏右上角关闭按键 X，由移出距离自动收回) */}
-          <header className="subpanel-header">
-            <div className="subpanel-title-area">
-              <span className="subpanel-icon">{activeModule.icon}</span>
-              <h2 className="subpanel-title">{activeModule.label}</h2>
-            </div>
-          </header>
+      {/* 右侧子菜单内容区 (保持 DOM 结构恒定，通过外层视窗裁剪展开，彻底杜绝折行重排抖动) */}
+      <section
+        className="capsule-subpanel"
+        aria-hidden={!isExpanded}
+      >
+        {/* 子菜单顶部标题栏 (根据需求隐藏右上角关闭按键 X，由移出距离自动收回) */}
+        <header className="subpanel-header">
+          <div className="subpanel-title-area">
+            <span className="subpanel-icon">{activeModule.icon}</span>
+            <h2 className="subpanel-title">{activeModule.label}</h2>
+          </div>
+        </header>
 
-          {/* 子菜单项列表 */}
-          <div className="subpanel-content">
-            <div className="subpanel-section-hint">
-              <span>{activeModule.label} 子项配置</span>
-              <span className="subpanel-config-hint">
-                移出 {configRef.current.closeDistance}px / {configRef.current.closeDelay}ms 关闭
-              </span>
-            </div>
-
-            <ul className="subpanel-list">
-              {activeModule.items.map((item) => (
-                <li key={item.id} className="subpanel-item">
-                  <div className="subpanel-item-info">
-                    <span className="subpanel-item-title">{item.title}</span>
-                    <span className="subpanel-item-desc">{item.desc}</span>
-                  </div>
-                  {item.badge && <span className="subpanel-item-badge">{item.badge}</span>}
-                </li>
-              ))}
-            </ul>
+        {/* 子菜单项列表 (带模块切换轻量过渡) */}
+        <div key={activeModuleId} className="subpanel-content subpanel-module-switch">
+          <div className="subpanel-section-hint">
+            <span>{activeModule.label} 子项配置</span>
+            <span className="subpanel-config-hint">
+              移出 {configRef.current.closeDistance}px / {configRef.current.closeDelay}ms 关闭
+            </span>
           </div>
 
-          {/* 子菜单底部提示 */}
-          <footer className="subpanel-footer">
-            <span>lpip-player v0.1.0</span>
-            <span className="subpanel-status-tag">就绪</span>
-          </footer>
-        </section>
-      )}
+          <ul className="subpanel-list">
+            {activeModule.items.map((item) => (
+              <li key={item.id} className="subpanel-item">
+                <div className="subpanel-item-info">
+                  <span className="subpanel-item-title">{item.title}</span>
+                  <span className="subpanel-item-desc">{item.desc}</span>
+                </div>
+                {item.badge && <span className="subpanel-item-badge">{item.badge}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* 子菜单底部提示 */}
+        <footer className="subpanel-footer">
+          <span>lpip-player v0.1.0</span>
+          <span className="subpanel-status-tag">就绪</span>
+        </footer>
+      </section>
     </aside>
   )
 }

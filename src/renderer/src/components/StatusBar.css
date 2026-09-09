@@ -1,0 +1,590 @@
+/* ============================================================
+   窗口底部磨砂状态栏 (StatusBar)
+   设计风格: 液态磨砂玻璃 (Frosted Obsidian Glass)
+   视觉特性:
+     - 底部贴底横向贯通 (固定高度 80px)
+     - 纯正柔和的高斯背景漫射模糊 (Backdrop Blur + Saturation)
+     - 顶部 1px 细微玻璃微光内棱线 (Top Rim Highlight)
+     - 半透明通透基底，自然映衬后方动态水波壁纸
+     - 支持深色黑曜石与浅色白玉霜雪双主题无缝切换
+   ============================================================ */
+
+.status-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--statusbar-height, 80px);
+  z-index: 100;
+
+  /* 物理材质: 液态磨砂玻璃 (通透度 0.4，通透透出动态水波) */
+  background: var(--statusbar-bg, rgba(14, 16, 24, 0.4));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+  /* 顶部 1px 细微玻璃内棱线 (改用纯 box-shadow 替代物理 border-top，保证内部空间为精确 80px 偶数网格，消除半像素抖动) */
+  border-top: none;
+  box-shadow:
+    inset 0 1px 0 0 var(--theme-glass-border, rgba(255, 255, 255, 0.1)),
+    inset 0 2px 0 0 rgba(255, 255, 255, 0.05);
+
+  /* 盒模型与布局 */
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 16px;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: auto;
+
+  /* 质感平滑过渡 */
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* ------------------------------------------------------------
+   专辑封面容器 (位于悬浮胶囊正下方，56px × 56px 圆角正方形)
+   ------------------------------------------------------------ */
+.status-bar-cover {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  max-width: 56px;
+  max-height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+
+  /* 物理材质: 微通透黑曜石卡片 */
+  background: var(--theme-subpanel-card-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--theme-glass-border, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    background-color 0.22s ease;
+}
+
+.status-bar-cover:hover {
+  background: var(--theme-subpanel-card-hover-bg, rgba(255, 255, 255, 0.08));
+  border-color: var(--theme-glass-border-hover, rgba(255, 255, 255, 0.22));
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 占位符容器 */
+.status-bar-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-text-primary, rgba(255, 255, 255, 0.88));
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 80%);
+}
+
+/* 占位符黑胶唱片 SVG */
+.status-bar-cover-icon {
+  width: 32px;
+  height: 32px;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.status-bar-cover:hover .status-bar-cover-icon {
+  transform: rotate(20deg) scale(1.06);
+}
+
+/* 真实封面图片 (后续接流使用) */
+.status-bar-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ------------------------------------------------------------
+   播放控制按键区 (位于封面框右侧 30px 处)
+   ------------------------------------------------------------ */
+.status-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 30px;
+  user-select: none;
+}
+
+/* 基础按键重置与手势 */
+.status-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* 上一曲与下一曲按键: 34px × 34px 圆角方块 */
+.status-bar-btn-prev,
+.status-bar-btn-next {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 10px;
+  background: var(--theme-subpanel-card-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--theme-glass-border, rgba(255, 255, 255, 0.1));
+  color: rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.status-bar-btn-prev:hover,
+.status-bar-btn-next:hover {
+  background: var(--theme-subpanel-card-hover-bg, rgba(255, 255, 255, 0.08));
+  border-color: var(--theme-glass-border-hover, rgba(255, 255, 255, 0.22));
+  color: var(--theme-text-primary, rgba(255, 255, 255, 0.95));
+  transform: scale(1.06);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+.status-bar-btn-prev:active,
+.status-bar-btn-next:active {
+  transform: scale(0.95);
+}
+
+/* 上一曲与下一曲按键内部图标: 放大至 20px，视觉更饱满清晰 */
+.status-bar-btn-prev svg,
+.status-bar-btn-next svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* 播放/暂停按键: 50px × 50px 宿主容器
+   动静分离架构: 宿主尺寸与坐标完全锁定，不设任何 transform 与直接缩放，确保内部图标物理绝对静止 */
+.status-bar-btn-play {
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  min-height: 50px;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  color: #6ee7b7;
+  transition: color 0.2s ease;
+}
+
+/* 底层基础外壳 (暂停态静态正圆形) */
+.status-bar-btn-play::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.25s ease;
+}
+
+/* 顶层液态外壳 (悬停及播放时呈现动态液态流动，通过透明度平滑淡入淡出，消除形状突变抖动) */
+.status-bar-btn-play::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(110, 231, 183, 0.14);
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(110, 231, 183, 0.22),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+  animation: liquidMorph 6s ease-in-out infinite;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    opacity 0.35s ease,
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.25s ease;
+}
+
+/* 鼠标悬停态: 激活动态液态流动层平滑淡入，外壳微缩放 (内部图标静止) */
+.status-bar-btn-play:hover {
+  color: #a7f3d0;
+}
+
+.status-bar-btn-play:hover::before,
+.status-bar-btn-play:hover::after {
+  transform: scale(1.06);
+}
+
+.status-bar-btn-play:hover::after {
+  opacity: 1;
+}
+
+/* 按键按下交互态 */
+.status-bar-btn-play:active::before,
+.status-bar-btn-play:active::after {
+  transform: scale(0.95);
+}
+
+/* 播放激活态: 液态流动层常驻 */
+.status-bar-btn-play.is-playing {
+  color: #6ee7b7;
+}
+
+.status-bar-btn-play.is-playing::after {
+  opacity: 1;
+  background: rgba(110, 231, 183, 0.16);
+  border-color: rgba(110, 231, 183, 0.5);
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.4),
+    0 0 14px rgba(110, 231, 183, 0.25),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+}
+
+.status-bar-btn-play.is-playing:hover {
+  color: #d1fae5;
+}
+
+.status-bar-btn-play.is-playing:hover::after {
+  background: rgba(110, 231, 183, 0.22);
+  border-color: rgba(110, 231, 183, 0.65);
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.48),
+    0 0 20px rgba(110, 231, 183, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+}
+
+/* 播放按键三角形图标: 25px × 25px，独立层级绝对居中与光学微补偿，杜绝一切形变与抖动 */
+.status-bar-icon-play {
+  width: 25px;
+  height: 25px;
+  display: block;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  /* 光学重心补偿: 消除三角形右尖端轻量感带来的视觉偏心 */
+  transform: translateX(-1px);
+}
+
+/* 暂停双竖线图标: 25px × 25px 几何正中居中，与播放图标规格完全一致 */
+.status-bar-icon-pause {
+  width: 25px;
+  height: 25px;
+  display: block;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* 液态弧度动态流动关键帧 */
+@keyframes liquidMorph {
+  0% {
+    border-radius: 46% 54% 63% 37% / 40% 46% 54% 60%;
+  }
+  25% {
+    border-radius: 58% 42% 48% 52% / 54% 42% 58% 46%;
+  }
+  50% {
+    border-radius: 42% 58% 68% 32% / 44% 60% 40% 56%;
+  }
+  75% {
+    border-radius: 54% 46% 38% 62% / 58% 54% 46% 42%;
+  }
+  100% {
+    border-radius: 46% 54% 63% 37% / 40% 46% 54% 60%;
+  }
+}
+
+/* ------------------------------------------------------------
+   音频播放进度条 (Liquid Glass Progress Bar)
+   ------------------------------------------------------------ */
+.status-bar-progress-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 580px;
+  min-width: 200px;
+  margin: 0 32px;
+  height: 100%;
+  user-select: none;
+}
+
+/* 时间标签: 等宽数字渲染，固定宽度防止秒数跳变引起轻微颤动 */
+.status-bar-time {
+  font-size: 12px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
+  letter-spacing: 0.5px;
+  min-width: 36px;
+  white-space: nowrap;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.status-bar-time-current {
+  text-align: right;
+}
+
+.status-bar-time-duration {
+  text-align: left;
+}
+
+.status-bar-progress-section:hover .status-bar-time {
+  color: var(--theme-text-primary, rgba(255, 255, 255, 0.88));
+}
+
+/* 进度条触控热区容器 (提供 24px 隐形交互空间，大幅提升拖拽与点击手感) */
+.status-bar-progress-track {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+}
+
+/* 物理槽体底轨: 4px 基础高度，圆角胶囊形态，带内凹微阴影与 1px 微发光棱线 */
+.status-bar-progress-rail {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition:
+    height 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease;
+}
+
+/* 悬停及拖拽时底轨平滑加粗至 6px */
+.status-bar-progress-track:hover .status-bar-progress-rail,
+.status-bar-progress-track.is-dragging .status-bar-progress-rail {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* 进度条填充条: 品牌薄荷绿液态渐变光带与漫射微光 */
+.status-bar-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #34d399 0%, #6ee7b7 100%);
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.35);
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+
+/* 拖拽过程中禁用平滑宽度过渡，实现零延迟即时跟手 */
+.status-bar-progress-track.is-dragging .status-bar-progress-fill {
+  transition: none !important;
+}
+
+/* 液态微晶手柄 (Thumb):
+   常态为 8px 质感微晶圆珠，绝对居中于进度末端；
+   悬停与拖拽时平滑放大至 14px 并泛起薄荷绿环形光晕 */
+.status-bar-progress-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #6ee7b7;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    0 0 6px rgba(110, 231, 183, 0.4);
+  pointer-events: none;
+  transition:
+    width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    border-width 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.status-bar-progress-track:hover .status-bar-progress-thumb,
+.status-bar-progress-track.is-dragging .status-bar-progress-thumb {
+  width: 14px;
+  height: 14px;
+  border-width: 2.5px;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(110, 231, 183, 0.7);
+}
+
+/* ------------------------------------------------------------
+   浅色主题适配 (Light Mode)
+   ------------------------------------------------------------ */
+[data-theme='light'] .status-bar {
+  background: var(--statusbar-bg-light, rgba(245, 247, 250, 0.55));
+  border-top: none;
+  box-shadow:
+    inset 0 1px 0 0 var(--theme-glass-border, rgba(0, 0, 0, 0.08)),
+    inset 0 2px 0 0 rgba(255, 255, 255, 0.6);
+}
+
+[data-theme='light'] .status-bar-cover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--theme-glass-border, rgba(0, 0, 0, 0.1));
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='light'] .status-bar-cover:hover {
+  background: rgba(0, 0, 0, 0.07);
+  border-color: var(--theme-glass-border-hover, rgba(0, 0, 0, 0.18));
+}
+
+[data-theme='light'] .status-bar-cover-placeholder {
+  color: var(--theme-text-primary, rgba(15, 23, 42, 0.88));
+  background: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.02) 0%, transparent 80%);
+}
+
+[data-theme='light'] .status-bar-btn-prev,
+[data-theme='light'] .status-bar-btn-next {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.09);
+  color: rgba(15, 23, 42, 0.7);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='light'] .status-bar-btn-prev:hover,
+[data-theme='light'] .status-bar-btn-next:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.18);
+  color: rgba(15, 23, 42, 0.95);
+}
+
+[data-theme='light'] .status-bar-btn-play {
+  color: #059669;
+}
+
+[data-theme='light'] .status-bar-btn-play::before {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
+  box-shadow:
+    0 4px 12px rgba(16, 185, 129, 0.12),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='light'] .status-bar-btn-play::after {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow:
+    0 4px 16px rgba(16, 185, 129, 0.22),
+    0 0 12px rgba(16, 185, 129, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+}
+
+[data-theme='light'] .status-bar-btn-play:hover {
+  color: #047857;
+}
+
+[data-theme='light'] .status-bar-btn-play.is-playing {
+  color: #047857;
+}
+
+[data-theme='light'] .status-bar-btn-play.is-playing::after {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow:
+    0 4px 16px rgba(16, 185, 129, 0.25),
+    0 0 12px rgba(16, 185, 129, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+}
+
+/* 进度条浅色主题适配 */
+[data-theme='light'] .status-bar-time {
+  color: rgba(15, 23, 42, 0.6);
+}
+
+[data-theme='light'] .status-bar-progress-section:hover .status-bar-time {
+  color: rgba(15, 23, 42, 0.92);
+}
+
+[data-theme='light'] .status-bar-progress-rail {
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    inset 0 1px 2px 0 rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='light'] .status-bar-progress-track:hover .status-bar-progress-rail,
+[data-theme='light'] .status-bar-progress-track.is-dragging .status-bar-progress-rail {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+[data-theme='light'] .status-bar-progress-fill {
+  background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+[data-theme='light'] .status-bar-progress-thumb {
+  background: #ffffff;
+  border-color: #059669;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.18),
+    0 0 6px rgba(16, 185, 129, 0.35);
+}
+
+[data-theme='light'] .status-bar-progress-track:hover .status-bar-progress-thumb,
+[data-theme='light'] .status-bar-progress-track.is-dragging .status-bar-progress-thumb {
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.22),
+    0 0 12px rgba(16, 185, 129, 0.55);
+}
+
