@@ -1,0 +1,236 @@
+/* ============================================================
+   星盘歌词轨道组件 (LyricsOrbit) 样式
+   设计风格:
+     - 极坐标同心圆弧轨道 (Curved Lyrics Orbit)
+     - 瑞士天文钟机芯蓝图 (Astrolabe Horology Blueprint)
+     - 水平准星指针瞄准当前行 (Precision Pointer)
+     - 歌词切线辐射与景深平滑衰减 (Angular Depth of Field)
+   ============================================================ */
+
+.lyrics-orbit-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--statusbar-height, 80px);
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 15;
+  user-select: none;
+}
+
+/* 柔和暗角微光层: 确保歌词在动态壁纸与右侧表盘之上具备顶级对比度与呼吸景深 */
+.lyrics-orbit-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 100px;
+  background: radial-gradient(ellipse 750px 480px at 45% 50%, rgba(8, 12, 20, 0.45) 0%, rgba(8, 12, 20, 0.15) 60%, transparent 85%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ------------------------------------------------------------
+   背景层: 宇宙星盘几何蓝图 SVG
+   ------------------------------------------------------------ */
+.astrolabe-svg-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  filter: drop-shadow(0 0 8px rgba(110, 231, 183, 0.16))
+          drop-shadow(0 2px 12px rgba(0, 0, 0, 0.4));
+}
+
+/* 主齿轮随歌词步进逆时针传动与机械擒纵回弹 (Escapement Stepping & Bounce)
+   - 旋转中心严格匹配星盘圆心 cx=0, cy=320
+   - 机械超调阻尼贝塞尔曲线 cubic-bezier(0.18, 1.35, 0.32, 1)：
+     切行瞬间爆发跳齿，冲过目标角度约 35%，撞击托瓦宝石后受硬质阻尼强力反弹锁死 */
+.astrolabe-main-gear {
+  transform-origin: 0px 320px;
+  transform: rotate(var(--gear-rotation, 0deg));
+  transition: transform 0.58s cubic-bezier(0.18, 1.35, 0.32, 1);
+  will-change: transform;
+}
+
+/* 漂浮多面体缓慢浮动动效 */
+.astrolabe-floating-crystals {
+  animation: floatingCrystals 16s ease-in-out infinite alternate;
+}
+
+@keyframes floatingCrystals {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+  100% {
+    transform: translateY(6px) rotate(-1deg);
+  }
+}
+
+/* ------------------------------------------------------------
+   歌词轨道旋转容器 (Lyrics Orbit Wheel)
+   以 (cx, cy) 为旋转原点，切行瞬间具备厚重的机械冲程超调与阻尼回弹
+   ------------------------------------------------------------ */
+.lyrics-orbit-wheel {
+  position: absolute;
+  left: var(--astrolabe-cx, 0px);
+  top: var(--astrolabe-cy, 320px);
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  transform: rotate(var(--wheel-rotation, 0deg));
+  /* 机械超调阻尼贝塞尔曲线：冲过目标角约 15% 后利落回弹锁死 */
+  transition: transform 0.64s cubic-bezier(0.22, 1.46, 0.36, 1);
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ------------------------------------------------------------
+   单行歌词节点 (Lyric Node)
+   沿极坐标半径 R 辐射排布，旋转 item-angle，实现切线对齐
+   ------------------------------------------------------------ */
+.lyric-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  /* 动静分离铁律: 宿主定格在极坐标切线原点，垂直居中对齐当前射线 */
+  transform: rotate(var(--item-angle, 0deg)) translateX(var(--orbit-radius, 360px)) translateY(-50%);
+  padding: 6px 24px 6px 14px;
+  max-width: 460px;
+  pointer-events: auto;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 8px;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.64s cubic-bezier(0.22, 1.46, 0.36, 1);
+}
+
+/* 主歌词 (原文/外文，大号高对比衬线字体) */
+.lyric-primary {
+  font-family: 'Playfair Display', 'DejaVu Serif', 'Liberation Serif', 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
+  color: rgba(255, 255, 255, 0.82);
+  transition: font-size 0.4s ease,
+              font-weight 0.4s ease,
+              color 0.4s ease,
+              text-shadow 0.4s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 辅歌词 (中文译文，清晰无衬线字体) */
+.lyric-secondary {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  color: rgba(220, 252, 231, 0.55);
+  margin-top: 4px;
+  transition: font-size 0.4s ease,
+              color 0.4s ease,
+              opacity 0.4s ease,
+              text-shadow 0.4s ease;
+}
+
+/* ------------------------------------------------------------
+   活跃高亮态 (Active Focus Line) - 精准对齐水平准星
+   ------------------------------------------------------------ */
+.lyric-node.is-active .lyric-primary {
+  font-size: 26px;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 0 14px rgba(110, 231, 183, 0.45),
+               0 2px 10px rgba(0, 0, 0, 0.85);
+}
+
+.lyric-node.is-active .lyric-secondary {
+  font-size: 14px;
+  color: rgba(220, 252, 231, 0.88);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* ------------------------------------------------------------
+   角距离景深与透明度衰减 (Angular Distance Attenuation)
+   ------------------------------------------------------------ */
+.lyric-node[data-distance="0"] {
+  opacity: 1;
+  filter: blur(0px);
+}
+
+.lyric-node[data-distance="1"] {
+  opacity: 0.65;
+  filter: blur(0px);
+}
+
+.lyric-node[data-distance="2"] {
+  opacity: 0.38;
+  filter: blur(0.25px);
+}
+
+.lyric-node[data-distance="3"] {
+  opacity: 0.20;
+  filter: blur(0.6px);
+}
+
+.lyric-node[data-distance="4"] {
+  opacity: 0.08;
+  filter: blur(1px);
+}
+
+.lyric-node[data-distance="5"] {
+  opacity: 0.03;
+  filter: blur(1.5px);
+}
+
+/* 悬停微高亮交互反馈 (非活跃行悬停时提亮) */
+.lyric-node:not(.is-active):hover {
+  opacity: 0.88;
+  filter: blur(0px);
+}
+
+.lyric-node:not(.is-active):hover .lyric-primary {
+  color: #a7f3d0;
+  text-shadow: 0 0 8px rgba(110, 231, 183, 0.35);
+}
+
+.lyric-node:not(.is-active):hover .lyric-secondary {
+  color: rgba(220, 252, 231, 0.75);
+}
+
+/* ------------------------------------------------------------
+   浅色模式适配 (Light Theme)
+   ------------------------------------------------------------ */
+[data-theme='light'] .astrolabe-svg-bg {
+  filter: drop-shadow(0 0 6px rgba(5, 150, 105, 0.2))
+          drop-shadow(0 2px 8px rgba(0, 0, 0, 0.12));
+}
+
+[data-theme='light'] .lyric-primary {
+  color: rgba(30, 41, 59, 0.8);
+}
+
+[data-theme='light'] .lyric-secondary {
+  color: rgba(5, 150, 105, 0.65);
+}
+
+[data-theme='light'] .lyric-node.is-active .lyric-primary {
+  color: #064e3b;
+  text-shadow: 0 0 12px rgba(5, 150, 105, 0.35);
+}
+
+[data-theme='light'] .lyric-node.is-active .lyric-secondary {
+  color: #047857;
+}
