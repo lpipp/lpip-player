@@ -1,10 +1,43 @@
 import { existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, protocol, net } from 'electron'
+import { app, BrowserWindow, protocol, net, ipcMain } from 'electron'
 
 import { loadConfig } from './config'
 import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
+import { IPC_CHANNELS } from './ipc-channels'
+import type { PlaybackMode } from '../types/music'
+import {
+  addToQueue,
+  getLibrary,
+  getOrExtractAlbumCover,
+  getSongLyrics,
+  getStatus,
+  nextSong,
+  pausePlayback,
+  playSong,
+  prevSong,
+  rescanLibrary,
+  resumePlayback,
+  seekSong,
+  setPlaybackMode,
+  setVolume,
+  togglePlayPause
+} from './mpd'
+
+// 启用远程调试端口以支持自动化验证与实测核验
+app.commandLine.appendSwitch('remote-debugging-port', '9222')
+
+// Wayland 下 Vulkan 与 ozone 不兼容导致渲染回退 CPU; 引导合成走 EGL (NVIDIA 硬件路径), 禁用 Vulkan 避免回退
+app.commandLine.appendSwitch('use-angle', 'gl-egl')
+app.commandLine.appendSwitch('disable-vulkan')
+// NVIDIA 610 驱动自带官方 VA-API (NVDEC 硬解后端): 开启 Chromium 硬解 flags
+// (壁纸视频软件解码实测占 renderer ~90% CPU, 硬解后解码与零拷贝合成均移出 CPU)
+// 注意: LIBVA_DRIVER_NAME=nvidia 环境变量会致 GPU 进程启动失败, 由 Chromium 自行探测 VA-API 驱动
+app.commandLine.appendSwitch(
+  'enable-features',
+  'VaapiOnNvidiaGPUs,VaapiIgnoreDriverChecks,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL'
+)
 
 // 注册特权协议 app-media 用于高效流式加载本地壁纸与媒体文件
 protocol.registerSchemesAsPrivileged([
@@ -162,9 +195,25 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // 注册特权流式本地媒体协议处理器 (支持图片与大尺寸视频 Range 请求零内存拷贝)
+  // 注册特权流式本地媒体协议处理器 (支持图片、大尺寸视频 Range 请求零内存拷贝，以及内嵌封面提取缓存)
   protocol.handle('app-media', async (request) => {
-    let filePath = decodeURIComponent(request.url.replace(/^app-media:\/\//, ''))
+    const url = request.url
+
+    // 场景 1: 音频内嵌封面提取与本地缓存服务 (app-media://cover/...)
+    if (url.startsWith('app-media://cover/')) {
+      const rawRel = url.slice('app-media://cover/'.length)
+      const relPath = decodeURIComponent(rawRel)
+      const coverPath = await getOrExtractAlbumCover(relPath)
+      if (coverPath && existsSync(coverPath)) {
+        return net.fetch(pathToFileURL(coverPath).toString(), {
+          headers: request.headers
+        })
+      }
+      return new Response('No Cover', { status: 404 })
+    }
+
+    // 场景 2: 常规静态图片或大尺寸视频流 Range 请求
+    let filePath = decodeURIComponent(url.replace(/^app-media:\/\//, ''))
     if (!filePath.startsWith('/')) {
       filePath = '/' + filePath
     }
@@ -175,6 +224,76 @@ app.whenReady().then(() => {
       headers: request.headers
     })
   })
+
+  // 注册 MPD 相关 IPC 通信处理程序
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_LIBRARY, async () => {
+    return getLibrary()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_RESCAN, async () => {
+    return rescanLibrary()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_PLAY, async (_event, file: string) => {
+    return playSong(file)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_PAUSE, async () => {
+    return pausePlayback()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_RESUME, async () => {
+    return resumePlayback()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_TOGGLE_PLAY, async () => {
+    return togglePlayPause()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_NEXT, async () => {
+    return nextSong()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_PREV, async () => {
+    return prevSong()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_SEEK, async (_event, time: number) => {
+    return seekSong(time)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_STATUS, async () => {
+    return getStatus()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_LYRICS, async (_event, file: string) => {
+    return getSongLyrics(file)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_ADD_QUEUE, async (_event, file: string) => {
+    return addToQueue(file)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_SET_VOLUME, async (_event, volume: number) => {
+    return setVolume(volume)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_SET_MODE, async (_event, mode: PlaybackMode) => {
+    return setPlaybackMode(mode)
+  })
+
+  // 启动 MPD 实时播放状态监听轮询器 (500ms 刷新并广播变更)
+  setInterval(async () => {
+    try {
+      const windows = BrowserWindow.getAllWindows()
+      if (windows.length > 0 && !windows[0].isDestroyed()) {
+        const status = await getStatus()
+        windows[0].webContents.send(IPC_CHANNELS.MPD_STATUS_CHANGED, status)
+      }
+    } catch {
+      // 忽略轮询偶发异常
+    }
+  }, 500)
 
   createWindow()
 

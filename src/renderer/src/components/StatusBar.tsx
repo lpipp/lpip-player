@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import type { MpdSong, PlaybackMode } from '../../../types/music'
 import './StatusBar.css'
 
 /**
@@ -24,18 +25,90 @@ function formatTime(seconds: number): string {
   return `${paddedMins}:${paddedSecs}`
 }
 
+function ModeSequenceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  )
+}
+
+function ModeShuffleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16 3 21 3 21 8" />
+      <line x1="4" y1="20" x2="21" y2="3" />
+      <polyline points="21 16 21 21 16 21" />
+      <line x1="15" y1="15" x2="21" y2="21" />
+      <line x1="4" y1="4" x2="9" y2="9" />
+    </svg>
+  )
+}
+
+function ModeSingleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+      <text x="12" y="15" fill="currentColor" stroke="none" fontSize="8" fontWeight="bold" textAnchor="middle">1</text>
+    </svg>
+  )
+}
+
+function VolumeMuteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fillOpacity="0.2" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  )
+}
+
+function VolumeLowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fillOpacity="0.2" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+    </svg>
+  )
+}
+
+function VolumeHighIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fillOpacity="0.2" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </svg>
+  )
+}
+
 /**
  * 底部状态栏组件属性定义
  */
 export interface StatusBarProps {
-  /** 专辑封面本地或网络图片 URL (预留 M1/M2 接入曲目元数据) */
+  /** 专辑封面本地或网络图片 URL */
   coverUrl?: string | null
-  /** 是否正在播放状态 (受控模式预留) */
+  /** 是否正在播放状态 */
   isPlaying?: boolean
   /** 当前播放时间 (秒) */
   currentTime?: number
   /** 音频总时长 (秒) */
   duration?: number
+  /** 当前播放曲目元数据 */
+  currentSong?: MpdSong | null
+  /** 当前播放模式 */
+  mode?: PlaybackMode
+  /** 当前音量 (0 ~ 100) */
+  volume?: number
+  /** 是否静音 */
+  isMuted?: boolean
   /** 上一曲点击回调 */
   onPrev?: () => void
   /** 播放/暂停点击回调 */
@@ -44,36 +117,52 @@ export interface StatusBarProps {
   onNext?: () => void
   /** 进度跳转/拖拽回调 (参数为目标秒数) */
   onSeek?: (timeSeconds: number) => void
+  /** 播放模式切换回调 */
+  onModeToggle?: () => void
+  /** 音量调节回调 (0 ~ 100) */
+  onVolumeChange?: (volume: number) => void
+  /** 静音切换回调 */
+  onMuteToggle?: () => void
 }
 
 /**
  * 窗口底部磨砂状态栏组件 (StatusBar)
- *
- * 职责:
- * - 位于窗口最底部，固定高度 80px (由 --statusbar-height 全局变量驱动)
- * - 位于悬浮胶囊正下方绘制 56px × 56px 圆角正方形封面框，横向像素与胶囊导轨严格对齐
- * - 在封面右侧 30px 处布局上一曲、播放（暂停时为正圆形，播放时为动态液态流动）、下一曲交互控制组
- * - 在控制组右侧布局液态玻璃播放进度条（左侧当前时间、中间微光滑轨与液态手柄、右侧总时长）
  */
 export default function StatusBar({
   coverUrl,
   isPlaying: controlledIsPlaying,
   currentTime: controlledCurrentTime,
   duration: controlledDuration,
+  currentSong,
+  mode = 'sequence',
+  volume = 100,
+  isMuted = false,
   onPrev,
   onPlayPause,
   onNext,
-  onSeek
+  onSeek,
+  onModeToggle,
+  onVolumeChange,
+  onMuteToggle
 }: StatusBarProps) {
   const [imgError, setImgError] = useState(false)
+
+  // 当外部传入的封面 URL 发生变化时重置错误标记
+  useEffect(() => {
+    setImgError(false)
+  }, [coverUrl])
+
   const [localIsPlaying, setLocalIsPlaying] = useState(false)
-  // 本地进度状态 (默认 74s / 01:14，总长 248s / 04:08 作为生动演示)
-  const [localCurrentTime, setLocalCurrentTime] = useState(74)
-  // 拖拽手柄交互状态
+  const [localCurrentTime, setLocalCurrentTime] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragPercent, setDragPercent] = useState(0)
 
+  // 音量滑动拖拽状态
+  const [isVolDragging, setIsVolDragging] = useState(false)
+  const [dragVolPercent, setDragVolPercent] = useState(volume / 100)
+
   const trackRef = useRef<HTMLDivElement>(null)
+  const volTrackRef = useRef<HTMLDivElement>(null)
 
   const isPlaying = controlledIsPlaying !== undefined ? controlledIsPlaying : localIsPlaying
   const duration = controlledDuration !== undefined ? Math.max(1, controlledDuration) : 248
@@ -88,7 +177,14 @@ export default function StatusBar({
   // 进度百分比 (0 ~ 100)
   const effectivePercent = Math.min(100, Math.max(0, (currentSeconds / duration) * 100))
 
-  // 播放中且未受控时，开启 1 秒自增定时器，提供鲜活的真实播放交互体验
+  // 音量有效百分比 (0 ~ 100)
+  const effectiveVolPercent = isMuted
+    ? 0
+    : isVolDragging
+      ? Math.round(dragVolPercent * 100)
+      : volume
+
+  // 播放中且未受控时，开启 1 秒自增定时器
   useEffect(() => {
     if (controlledCurrentTime !== undefined || !isPlaying || isDragging) return
     const timer = setInterval(() => {
@@ -107,7 +203,7 @@ export default function StatusBar({
     onPlayPause?.()
   }
 
-  // 根据鼠标位置计算滑轨百分比 (0 ~ 1)
+  // 根据鼠标位置计算播放滑轨百分比 (0 ~ 1)
   const calcPercentFromEvent = useCallback((e: MouseEvent | React.MouseEvent): number => {
     if (!trackRef.current) return 0
     const rect = trackRef.current.getBoundingClientRect()
@@ -116,9 +212,9 @@ export default function StatusBar({
     return Math.max(0, Math.min(1, offsetX / rect.width))
   }, [])
 
-  // 鼠标按下开始拖拽或点击跳转
+  // 播放进度拖拽/点击
   const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return // 仅响应鼠标左键
+    if (e.button !== 0) return
     e.preventDefault()
 
     const initialPercent = calcPercentFromEvent(e)
@@ -136,7 +232,8 @@ export default function StatusBar({
       setIsDragging(false)
 
       const finalPercent = calcPercentFromEvent(upEvent)
-      const targetTime = Math.round(finalPercent * duration)
+      // 保留浮点秒目标: 精确落在对应歌词行起点, 整秒截断会导致实际位置退回上一句歌词
+      const targetTime = finalPercent * duration
       if (controlledCurrentTime === undefined) {
         setLocalCurrentTime(targetTime)
       }
@@ -147,14 +244,59 @@ export default function StatusBar({
     window.addEventListener('mouseup', handleMouseUp)
   }
 
+  // 计算音量滑轨百分比 (0 ~ 1)
+  const calcVolPercentFromEvent = useCallback((e: MouseEvent | React.MouseEvent): number => {
+    if (!volTrackRef.current) return 0
+    const rect = volTrackRef.current.getBoundingClientRect()
+    if (rect.width <= 0) return 0
+    const offsetX = e.clientX - rect.left
+    return Math.max(0, Math.min(1, offsetX / rect.width))
+  }, [])
+
+  // 音量滑块按下与拖拽
+  const handleVolMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+
+    const initialP = calcVolPercentFromEvent(e)
+    setIsVolDragging(true)
+    setDragVolPercent(initialP)
+    onVolumeChange?.(Math.round(initialP * 100))
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const p = calcVolPercentFromEvent(moveEvent)
+      setDragVolPercent(p)
+      onVolumeChange?.(Math.round(p * 100))
+    }
+
+    const handleMouseUp = (upEvent: MouseEvent) => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      setIsVolDragging(false)
+      const finalP = calcVolPercentFromEvent(upEvent)
+      onVolumeChange?.(Math.round(finalP * 100))
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // 模式文本说明
+  const modeTitle =
+    mode === 'single'
+      ? '单曲循环 (点击切换)'
+      : mode === 'shuffle'
+        ? '随机播放 (点击切换)'
+        : '列表循环 (点击切换)'
+
   return (
     <footer className="status-bar" aria-label="底部状态栏">
       {/* 封面框: 位于悬浮胶囊正下方，56px × 56px 圆角正方形 */}
-      <div className="status-bar-cover" title="专辑封面">
+      <div className="status-bar-cover" title={currentSong ? `${currentSong.title} - ${currentSong.artist}` : '专辑封面'}>
         {coverUrl && !imgError ? (
           <img
             src={coverUrl}
-            alt="专辑封面"
+            alt={currentSong ? currentSong.title : '专辑封面'}
             className="status-bar-cover-img"
             onError={() => setImgError(true)}
           />
@@ -166,12 +308,9 @@ export default function StatusBar({
               xmlns="http://www.w3.org/2000/svg"
               className="status-bar-cover-icon"
             >
-              {/* 外圈黑胶边缘 */}
               <circle cx="16" cy="16" r="13.5" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.45" />
-              {/* 内同心音轨微纹 */}
               <circle cx="16" cy="16" r="10" stroke="currentColor" strokeWidth="1" strokeOpacity="0.25" strokeDasharray="2 2" />
               <circle cx="16" cy="16" r="6.8" stroke="currentColor" strokeWidth="1" strokeOpacity="0.3" />
-              {/* 中心标签盘与主轴孔 (品牌薄荷绿 #6ee7b7 点缀) */}
               <circle cx="16" cy="16" r="4" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1" strokeOpacity="0.4" />
               <circle cx="16" cy="16" r="1.6" fill="#6ee7b7" />
             </svg>
@@ -194,7 +333,7 @@ export default function StatusBar({
           </svg>
         </button>
 
-        {/* 播放/暂停按键: 50px × 50px，暂停时为正圆形，播放或悬停时呈现动态弧度流动效果 */}
+        {/* 播放/暂停按键: 50px × 50px */}
         <button
           type="button"
           className={`status-bar-btn status-bar-btn-play ${isPlaying ? 'is-playing' : ''}`}
@@ -241,12 +380,10 @@ export default function StatusBar({
 
       {/* 音频播放进度条: 左侧当前时间、居中液态玻璃滑轨、右侧总时长 */}
       <div className="status-bar-progress-section" aria-label="播放进度">
-        {/* 当前播放时间 */}
         <span className="status-bar-time status-bar-time-current" aria-label="当前时间">
           {formatTime(currentSeconds)}
         </span>
 
-        {/* 进度条轨道容器 (带 20px 扩展触控热区) */}
         <div
           ref={trackRef}
           className={`status-bar-progress-track ${isDragging ? 'is-dragging' : ''}`}
@@ -258,14 +395,11 @@ export default function StatusBar({
           aria-valuetext={`${formatTime(currentSeconds)} / ${formatTime(duration)}`}
           tabIndex={0}
         >
-          {/* 物理槽体底轨 */}
           <div className="status-bar-progress-rail">
-            {/* 品牌薄荷绿液态高光填充条 */}
             <div
               className="status-bar-progress-fill"
               style={{ width: `${effectivePercent}%` }}
             />
-            {/* 液态微晶手柄 (Thumb) */}
             <div
               className="status-bar-progress-thumb"
               style={{ left: `${effectivePercent}%` }}
@@ -273,13 +407,96 @@ export default function StatusBar({
           </div>
         </div>
 
-        {/* 音频总时长 */}
         <span className="status-bar-time status-bar-time-duration" aria-label="总时长">
           {formatTime(duration)}
         </span>
       </div>
 
-      {/* 预留后续主控制区与元数据区域 */}
+      {/* 右侧扩展区: 歌曲元数据展示、播放模式切换、音量滑块控制 */}
+      <div className="status-bar-right-section" aria-label="播放辅助控制">
+        {/* 当前曲目元数据卡片 */}
+        <div
+          className="status-bar-meta-block"
+          title={
+            currentSong
+              ? `${currentSong.title} - ${currentSong.artist}${currentSong.album ? ` (${currentSong.album})` : ''}`
+              : 'lpip-player'
+          }
+        >
+          <div className="status-bar-meta-title">
+            {currentSong?.title || 'lpip-player'}
+          </div>
+          <div className="status-bar-meta-sub">
+            {currentSong && (
+              <span className={`status-bar-quality-badge badge-${currentSong.quality.toLowerCase()}`}>
+                {currentSong.quality}
+              </span>
+            )}
+            <span className="status-bar-meta-artist">
+              {currentSong?.artist || '本地音乐播放器'}
+            </span>
+          </div>
+        </div>
+
+        {/* 播放模式切换按键 (列表循环 / 随机播放 / 单曲循环) */}
+        <button
+          type="button"
+          className={`status-bar-btn status-bar-btn-mode mode-${mode}`}
+          title={modeTitle}
+          aria-label={modeTitle}
+          onClick={onModeToggle}
+        >
+          {mode === 'single' ? (
+            <ModeSingleIcon />
+          ) : mode === 'shuffle' ? (
+            <ModeShuffleIcon />
+          ) : (
+            <ModeSequenceIcon />
+          )}
+        </button>
+
+        {/* 音量控制组 (静音按键 + 液态滑动条) */}
+        <div className="status-bar-volume-block" aria-label="音量调节">
+          <button
+            type="button"
+            className="status-bar-btn status-bar-btn-volume"
+            title={isMuted || effectiveVolPercent === 0 ? '解除静音' : '静音'}
+            aria-label={isMuted || effectiveVolPercent === 0 ? '解除静音' : '静音'}
+            onClick={onMuteToggle}
+          >
+            {isMuted || effectiveVolPercent === 0 ? (
+              <VolumeMuteIcon />
+            ) : effectiveVolPercent < 50 ? (
+              <VolumeLowIcon />
+            ) : (
+              <VolumeHighIcon />
+            )}
+          </button>
+
+          <div
+            ref={volTrackRef}
+            className={`status-bar-volume-slider ${isVolDragging ? 'is-dragging' : ''}`}
+            onMouseDown={handleVolMouseDown}
+            role="slider"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={effectiveVolPercent}
+            aria-label={`音量 ${effectiveVolPercent}%`}
+            tabIndex={0}
+          >
+            <div className="status-bar-volume-rail">
+              <div
+                className="status-bar-volume-fill"
+                style={{ width: `${effectiveVolPercent}%` }}
+              />
+              <div
+                className="status-bar-volume-thumb"
+                style={{ left: `${effectiveVolPercent}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </footer>
   )
 }

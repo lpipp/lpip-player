@@ -1,0 +1,422 @@
+/* ============================================================
+   曲库列表组件 (MusicLibraryList)
+   设计规范:
+     - 严格还原参考图布局 (封面 + 标题 + SQ 徽标与歌手专辑 + 右侧加号按键)
+     - 动静分离铁律: 宿主定格整像素，::before 伪元素承载磨砂微光与等比缩放
+     - 彻底隐藏滚动条，保持高刷新平滑手势/滚轮滚动
+   ============================================================ */
+
+.music-library-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 顶部工具栏: 搜索框与统计状态 */
+.music-library-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+/* 磨砂搜索输入框容器 */
+.music-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 8px;
+  transition: all 0.2s ease;
+}
+
+.music-search-box:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(110, 231, 183, 0.35);
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.12);
+}
+
+.music-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.music-search-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0;
+}
+
+.music-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.music-search-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.music-search-clear-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* 统计与操作行 */
+.music-library-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  font-size: 11px;
+}
+
+.music-library-count {
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+}
+
+.music-library-rescan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #6ee7b7;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.music-library-rescan-btn:hover {
+  background: rgba(110, 231, 183, 0.1);
+  color: #a7f3d0;
+}
+
+.music-lib-refresh-icon.spinning {
+  animation: libSpin 0.8s linear infinite;
+}
+
+@keyframes libSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 滚动列表区: 彻底隐藏滚动条，采用原生平滑滚动 */
+.music-library-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding-bottom: 12px;
+}
+
+.music-library-scroll-area::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 空状态与加载状态 */
+.music-library-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.music-library-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 10px #6ee7b7;
+  animation: dot-breath 1.6s ease-in-out infinite;
+}
+
+/* 歌曲条目容器 */
+.music-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ============================================================
+   单曲列表项 (严格对齐参考图排版，执行动静分离)
+   ============================================================ */
+.music-track-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  outline: none;
+  /* 启用现代浏览器 GPU 视窗裁剪，大幅优化 400+ 首长列表渲染性能 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 58px;
+}
+
+/* 动静分离外壳: 承载背景色、边框、投影与 1.015 缩放 */
+.music-track-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: var(--theme-subpanel-card-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--theme-subpanel-card-border, rgba(255, 255, 255, 0.05));
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: -1;
+  transform-origin: center center;
+  transition:
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.2s ease;
+}
+
+/* 悬停微高亮 (文字保持绝对静止锐利，外壳等比微放大) */
+.music-track-item:hover {
+  z-index: 5;
+}
+
+.music-track-item:hover::before {
+  transform: scale(1.015) translateZ(0);
+  background: var(--theme-subpanel-card-hover-bg, rgba(255, 255, 255, 0.075));
+  border-color: var(--theme-subpanel-card-hover-border, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* 激活态 (正在播放此曲) */
+.music-track-item.active::before {
+  background: rgba(110, 231, 183, 0.09);
+  border-color: rgba(110, 231, 183, 0.36);
+  box-shadow: 0 0 14px rgba(110, 231, 183, 0.15);
+}
+
+/* ------------------------------------------------------------
+   左侧专辑封面 (44px × 44px 正方形，圆角 8px，带黑胶占位符)
+   ------------------------------------------------------------ */
+.music-track-cover-wrapper {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.music-track-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.music-track-cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.music-track-disc-icon {
+  width: 26px;
+  height: 26px;
+}
+
+/* 播放中封面指示点 */
+.music-track-playing-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 6px #6ee7b7;
+}
+
+/* ------------------------------------------------------------
+   中间文字信息区 (第一行标题，第二行 SQ 徽标 + 歌手与专辑)
+   ------------------------------------------------------------ */
+.music-track-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+}
+
+.music-track-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.music-track-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.94);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+}
+
+.music-track-item.active .music-track-title {
+  color: #6ee7b7;
+}
+
+/* 第二行: SQ 等级徽标与副信息 */
+.music-track-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 音质徽标: 严格按照设计图浅蓝框 SQ 进行高保真还原 */
+.music-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 3px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* SQ 浅蓝高保真徽标 (对应参考图) */
+.music-quality-badge.badge-sq {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+/* Hi-Res 琥珀金高保真徽标 */
+.music-quality-badge.badge-hi-res {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+/* HQ 翡翠绿徽标 */
+.music-quality-badge.badge-hq {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.32);
+}
+
+/* STD 标准徽标 */
+.music-quality-badge.badge-std {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* 歌手与专辑副标题 */
+.music-track-artist-album {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.52);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------
+   右侧微圆环加号按键 (加入当前播放队列)
+   ------------------------------------------------------------ */
+.music-track-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.music-track-add-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(110, 231, 183, 0.4);
+  color: #6ee7b7;
+  transform: scale(1.1);
+}
+
+/* 已添加队列成功态 (打勾反馈) */
+.music-track-add-btn.added {
+  background: rgba(110, 231, 183, 0.18);
+  border-color: #6ee7b7;
+  color: #6ee7b7;
+  transform: scale(1.05);
+}

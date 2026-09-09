@@ -281,6 +281,8 @@ export default function LyricsOrbit({
   // 根据外部传入的 currentTime 自动同步歌词行
   useEffect(() => {
     if (currentTime === undefined || lyrics.length === 0) return
+    // 寻道锁定期间保持用户手动选中的歌词行, 等待 MPD 位置落点稳定后再恢复自动跟随
+    if (Date.now() < seekLockUntilRef.current) return
     let matchedIdx = 0
     for (let i = 0; i < lyrics.length; i++) {
       if ((lyrics[i].time ?? 0) <= currentTime) {
@@ -297,6 +299,9 @@ export default function LyricsOrbit({
     }
   }, [currentTime, lyrics, activeIndex, controlledIndex, onLineChange])
 
+  // 寻道锁定到期时间戳: 手动选行跳转后短暂屏蔽 currentTime 自动跟随, 防止轮询回灌把高亮拉回上一句
+  const seekLockUntilRef = useRef(0)
+
   // 切换歌词行
   const handleSelectLine = useCallback(
     (index: number) => {
@@ -306,6 +311,8 @@ export default function LyricsOrbit({
       }
       onLineChange?.(index)
       if (lyrics[index]?.time !== undefined) {
+        // 启动寻道锁定 (1.2s): 等待 MPD 位置落点稳定后再恢复自动跟随
+        seekLockUntilRef.current = Date.now() + 1200
         onSeek?.(lyrics[index].time!)
       }
     },

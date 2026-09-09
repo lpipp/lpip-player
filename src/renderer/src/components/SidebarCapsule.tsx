@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { MpdSong } from '../../../types/music'
+import MusicLibraryList from './MusicLibraryList'
 import './SidebarCapsule.css'
 
 /**
@@ -182,15 +184,31 @@ function getDistanceToRect(x: number, y: number, rect: DOMRect): number {
 }
 
 /**
+ * 悬浮胶囊抽屉组件属性
+ */
+export interface SidebarCapsuleProps {
+  /** 当前正在播放的曲目 ID / file */
+  currentSongId?: string
+  /** 点击播放曲目回调 */
+  onPlaySong?: (song: MpdSong) => void
+  /** 添加至播放队列回调 */
+  onAddToQueue?: (song: MpdSong) => void
+}
+
+/**
  * 窗口左侧加长型胶囊伸缩抽屉组件
- * - 收起状态: 垂直加长悬浮胶囊，容纳多个占位功能图标
+ * - 收起状态: 垂直加长悬浮胶囊，容纳多个功能图标
  * - 展开状态: 点击某图标直接向右伸长，直接展示该图标的对应子菜单项
  * - 关闭机制: 鼠标移出弹窗超过配置文件指定的 closeBuffer (closeDistance) 距离后，
  *             等待 closeDelay 延迟平滑收回；若移回安全距离内自动取消收回
  */
-export default function SidebarCapsule() {
+export default function SidebarCapsule({
+  currentSongId,
+  onPlaySong,
+  onAddToQueue
+}: SidebarCapsuleProps = {}) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [activeModuleId, setActiveModuleId] = useState('settings')
+  const [activeModuleId, setActiveModuleId] = useState('library')
   const capsuleRef = useRef<HTMLElement | null>(null)
 
   // 移出关闭距离、延迟与上下延伸配置 (从主进程注入的 HTML data 属性读取)
@@ -428,25 +446,38 @@ export default function SidebarCapsule() {
         </header>
 
         {/* 子菜单项列表 (带模块切换轻量过渡) */}
-        <div key={activeModuleId} className="subpanel-content subpanel-module-switch">
-          <div className="subpanel-section-hint">
-            <span>{activeModule.label} 子项配置</span>
-            <span className="subpanel-config-hint">
-              移出 {configRef.current.closeDistance}px / {configRef.current.closeDelay}ms 关闭
-            </span>
-          </div>
+        <div
+          key={activeModuleId}
+          className={`subpanel-content subpanel-module-switch ${activeModuleId === 'library' ? 'subpanel-content-library' : ''}`}
+        >
+          {activeModuleId === 'library' ? (
+            <MusicLibraryList
+              currentSongId={currentSongId}
+              onPlaySong={onPlaySong}
+              onAddToQueue={onAddToQueue}
+            />
+          ) : (
+            <>
+              <div className="subpanel-section-hint">
+                <span>{activeModule.label} 子项配置</span>
+                <span className="subpanel-config-hint">
+                  移出 {configRef.current.closeDistance}px / {configRef.current.closeDelay}ms 关闭
+                </span>
+              </div>
 
-          <ul className="subpanel-list">
-            {activeModule.items.map((item) => (
-              <li key={item.id} className="subpanel-item">
-                <div className="subpanel-item-info">
-                  <span className="subpanel-item-title">{item.title}</span>
-                  <span className="subpanel-item-desc">{item.desc}</span>
-                </div>
-                {item.badge && <span className="subpanel-item-badge">{item.badge}</span>}
-              </li>
-            ))}
-          </ul>
+              <ul className="subpanel-list">
+                {activeModule.items.map((item) => (
+                  <li key={item.id} className="subpanel-item">
+                    <div className="subpanel-item-info">
+                      <span className="subpanel-item-title">{item.title}</span>
+                      <span className="subpanel-item-desc">{item.desc}</span>
+                    </div>
+                    {item.badge && <span className="subpanel-item-badge">{item.badge}</span>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
 
         {/* 子菜单底部提示 */}

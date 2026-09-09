@@ -297,6 +297,13 @@
   -ms-overflow-style: none !important;
 }
 
+/* 曲库视图专用: 保持搜索工具栏定格，内部滚动区独立平滑滚动 */
+.subpanel-content.subpanel-content-library {
+  overflow-y: hidden !important;
+  padding: 8px 12px 0;
+  gap: 0;
+}
+
 .subpanel-content::-webkit-scrollbar,
 .sidebar-capsule *::-webkit-scrollbar,
 .sidebar-capsule::-webkit-scrollbar {
