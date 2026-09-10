@@ -101,7 +101,6 @@ export default function ArtistDrawer({
   const [songs, setSongs] = useState<MpdSong[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortMode, setSortMode] = useState<'count' | 'name'>('count')
   const [selectedArtist, setSelectedArtist] = useState<ArtistGroup | null>(null)
   const [queuedSongs, setQueuedSongs] = useState<Map<string, MpdSong>>(new Map())
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
@@ -238,15 +237,11 @@ export default function ArtistDrawer({
       })
     }
 
-    // 排序逻辑
-    if (sortMode === 'count') {
-      list.sort((a, b) => b.songs.length - a.songs.length || a.artist.localeCompare(b.artist, 'zh-Hans-CN'))
-    } else {
-      list.sort((a, b) => a.artist.localeCompare(b.artist, 'zh-Hans-CN'))
-    }
+    // 统一按首字母 / 中文拼音 A-Z 升序排布
+    list.sort((a, b) => a.artist.localeCompare(b.artist, 'zh-Hans-CN', { numeric: true, sensitivity: 'base' }))
 
     return list
-  }, [songs, sortMode])
+  }, [songs])
 
   // 4. 搜索过滤
   const filteredArtists = useMemo<ArtistGroup[]>(() => {
@@ -416,14 +411,6 @@ export default function ArtistDrawer({
             </div>
 
             <div className="artist-toolbar-actions">
-              <button
-                type="button"
-                className="artist-sort-btn"
-                onClick={() => setSortMode((prev) => (prev === 'count' ? 'name' : 'count'))}
-                title={sortMode === 'count' ? '当前: 按作品数量排序，点击切为首字母' : '当前: 按首字母排序，点击切为作品数'}
-              >
-                {sortMode === 'count' ? '🔥 数量' : '🔤 A-Z'}
-              </button>
               <span className="artist-count-badge">
                 {filteredArtists.length} 位
               </span>

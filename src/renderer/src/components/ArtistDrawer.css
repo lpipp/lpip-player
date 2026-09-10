@@ -77,27 +77,6 @@
   flex-shrink: 0;
 }
 
-.artist-sort-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 11px;
-  padding: 5px 8px;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.artist-sort-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(110, 231, 183, 0.35);
-  color: #6ee7b7;
-}
-
 .artist-count-badge {
   font-size: 11px;
   font-weight: 500;
