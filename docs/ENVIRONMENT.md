@@ -38,9 +38,10 @@
 
 ---
 
-## 2. git 状态（截至 65585ee）
+## 2. git 状态（截至 ad00c9f）
 
 ```
+ad00c9f feat(sidebar): 将悬浮胶囊展开状态向右侧扩大100px至460px
 65585ee refactor(queue): 删除播放队列中的红心收藏功能
 9914be0 feat(queue): 曲库队列按键重构为二态开关(+添加/-移出)并支持双向实时同步
 c4adfc1 fix(queue): 播放队列防重复添加并增加该歌曲已在队列提示
@@ -201,7 +202,7 @@ bash -c 'exec 3<>/dev/tcp/127.0.0.1/6600 && printf "status\nclose\n" >&3 && time
       "closeDelay": 300,
       "animationDuration": 280,
       "animationEasing": "cubic-bezier(0.16, 1, 0.3, 1)",
-      "width": 360,
+      "width": 460,
       "verticalExtension": 50,
       "opacity": 0.3
     }

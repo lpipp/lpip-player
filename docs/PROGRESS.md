@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-10
-> 当前阶段: M2-2 (悬浮长条胶囊第二按键“播放队列管理 (QueueDrawer)”完备 + 曲库二态开关 (+添加/-移出) 双向实时同步落地，队列精简移除红心收藏，零报错稳定常驻)
-> 最新进展: 移除播放队列抽屉中的红心收藏功能与样式，保持纯净单曲移除与原生拖拽重排（详见 §2.11）
+> 当前阶段: M2-2 (悬浮长条胶囊展开抽屉宽度扩增至 460px，曲库与队列视觉空间全面舒展，红心功能收敛，零报错稳定常驻)
+> 最新进展: 将悬浮胶囊展开抽屉向右侧扩大 100px（360px -> 460px），子面板宽度增至 404px，排版空间大幅提升（详见 §2.12）
 
 ---
 
@@ -272,6 +272,24 @@
   - `pnpm typecheck` 0 错误通过；
   - CDP 实机探测 `.queue-track-fav-btn` 数量恒为 0，`.queue-track-actions` 容器严格仅含 1 个移除子按键；
   - 拖拽重排、单曲移除、一键清空与切歌功能完好无损，桌面常驻窗口运行平稳。
+
+### 2.12 悬浮胶囊展开抽屉宽度扩增 (460px) 与视窗空间舒展优化 (`Sidebar Drawer Width Expansion`)
+- **变更背景与体验提升**:
+  - 用户反馈曲库列表与播放队列抽屉展开时，360px 宽度对于长歌名与双行专辑信息的展示稍显局促；
+  - 将悬浮胶囊展开宽度向右侧扩展 100px（由 `360px` 升级至 `460px`）；
+  - 得益于既有的 Clip Reveal 视窗裁剪机制与固定宽度计算 `width: calc(var(--sidebar-width) - 56px)`，内部子面板可用宽度从 `304px` 自动扩增至 `404px`，单行曲目卡片实际宽度提升至 `380px`；
+  - 极大减少了歌名与副标题文字截断，排版更加通透舒展，同时导轨 56px 保持恒定锁定，动画顺滑无抖动。
+- **配置与样式系统全闭环**:
+  - `src/main/config.ts`: `DEFAULT_SIDEBAR_CONFIG.width` 改为 `460`，`clamp(obj['width'], 160, 600)` 上限调宽至 600；
+  - `src/renderer/src/components/SidebarCapsule.css`: `--sidebar-width` 回退值升级为 `460px`；
+  - `~/.config/lpip-player/config.json`: 先行备份为 `.bak`，配置值热更同步为 `460`；
+  - `config.example.json`: 同步更新范围 `160 ~ 600` 与默认值 `460`。
+- **实测物理尺寸数据 (CDP 硬件抓轨)**:
+  - `sidebarWidthVar`: `460px`；
+  - 展开态胶囊物理宽度 (`capsuleWidth`): **460px**（零亚像素偏差）；
+  - 子面板物理宽度 (`subpanelWidth`): **404px**；
+  - 队列与曲库项物理宽度 (`trackItemWidth`): **380px**。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -309,7 +327,7 @@
       "closeDelay": 300,
       "animationDuration": 280,
       "animationEasing": "cubic-bezier(0.16, 1, 0.3, 1)",
-      "width": 360,
+      "width": 460,
       "verticalExtension": 50
     }
   },
