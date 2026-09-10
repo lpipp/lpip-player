@@ -24,6 +24,13 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] M2-2 悬浮胶囊第四按键"歌单 (PlaylistDrawer)"双级钻取画册流与 MPD 歌单协议全套闭环:
+  1. 纯线条制表风矢量歌单图标 (PlaylistIcon)，胶囊第 4 项无缝展开 460px 专属歌单抽屉；
+  2. 层级 1 歌单总览层: 模糊检索/新建歌单/卡片画册 (封面预览/歌单名/曲目数/时长/一键播放/重命名/删除确认)；
+  3. 层级 2 歌单详情层: 极简返回/Hero 头部/全部播放/全部入队/添加单曲挑选面板/单曲列表 (序号/封面/标题/音质徽标/等宽时长)；
+  4. 单曲二态开关 (+/-) 与 MPD 播放队列实时双向同步；歌单单曲移出 (playlistdelete)；
+  5. MPD 歌单指令全链路: listplaylists/listplaylistinfo/playlistadd/playlistdelete/save/rm/rename + escapeMpdString 协议注入防护；
+  6. 液态玻璃微光滑动条 (.liquid-scrollbar) 与动静分离铁律完整覆盖。
 - [已完备] M2-2 曲库中心、播放队列与艺人分类统一液态玻璃微光滑动条 (Liquid Glass Scrollbar):
   1. 彻底根除系统原生粗灰滚动条，全局抽象 .liquid-scrollbar 标准类与 WebKit 伪元素族；
   2. 5px 极细胶囊药丸圆角，透明轨道，黑曜石半透常态，Hover/Drag 激活 #6ee7b7 薄荷翡翠微发光并平滑微扩至 6px；
