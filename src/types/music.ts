@@ -65,6 +65,8 @@ export interface MpdStatus {
   currentSong: MpdSong | null
   /** 播放队列长度 */
   playlistLength: number
+  /** MPD 播放列表版本号 (每次增删换序自增) */
+  playlistVersion?: number
   /** 当前歌曲在队列中的索引号 */
   songPos: number
   /** 当前歌曲在队列中的 MPD 唯一 ID */

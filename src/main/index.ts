@@ -231,6 +231,18 @@ app.whenReady().then(() => {
     })
   })
 
+  const broadcastStatus = async (): Promise<void> => {
+    try {
+      const windows = BrowserWindow.getAllWindows()
+      if (windows.length > 0 && !windows[0].isDestroyed()) {
+        const status = await getStatus()
+        windows[0].webContents.send(IPC_CHANNELS.MPD_STATUS_CHANGED, status)
+      }
+    } catch {
+      // 忽略广播异常
+    }
+  }
+
   // 注册 MPD 相关 IPC 通信处理程序
   ipcMain.handle(IPC_CHANNELS.MPD_GET_LIBRARY, async () => {
     return getLibrary()
@@ -241,31 +253,45 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_PLAY, async (_event, file: string) => {
-    return playSong(file)
+    const res = await playSong(file)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_PAUSE, async () => {
-    return pausePlayback()
+    const res = await pausePlayback()
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_RESUME, async () => {
-    return resumePlayback()
+    const res = await resumePlayback()
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_TOGGLE_PLAY, async () => {
-    return togglePlayPause()
+    const res = await togglePlayPause()
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_NEXT, async () => {
-    return nextSong()
+    const res = await nextSong()
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_PREV, async () => {
-    return prevSong()
+    const res = await prevSong()
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_SEEK, async (_event, time: number) => {
-    return seekSong(time)
+    const res = await seekSong(time)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_GET_STATUS, async () => {
@@ -277,7 +303,9 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_ADD_QUEUE, async (_event, file: string) => {
-    return addToQueue(file)
+    const res = await addToQueue(file)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_GET_QUEUE, async () => {
@@ -285,27 +313,39 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_PLAY_QUEUE_ITEM, async (_event, pos: number, queueId?: number) => {
-    return playQueueItem(pos, queueId)
+    const res = await playQueueItem(pos, queueId)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, async (_event, pos: number, queueId?: number) => {
-    return removeQueueItem(pos, queueId)
+    const res = await removeQueueItem(pos, queueId)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_CLEAR_QUEUE, async () => {
-    return clearQueue()
+    const res = await clearQueue()
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_MOVE_QUEUE_ITEM, async (_event, fromPos: number, toPos: number) => {
-    return moveQueueItem(fromPos, toPos)
+    const res = await moveQueueItem(fromPos, toPos)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_SET_VOLUME, async (_event, volume: number) => {
-    return setVolume(volume)
+    const res = await setVolume(volume)
+    broadcastStatus()
+    return res
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_SET_MODE, async (_event, mode: PlaybackMode) => {
-    return setPlaybackMode(mode)
+    const res = await setPlaybackMode(mode)
+    broadcastStatus()
+    return res
   })
 
   // 获取当前应用运行时全局配置
@@ -338,17 +378,7 @@ app.whenReady().then(() => {
   }
 
   // 启动 MPD 实时播放状态监听轮询器 (500ms 刷新并广播变更)
-  setInterval(async () => {
-    try {
-      const windows = BrowserWindow.getAllWindows()
-      if (windows.length > 0 && !windows[0].isDestroyed()) {
-        const status = await getStatus()
-        windows[0].webContents.send(IPC_CHANNELS.MPD_STATUS_CHANGED, status)
-      }
-    } catch {
-      // 忽略轮询偶发异常
-    }
-  }, 500)
+  setInterval(broadcastStatus, 500)
 
   createWindow()
 

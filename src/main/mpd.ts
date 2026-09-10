@@ -350,6 +350,8 @@ export async function getStatus(): Promise<MpdStatus> {
             result.duration = Number.parseFloat(v) || 0
           } else if (k === 'playlistlength') {
             result.playlistLength = Number.parseInt(v, 10) || 0
+          } else if (k === 'playlist') {
+            result.playlistVersion = Number.parseInt(v, 10) || 0
           } else if (k === 'song') {
             result.songPos = Number.parseInt(v, 10) || 0
           } else if (k === 'songid') {
@@ -414,26 +416,10 @@ export async function getStatus(): Promise<MpdStatus> {
 }
 
 /**
- * 确保 MPD 当前播放队列已预填充全部目录
- */
-async function ensureQueuePopulated(): Promise<void> {
-  try {
-    const status = await getStatus()
-    if (status.playlistLength === 0) {
-      await sendMpdCommand('add "music_1"\nadd "music_2"\nadd "music_3"\nadd "music_4"')
-    }
-  } catch {
-    // 忽略预载错误
-  }
-}
-
-/**
  * 播放指定音源文件 (若在队列中则跳播，否则加入后播放)
  */
 export async function playSong(file: string): Promise<boolean> {
   try {
-    await ensureQueuePopulated()
-
     // 检查当前队列是否已包含此曲
     const findRes = await sendMpdCommand(`playlistfind "file" "${file}"`)
     const idMatch = findRes.match(/Id:\s*(\d+)/i)
@@ -511,7 +497,10 @@ export async function togglePlayPause(): Promise<'play' | 'pause' | 'stop'> {
  */
 export async function nextSong(): Promise<boolean> {
   try {
-    await ensureQueuePopulated()
+    const status = await getStatus()
+    if (status.playlistLength === 0) {
+      return false
+    }
     await sendMpdCommand('next')
     return true
   } catch (error) {
@@ -525,7 +514,10 @@ export async function nextSong(): Promise<boolean> {
  */
 export async function prevSong(): Promise<boolean> {
   try {
-    await ensureQueuePopulated()
+    const status = await getStatus()
+    if (status.playlistLength === 0) {
+      return false
+    }
     await sendMpdCommand('previous')
     return true
   } catch (error) {

@@ -61,6 +61,12 @@ export default function App() {
           setLyrics(lines && lines.length > 0 ? lines : null)
         })
       }
+    } else if (status.playlistLength === 0) {
+      setCurrentSong(null)
+      setLyrics(null)
+      setCurrentTime(0)
+      setDuration(0)
+      lastFileRef.current = null
     }
 
     if (status.mode) {
@@ -260,7 +266,21 @@ export default function App() {
       if (typeof song.queueId === 'number' || typeof song.pos === 'number') {
         await window.electronAPI.mpd.playQueueItem(song.pos ?? 0, song.queueId)
       } else {
-        await window.electronAPI.mpd.play(song.file)
+        // 从曲库直接点播：先检查是否已在队列中，不在则精准追加后跳播该曲，避免老版本 playSong 触发全目录预载
+        const queue = await window.electronAPI.mpd.getQueue()
+        const existing = queue.find((item) => item.file === song.file)
+        if (existing) {
+          await window.electronAPI.mpd.playQueueItem(existing.pos ?? 0, existing.queueId)
+        } else {
+          await window.electronAPI.mpd.addToQueue(song.file)
+          const updatedQueue = await window.electronAPI.mpd.getQueue()
+          const newlyAdded = updatedQueue.find((item) => item.file === song.file)
+          if (newlyAdded) {
+            await window.electronAPI.mpd.playQueueItem(newlyAdded.pos ?? 0, newlyAdded.queueId)
+          } else {
+            await window.electronAPI.mpd.play(song.file)
+          }
+        }
       }
       // 方案 C: 点播切歌瞬间排空旧音频, 零延迟起播新曲
       pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)

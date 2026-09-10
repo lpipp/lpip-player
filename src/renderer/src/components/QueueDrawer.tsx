@@ -211,10 +211,12 @@ export default function QueueDrawer({
 
   const draggedIndexRef = useRef<number | null>(null)
   const dropPositionRef = useRef<'top' | 'bottom' | null>(null)
+  const isDraggingRef = useRef(false)
 
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
   const activeItemRef = useRef<HTMLDivElement | null>(null)
   const lastPlaylistLenRef = useRef<number>(-1)
+  const lastPlaylistVerRef = useRef<number>(-1)
   const hasAutoScrolledRef = useRef(false)
 
   // 读取 MPD 当前播放队列
@@ -239,10 +241,16 @@ export default function QueueDrawer({
 
     refreshQueue(true)
 
-    // 监听 MPD 状态广播：当队列长度改变时自动刷新队列
+    // 监听 MPD 状态广播：当队列长度或版本号改变时自动刷新队列
     const unsubscribe = window.electronAPI?.mpd.onStatusChange((status: MpdStatus) => {
       if (!isMounted) return
-      if (status.playlistLength !== lastPlaylistLenRef.current) {
+      const lenChanged = status.playlistLength !== lastPlaylistLenRef.current
+      const verChanged =
+        status.playlistVersion !== undefined && status.playlistVersion !== lastPlaylistVerRef.current
+      if (lenChanged || verChanged) {
+        if (status.playlistVersion !== undefined) {
+          lastPlaylistVerRef.current = status.playlistVersion
+        }
         refreshQueue(false)
       }
     })
@@ -302,8 +310,9 @@ export default function QueueDrawer({
     }
   }
 
-  // 点击单曲切歌
+  // 点击单曲切歌 (带拖拽保护，避免释放鼠标时误触切歌)
   const handleSongClick = (song: MpdSong): void => {
+    if (isDraggingRef.current) return
     onPlayQueueSong?.(song)
   }
 
@@ -363,6 +372,7 @@ export default function QueueDrawer({
 
   // 原生拖拽排序事件处理
   const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number): void => {
+    isDraggingRef.current = true
     draggedIndexRef.current = index
     setDraggedIndex(index)
     e.dataTransfer.effectAllowed = 'move'
@@ -396,6 +406,9 @@ export default function QueueDrawer({
     setDraggedIndex(null)
     setDragOverIndex(null)
     setDropPosition(null)
+    setTimeout(() => {
+      isDraggingRef.current = false
+    }, 60)
   }
 
   const handleDrop = async (e: DragEvent<HTMLDivElement>, index: number): Promise<void> => {
@@ -575,8 +588,8 @@ export default function QueueDrawer({
                     </div>
 
                     <div className="queue-track-meta-row">
-                      <span className={`queue-quality-badge badge-${song.quality.toLowerCase()}`}>
-                        {song.quality}
+                      <span className={`queue-quality-badge badge-${(song.quality || 'STD').toLowerCase()}`}>
+                        {song.quality || 'STD'}
                       </span>
                       <span
                         className="queue-track-artist-album"
