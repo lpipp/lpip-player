@@ -165,7 +165,9 @@ export default function StatusBar({
   const volTrackRef = useRef<HTMLDivElement>(null)
 
   const isPlaying = controlledIsPlaying !== undefined ? controlledIsPlaying : localIsPlaying
-  const duration = controlledDuration !== undefined ? Math.max(1, controlledDuration) : 248
+  const rawDuration = controlledDuration !== undefined ? controlledDuration : 248
+  const duration = Math.max(0, rawDuration)
+  const safeDuration = duration > 0 ? duration : 1
 
   // 当前有效播放秒数 (拖拽中以拖拽位置为准，否则以播放进度为准)
   const currentSeconds = isDragging
@@ -175,7 +177,7 @@ export default function StatusBar({
       : localCurrentTime
 
   // 进度百分比 (0 ~ 100)
-  const effectivePercent = Math.min(100, Math.max(0, (currentSeconds / duration) * 100))
+  const effectivePercent = duration > 0 ? Math.min(100, Math.max(0, (currentSeconds / safeDuration) * 100)) : 0
 
   // 音量有效百分比 (0 ~ 100)
   const effectiveVolPercent = isMuted

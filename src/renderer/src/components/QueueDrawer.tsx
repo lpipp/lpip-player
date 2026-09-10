@@ -224,9 +224,15 @@ export default function QueueDrawer({
     if (showLoading) setLoading(true)
     try {
       if (window.electronAPI?.mpd) {
-        const queue = await window.electronAPI.mpd.getQueue()
+        const [queue, status] = await Promise.all([
+          window.electronAPI.mpd.getQueue(),
+          window.electronAPI.mpd.getStatus()
+        ])
         setSongs(queue)
         lastPlaylistLenRef.current = queue.length
+        if (status?.playlistVersion !== undefined) {
+          lastPlaylistVerRef.current = status.playlistVersion
+        }
       }
     } catch (err) {
       console.error('[lpip-player:queue] 获取队列失败:', err)
@@ -468,12 +474,11 @@ export default function QueueDrawer({
 
   return (
     <div className="queue-drawer-container">
-      {/* 顶部工具栏: 标题、总曲数、定位按键与一键清空按键 */}
+      {/* 顶部工具栏: 总曲数、定位按键与一键清空按键 */}
       <div className="queue-drawer-toolbar">
         <div className="queue-toolbar-left">
-          <span className="queue-toolbar-title">播放队列</span>
           <span className="queue-toolbar-count">
-            {songs.length > 0 ? `${songs.length} 首曲目` : '空队列'}
+            {songs.length > 0 ? `共 ${songs.length} 首曲目` : '当前队列为空'}
           </span>
         </div>
 
@@ -547,7 +552,9 @@ export default function QueueDrawer({
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return
                     if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
                       handleSongClick(song)
                     }
                   }}
@@ -611,6 +618,7 @@ export default function QueueDrawer({
                     className="queue-track-actions"
                     draggable={false}
                     onDragStart={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
                   >
                     <button
                       type="button"

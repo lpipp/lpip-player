@@ -35,17 +35,12 @@
   gap: 8px;
 }
 
-.queue-toolbar-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  letter-spacing: 0.3px;
-}
-
 .queue-toolbar-count {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
 }
 
 .queue-toolbar-actions {

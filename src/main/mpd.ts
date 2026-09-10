@@ -475,6 +475,9 @@ export async function resumePlayback(): Promise<boolean> {
 export async function togglePlayPause(): Promise<'play' | 'pause' | 'stop'> {
   try {
     const status = await getStatus()
+    if (status.playlistLength === 0) {
+      return 'stop'
+    }
     if (status.state === 'play') {
       await sendMpdCommand('pause 1')
       return 'pause'
@@ -531,6 +534,10 @@ export async function prevSong(): Promise<boolean> {
  */
 export async function seekSong(timeSeconds: number): Promise<boolean> {
   try {
+    const status = await getStatus()
+    if (status.state === 'stop' || status.playlistLength === 0) {
+      return false
+    }
     // MPD seekcur 接受浮点秒: 保留两位小数精确落点, 避免整秒截断导致实际位置退回上一句歌词
     const safeTime = Math.max(0, Math.round(timeSeconds * 100) / 100)
     await sendMpdCommand(`seekcur ${safeTime}`)

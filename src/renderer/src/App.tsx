@@ -182,17 +182,21 @@ export default function App() {
   // 下一曲
   const handleNext = async (): Promise<void> => {
     if (window.electronAPI?.mpd) {
-      await window.electronAPI.mpd.next()
-      // 方案 C: 毫秒级硬截断旧曲声音并立即拉取新曲，杜绝 3~4 秒旧曲残留
-      pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      const ok = await window.electronAPI.mpd.next()
+      if (ok) {
+        // 方案 C: 毫秒级硬截断旧曲声音并立即拉取新曲，杜绝 3~4 秒旧曲残留
+        pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      }
     }
   }
 
   // 上一曲
   const handlePrev = async (): Promise<void> => {
     if (window.electronAPI?.mpd) {
-      await window.electronAPI.mpd.prev()
-      pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      const ok = await window.electronAPI.mpd.prev()
+      if (ok) {
+        pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      }
     }
   }
 
@@ -201,9 +205,11 @@ export default function App() {
     isSeekingRef.current = true
     setCurrentTime(timeSeconds)
     if (window.electronAPI?.mpd) {
-      await window.electronAPI.mpd.seek(timeSeconds)
-      // 方案 C: 寻道时瞬间排空旧缓冲, ~40ms 启动新落点播放
-      pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      const ok = await window.electronAPI.mpd.seek(timeSeconds)
+      if (ok) {
+        // 方案 C: 寻道时瞬间排空旧缓冲, ~40ms 启动新落点播放
+        pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      }
     }
     setTimeout(() => {
       isSeekingRef.current = false
