@@ -38,9 +38,10 @@
 
 ---
 
-## 2. git 状态（截至 ad00c9f）
+## 2. git 状态（截至 b4f99d5）
 
 ```
+b4f99d5 feat(artist): 悬浮胶囊第三按键重构为艺人分类并实现双级钻取画册流排版
 ad00c9f feat(sidebar): 将悬浮胶囊展开状态向右侧扩大100px至460px
 65585ee refactor(queue): 删除播放队列中的红心收藏功能
 9914be0 feat(queue): 曲库队列按键重构为二态开关(+添加/-移出)并支持双向实时同步
@@ -88,6 +89,7 @@ src/
          ├─ SpectrumVisualizer.tsx 高级制表蓝图纯线条频谱律动 (.css Canvas 2D 零内存分配/自适应休眠)
          ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css 二态开关 +/-、60fps 模糊检索列表)
          ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/单曲移除/一键清空/定位正在播放)
+         ├─ ArtistDrawer.tsx    悬浮抽屉艺人分类 (.css 双级钻取画册流/圆形微棱头像/作品统计/单曲二态开关)
          └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
 ```
 
