@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../main/ipc-channels'
-import type { AddToQueueResult, LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
 import type { AppConfig } from '../main/config'
 
 /**
@@ -46,6 +46,24 @@ export interface ElectronAPI {
     clearQueue: () => Promise<boolean>
     /** 移动队列中曲目的位置 */
     moveQueueItem: (fromPos: number, toPos: number) => Promise<boolean>
+    /** 获取所有已保存歌单列表 */
+    getPlaylists: () => Promise<MpdPlaylist[]>
+    /** 获取指定歌单的单曲列表 */
+    getPlaylistSongs: (name: string) => Promise<MpdSong[]>
+    /** 新建歌单 */
+    createPlaylist: (name: string) => Promise<boolean>
+    /** 删除歌单 */
+    deletePlaylist: (name: string) => Promise<boolean>
+    /** 重命名歌单 */
+    renamePlaylist: (oldName: string, newName: string) => Promise<boolean>
+    /** 向歌单追加歌曲 */
+    addToPlaylist: (name: string, file: string) => Promise<boolean>
+    /** 从歌单移除歌曲 */
+    removeFromPlaylist: (name: string, pos: number) => Promise<boolean>
+    /** 播放指定歌单 */
+    playPlaylist: (name: string) => Promise<boolean>
+    /** 将整张歌单全部歌曲批量追加至当前播放队列 (自动去重) */
+    enqueuePlaylist: (name: string) => Promise<boolean>
     /** 监听 MPD 播放器状态实时变更 */
     onStatusChange: (callback: (status: MpdStatus) => void) => () => void
   }
@@ -81,6 +99,23 @@ const api: ElectronAPI = {
     clearQueue: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_CLEAR_QUEUE),
     moveQueueItem: (fromPos: number, toPos: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.MPD_MOVE_QUEUE_ITEM, fromPos, toPos),
+    getPlaylists: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_PLAYLISTS),
+    getPlaylistSongs: (name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_PLAYLIST_SONGS, name),
+    createPlaylist: (name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_CREATE_PLAYLIST, name),
+    deletePlaylist: (name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_DELETE_PLAYLIST, name),
+    renamePlaylist: (oldName: string, newName: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_RENAME_PLAYLIST, oldName, newName),
+    addToPlaylist: (name: string, file: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_ADD_TO_PLAYLIST, name, file),
+    removeFromPlaylist: (name: string, pos: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_REMOVE_FROM_PLAYLIST, name, pos),
+    playPlaylist: (name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_PLAY_PLAYLIST, name),
+    enqueuePlaylist: (name: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_ENQUEUE_PLAYLIST, name),
     onStatusChange: (callback: (status: MpdStatus) => void) => {
       const handler = (_event: unknown, status: MpdStatus): void => callback(status)
       ipcRenderer.on(IPC_CHANNELS.MPD_STATUS_CHANGED, handler)

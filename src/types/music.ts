@@ -90,3 +90,22 @@ export interface AddToQueueResult {
   /** 该歌曲是否已经在队列中 (若已在队列则不再重复添加) */
   alreadyInQueue: boolean
 }
+
+/**
+ * MPD 歌单数据模型 (自建歌单与画册总览)
+ */
+export interface MpdPlaylist {
+  /** 歌单唯一名称标识 */
+  name: string
+  /** 最近修改时间 (ISO 格式) */
+  lastModified?: string
+  /** 歌单内歌曲总数 */
+  songCount: number
+  /** 歌单内歌曲总时长 (秒数) */
+  totalDuration?: number
+  /** 首曲 (用于封面或占位) */
+  coverSong?: MpdSong
+  /** 封面图片请求地址 */
+  coverUrl?: string
+}
+

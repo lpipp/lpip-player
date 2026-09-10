@@ -1,12 +1,12 @@
 import { execFile, execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { app } from 'electron'
 
 import { loadConfig } from './config'
-import type { AddToQueueResult, LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
 
 /**
  * 缓存的本地曲库数据，避免每次展开抽屉都重新全量查询
@@ -22,7 +22,7 @@ const cachedLyrics = new Map<string, LyricLine[]>()
  * 转义 MPD 指令中的双引号与反斜杠，杜绝指令注入与路径语法解析错误
  */
 export function escapeMpdString(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  return str.replace(/[\r\n\t\0]/g, '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 
 /**
@@ -935,3 +935,412 @@ export function getOrExtractAlbumCover(relPath: string): Promise<string | null> 
     )
   })
 }
+
+/**
+ * 获取 MPD 歌单文件存储根目录 (~/.config/mpd/playlists)
+ */
+export function getPlaylistsDir(): string {
+  const dir = join(app.getPath('home'), '.config', 'mpd', 'playlists')
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
+/**
+ * 当本地歌单目录首次初始化为空时，自动写入预置歌单供即时体验 (仅执行一次，避免复活用户已删除歌单)
+ */
+async function seedDefaultPlaylistsIfEmpty(): Promise<void> {
+  try {
+    const dir = getPlaylistsDir()
+    const seedMarker = join(dir, '.seeded')
+    if (existsSync(seedMarker)) {
+      return
+    }
+
+    const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.m3u')) : []
+    if (files.length === 0) {
+      const songs = await getLibrary()
+      if (songs.length > 0) {
+        const sampleSongs = songs.slice(0, 10).map((s) => s.file).join('\n') + '\n'
+        writeFileSync(join(dir, '我的红心精选.m3u'), sampleSongs, 'utf-8')
+      }
+    }
+    writeFileSync(seedMarker, '1\n', 'utf-8')
+  } catch (err) {
+    console.error('[lpip-player:mpd] 预置歌单初始化失败:', err)
+  }
+}
+
+/**
+ * 解析 MPD `listplaylists` 返回的纯文本
+ */
+export function parseMpdPlaylists(raw: string): { name: string; lastModified?: string }[] {
+  const lines = raw.split('\n')
+  const results: { name: string; lastModified?: string }[] = []
+  let cur: { name: string; lastModified?: string } | null = null
+
+  for (const line of lines) {
+    if (line.startsWith('playlist: ')) {
+      if (cur && cur.name) {
+        results.push(cur)
+      }
+      cur = { name: line.slice(10).trim() }
+    } else if (cur && line.startsWith('Last-Modified: ')) {
+      cur.lastModified = line.slice(15).trim()
+    }
+  }
+  if (cur && cur.name) {
+    results.push(cur)
+  }
+  return results
+}
+
+/**
+ * 校验并清洗歌单名称，杜绝控制字符、引号、路径穿越与扩展名冗余
+ */
+export function sanitizePlaylistName(name: string): string {
+  return name
+    .trim()
+    .replace(/[\r\n\t\0]/g, '')
+    .replace(/[/\\]/g, '-')
+    .replace(/["']/g, '')
+    .replace(/^[.]+/, '')
+    .replace(/\.m3u$/i, '')
+    .trim()
+}
+
+/**
+ * 获取经过安全根目录沙箱判定的歌单物理路径 (.m3u)
+ */
+export function getSafePlaylistFilePath(name: string): string | null {
+  const clean = sanitizePlaylistName(name)
+  if (!clean) return null
+  const dir = getPlaylistsDir()
+  const filePath = join(dir, `${clean}.m3u`)
+  // 严防任何跳出 playlists 目录的越权路径穿越
+  const resolved = resolve(filePath)
+  if (!resolved.startsWith(resolve(dir) + sep)) {
+    return null
+  }
+  return filePath
+}
+
+/**
+ * 获取所有歌单信息概览 (含曲目数量、总时长与封面首曲)
+ */
+export async function getPlaylists(): Promise<MpdPlaylist[]> {
+  await seedDefaultPlaylistsIfEmpty()
+
+  try {
+    let list: { name: string; lastModified?: string }[] = []
+    try {
+      const raw = await sendMpdCommand('listplaylists')
+      list = parseMpdPlaylists(raw)
+    } catch (mpdErr) {
+      console.warn('[lpip-player:mpd] MPD listplaylists 指令失败，尝试从本地目录读取:', mpdErr)
+      const dir = getPlaylistsDir()
+      if (existsSync(dir)) {
+        const files = readdirSync(dir).filter((f) => f.endsWith('.m3u'))
+        list = files.map((f) => ({
+          name: f.replace(/\.m3u$/i, ''),
+          lastModified: new Date(statSync(join(dir, f)).mtimeMs).toISOString()
+        }))
+      }
+    }
+
+    const playlists = await Promise.all(
+      list.map(async (item) => {
+        try {
+          const songs = await getPlaylistSongs(item.name)
+          const totalDuration = songs.reduce((sum, s) => sum + (s.duration || 0), 0)
+          const coverSong = songs.find((s) => s.file) || songs[0]
+
+          return {
+            name: item.name,
+            lastModified: item.lastModified,
+            songCount: songs.length,
+            totalDuration,
+            coverSong,
+            coverUrl: coverSong ? coverSong.coverUrl : undefined
+          }
+        } catch {
+          return {
+            name: item.name,
+            lastModified: item.lastModified,
+            songCount: 0,
+            totalDuration: 0
+          }
+        }
+      })
+    )
+
+    return playlists
+  } catch (err) {
+    console.error('[lpip-player:mpd] 获取歌单列表失败:', err)
+    return []
+  }
+}
+
+/**
+ * 获取指定歌单的所有歌曲
+ */
+export async function getPlaylistSongs(name: string): Promise<MpdSong[]> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName) return []
+
+  try {
+    try {
+      const infoRaw = await sendMpdCommand(`listplaylistinfo "${escapeMpdString(cleanName)}"`)
+      const songs = parseMpdLibrary(infoRaw)
+      if (songs.length > 0) {
+        return songs.map((s, idx) => ({
+          ...s,
+          // 注意：此处严禁设置 pos 属性，否则在 App.tsx 中点击播放时会被当作实时播放队列索引处理
+          id: `pl_${cleanName}_${idx}_${s.file}`
+        }))
+      }
+    } catch {
+      // 若 MPD listplaylistinfo 异常，尝试从本地 .m3u 文件恢复
+    }
+
+    const filePath = getSafePlaylistFilePath(cleanName)
+    if (filePath && existsSync(filePath)) {
+      const content = readFileSync(filePath, 'utf-8')
+      const lines = content
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !l.startsWith('#'))
+      const library = await getLibrary()
+      const libMap = new Map<string, MpdSong>()
+      for (const s of library) {
+        libMap.set(s.file, s)
+      }
+      return lines.map((file, idx) => {
+        const found = libMap.get(file)
+        if (found) {
+          return {
+            ...found,
+            id: `pl_${cleanName}_${idx}_${file}`
+          }
+        }
+        return {
+          id: `pl_${cleanName}_${idx}_${file}`,
+          file,
+          title: file.split('/').pop()?.replace(/\.[^/.]+$/, '') || file,
+          artist: '未知艺人',
+          album: '未知专辑',
+          duration: 0,
+          format: '',
+          quality: 'STD',
+          coverUrl: `app-media://cover/${encodeURIComponent(file)}`
+        } as MpdSong
+      })
+    }
+
+    return []
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 获取歌单歌曲失败: ${cleanName}`, err)
+    return []
+  }
+}
+
+/**
+ * 创建新歌单
+ */
+export async function createPlaylist(name: string): Promise<boolean> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName) return false
+
+  const filePath = getSafePlaylistFilePath(cleanName)
+  if (!filePath) return false
+
+  if (existsSync(filePath)) {
+    return false
+  }
+
+  try {
+    writeFileSync(filePath, '', 'utf-8')
+    return true
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 创建歌单失败: ${cleanName}`, err)
+    return false
+  }
+}
+
+/**
+ * 删除歌单
+ */
+export async function deletePlaylist(name: string): Promise<boolean> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName) return false
+
+  const filePath = getSafePlaylistFilePath(cleanName)
+  if (!filePath) return false
+
+  const existedOnDisk = existsSync(filePath)
+  let mpdDeleted = false
+
+  try {
+    try {
+      await sendMpdCommand(`rm "${escapeMpdString(cleanName)}"`)
+      mpdDeleted = true
+    } catch {
+      // 忽略 MPD rm 异常
+    }
+    if (existsSync(filePath)) {
+      unlinkSync(filePath)
+    }
+    return mpdDeleted || existedOnDisk
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 删除歌单失败: ${cleanName}`, err)
+    return false
+  }
+}
+
+/**
+ * 重命名歌单
+ */
+export async function renamePlaylist(oldName: string, newName: string): Promise<boolean> {
+  const cleanOld = sanitizePlaylistName(oldName)
+  const cleanNew = sanitizePlaylistName(newName)
+  if (!cleanOld || !cleanNew || cleanOld === cleanNew) return false
+
+  const oldPath = getSafePlaylistFilePath(cleanOld)
+  const newPath = getSafePlaylistFilePath(cleanNew)
+  if (!oldPath || !newPath) return false
+
+  if (existsSync(newPath)) {
+    console.warn(`[lpip-player:mpd] 目标歌单名称已存在，禁止重名覆盖: ${cleanNew}`)
+    return false
+  }
+
+  let renamed = false
+  try {
+    try {
+      await sendMpdCommand(`rename "${escapeMpdString(cleanOld)}" "${escapeMpdString(cleanNew)}"`)
+      renamed = true
+    } catch {
+      if (existsSync(oldPath)) {
+        renameSync(oldPath, newPath)
+        renamed = true
+      }
+    }
+    return renamed
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 重命名歌单失败 (${cleanOld} -> ${cleanNew}):`, err)
+    return false
+  }
+}
+
+/**
+ * 向歌单追加单曲 (防重复追加)
+ */
+export async function addToPlaylist(name: string, file: string): Promise<boolean> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName || !file) return false
+
+  try {
+    const songs = await getPlaylistSongs(cleanName)
+    if (songs.some((s) => s.file === file)) {
+      return true
+    }
+
+    try {
+      await sendMpdCommand(`playlistadd "${escapeMpdString(cleanName)}" "${escapeMpdString(file)}"`)
+      return true
+    } catch {
+      // MPD 指令失败时回退写入本地 .m3u 存储
+      const filePath = getSafePlaylistFilePath(cleanName)
+      if (filePath) {
+        const existing = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : ''
+        const prefix = existing.length > 0 && !existing.endsWith('\n') ? '\n' : ''
+        writeFileSync(filePath, `${existing}${prefix}${file}\n`, 'utf-8')
+        return true
+      }
+      return false
+    }
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 向歌单添加单曲失败 (${cleanName}, ${file}):`, err)
+    return false
+  }
+}
+
+/**
+ * 从歌单中移除指定位置的单曲
+ */
+export async function removeFromPlaylist(name: string, pos: number): Promise<boolean> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName || pos < 0) return false
+
+  try {
+    try {
+      await sendMpdCommand(`playlistdelete "${escapeMpdString(cleanName)}" ${pos}`)
+      return true
+    } catch {
+      const filePath = getSafePlaylistFilePath(cleanName)
+      if (filePath && existsSync(filePath)) {
+        const content = readFileSync(filePath, 'utf-8')
+        const lines = content.split('\n').filter((l) => l.trim().length > 0 && !l.startsWith('#'))
+        if (pos >= 0 && pos < lines.length) {
+          lines.splice(pos, 1)
+          writeFileSync(filePath, lines.length > 0 ? lines.join('\n') + '\n' : '', 'utf-8')
+          return true
+        }
+      }
+      return false
+    }
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 从歌单移出单曲失败 (${cleanName}, pos: ${pos}):`, err)
+    return false
+  }
+}
+
+/**
+ * 播放整张歌单 (清空当前队列、载入歌单并从第 1 首开始播放)
+ */
+export async function playPlaylist(name: string): Promise<boolean> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName) return false
+
+  try {
+    const songs = await getPlaylistSongs(cleanName)
+    if (songs.length === 0) {
+      return false
+    }
+    await sendMpdCommand(`clear\nload "${escapeMpdString(cleanName)}"\nplay 0`)
+    return true
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 播放歌单失败: ${cleanName}`, err)
+    return false
+  }
+}
+
+/**
+ * 将整张歌单中的未入队单曲批量追加至当前实时播放队列 (去重、MPD command_list 极速推入)
+ */
+export async function enqueuePlaylist(name: string): Promise<boolean> {
+  const cleanName = sanitizePlaylistName(name)
+  if (!cleanName) return false
+
+  try {
+    const [playlistSongs, currentQueue] = await Promise.all([
+      getPlaylistSongs(cleanName),
+      getQueue()
+    ])
+    if (playlistSongs.length === 0) return false
+
+    const queuedFiles = new Set(currentQueue.map((s) => s.file))
+    const toAdd = playlistSongs.filter((s) => !queuedFiles.has(s.file))
+    if (toAdd.length === 0) return true
+
+    const commands = toAdd.map((s) => `add "${escapeMpdString(s.file)}"`)
+    await sendMpdCommand(`command_list_begin\n${commands.join('\n')}\ncommand_list_end`)
+    return true
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 批量将歌单加入队列失败: ${cleanName}`, err)
+    return false
+  }
+}
+
+

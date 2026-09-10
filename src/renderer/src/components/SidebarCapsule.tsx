@@ -3,6 +3,7 @@ import type { MpdSong } from '../../../types/music'
 import MusicLibraryList from './MusicLibraryList'
 import QueueDrawer from './QueueDrawer'
 import ArtistDrawer from './ArtistDrawer'
+import PlaylistDrawer from './PlaylistDrawer'
 import './SidebarCapsule.css'
 
 /**
@@ -60,15 +61,14 @@ function ArtistsIcon() {
   )
 }
 
-function VisualizerIcon() {
+function PlaylistIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 10v4" />
-      <path d="M6 6v12" />
-      <path d="M10 3v18" />
-      <path d="M14 8v8" />
-      <path d="M18 5v14" />
-      <path d="M22 10v4" />
+      <line x1="4" y1="6" x2="15" y2="6" />
+      <line x1="4" y1="12" x2="11" y2="12" />
+      <line x1="4" y1="18" x2="11" y2="18" />
+      <circle cx="17" cy="15" r="3" />
+      <path d="M20 15V5h2" />
     </svg>
   )
 }
@@ -135,13 +135,11 @@ const MODULES: NavModule[] = [
     ]
   },
   {
-    id: 'visualizer',
-    label: '音频频谱',
-    icon: <VisualizerIcon />,
+    id: 'playlists',
+    label: '歌单',
+    icon: <PlaylistIcon />,
     items: [
-      { id: 'vis-bars', title: '64 段动态柱状图', desc: 'WebAudio FFT 实时离散变换', badge: '开启' },
-      { id: 'vis-wave', title: '流体微光波形', desc: '极光渐变动态曲面' },
-      { id: 'vis-gain', title: '阻尼衰减系数', desc: '控制频谱柱回弹速率 (0.85)' }
+      { id: 'pl-all', title: '全部自建歌单', desc: '按画册分类浏览曲目' }
     ]
   },
   {
@@ -455,7 +453,9 @@ export default function SidebarCapsule({
                 ? 'subpanel-content-queue'
                 : activeModuleId === 'artists'
                   ? 'subpanel-content-artists'
-                  : ''
+                  : activeModuleId === 'playlists'
+                    ? 'subpanel-content-playlists'
+                    : ''
           }`}
         >
           {activeModuleId === 'library' ? (
@@ -472,6 +472,13 @@ export default function SidebarCapsule({
             />
           ) : activeModuleId === 'artists' ? (
             <ArtistDrawer
+              currentSong={currentSong}
+              currentSongId={currentSongId}
+              onPlaySong={onPlaySong}
+              onAddToQueue={onAddToQueue}
+            />
+          ) : activeModuleId === 'playlists' ? (
+            <PlaylistDrawer
               currentSong={currentSong}
               currentSongId={currentSongId}
               onPlaySong={onPlaySong}

@@ -1,0 +1,1103 @@
+/* ============================================================
+   歌单专属悬浮抽屉样式 (PlaylistDrawer.css)
+   高级制表工艺与液态玻璃设计哲学:
+   1. 404px 视窗空间极致利用，动静分离整像素网格
+   2. 44px / 52px 方形微棱画册封面与黑胶占位
+   3. 双级钻取平滑转场与 5px 液态玻璃滑动条 (.liquid-scrollbar)
+   4. 歌单管理（新建、重命名、删除、单曲添加与移出、二态队列开关）
+   ============================================================ */
+
+.playlist-drawer-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------
+   顶部工具栏 (Header Bar: 搜索、新建歌单与统计)
+   ------------------------------------------------------------ */
+.playlist-drawer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.playlist-search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 5px 9px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-search-box:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(110, 231, 183, 0.45);
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.15);
+}
+
+.playlist-search-icon {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.playlist-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  min-width: 0;
+}
+
+.playlist-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.playlist-search-clear {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.16s ease;
+}
+
+.playlist-search-clear:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 工具栏操作组 */
+.playlist-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.playlist-new-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.3);
+  color: #6ee7b7;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-new-btn:hover {
+  background: rgba(110, 231, 183, 0.22);
+  border-color: rgba(110, 231, 183, 0.55);
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.2);
+  transform: translateY(-1px);
+}
+
+.playlist-new-btn.active {
+  background: rgba(110, 231, 183, 0.25);
+  border-color: rgba(110, 231, 183, 0.6);
+}
+
+.playlist-count-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(110, 231, 183, 0.85);
+  background: rgba(110, 231, 183, 0.1);
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 10px;
+  padding: 2px 7px;
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   新建歌单内联表单 (Inline Create Bar)
+   ------------------------------------------------------------ */
+.playlist-create-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(110, 231, 183, 0.04);
+  animation: fadeInDown 0.2s ease forwards;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.playlist-create-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 231, 183, 0.4);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  color: #ffffff;
+  outline: none;
+  min-width: 0;
+}
+
+.playlist-create-input:focus {
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.25);
+  border-color: rgba(110, 231, 183, 0.6);
+}
+
+.playlist-create-submit-btn {
+  background: rgba(110, 231, 183, 0.2);
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.16s ease;
+}
+
+.playlist-create-submit-btn:hover {
+  background: rgba(110, 231, 183, 0.3);
+  border-color: rgba(110, 231, 183, 0.65);
+}
+
+.playlist-create-cancel-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.16s ease;
+}
+
+.playlist-create-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.playlist-create-error {
+  font-size: 10px;
+  color: #f87171;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------
+   滚动区域 (Scrollable List Area: 呈现精致液态玻璃微光滑动条)
+   ------------------------------------------------------------ */
+.playlist-drawer-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 8px 16px 12px;
+}
+
+/* ------------------------------------------------------------
+   层级 1: 歌单总览卡片 (Playlist Item Row)
+   动静分离: 宿主定格整像素，::before 承载背景与微缩放
+   ------------------------------------------------------------ */
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playlist-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 60px;
+  padding: 0 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: transparent;
+  outline: none;
+  border: none;
+  box-sizing: border-box;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 60px;
+}
+
+.playlist-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+.playlist-item:hover::before {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(110, 231, 183, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), 0 0 10px rgba(110, 231, 183, 0.08);
+  transform: scale(1.012);
+}
+
+.playlist-item.active::before {
+  background: rgba(110, 231, 183, 0.08);
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+/* 歌单方形封面画册预览 (44px) */
+.playlist-cover-wrapper {
+  position: relative;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(20, 24, 36, 0.6);
+}
+
+.playlist-item:hover .playlist-cover-wrapper {
+  transform: scale(1.06);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.5),
+    0 0 0 1.5px rgba(110, 231, 183, 0.5);
+}
+
+.playlist-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.playlist-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(110, 231, 183, 0.7);
+  background: radial-gradient(circle at center, rgba(110, 231, 183, 0.12), rgba(14, 16, 24, 0.8));
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+/* 中段信息区 (文字定格绝对静止) */
+.playlist-info {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.playlist-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+  transition: color 0.16s ease;
+}
+
+.playlist-item:hover .playlist-name {
+  color: #ffffff;
+}
+
+.playlist-subtext {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 歌单重命名内联表单 */
+.playlist-rename-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.playlist-rename-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: #ffffff;
+  outline: none;
+}
+
+.playlist-rename-save-btn,
+.playlist-rename-cancel-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.16s ease;
+}
+
+.playlist-rename-save-btn:hover {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.15);
+}
+
+.playlist-rename-cancel-btn:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.15);
+}
+
+/* 删除二次确认 */
+.playlist-delete-confirm-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.playlist-delete-hint {
+  font-size: 10.5px;
+  color: #fca5a5;
+  white-space: nowrap;
+}
+
+.playlist-delete-confirm-btn {
+  background: #ef4444;
+  border: none;
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  outline: none;
+}
+
+.playlist-delete-cancel-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10.5px;
+  cursor: pointer;
+  outline: none;
+  padding: 2px;
+}
+
+/* 右侧操作按钮与指示 */
+.playlist-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.playlist-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  opacity: 0.6;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-item:hover .playlist-action-btn {
+  opacity: 0.9;
+}
+
+.playlist-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.playlist-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+}
+
+.playlist-play-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  opacity: 0.8;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-play-btn:hover {
+  background: rgba(110, 231, 183, 0.18);
+  border-color: rgba(110, 231, 183, 0.45);
+  color: #6ee7b7;
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.playlist-play-btn:disabled,
+.playlist-play-btn.disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.playlist-arrow-icon {
+  color: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.playlist-item:hover .playlist-arrow-icon {
+  color: rgba(110, 231, 183, 0.8);
+  transform: translateX(2px);
+}
+
+/* ------------------------------------------------------------
+   层级 2: 歌单单曲详情页 (Playlist Detail View)
+   ------------------------------------------------------------ */
+.playlist-detail-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+/* 顶部 Hero 导航卡片 */
+.playlist-detail-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 16px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+/* 返回总览按键 */
+.playlist-back-btn {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: -6px;
+  transition: all 0.16s ease;
+}
+
+.playlist-back-btn:hover {
+  color: #6ee7b7;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.playlist-detail-header-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 大封面画册预览 (52px) */
+.playlist-detail-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.5),
+    0 0 0 2px rgba(110, 231, 183, 0.35);
+  background: rgba(20, 24, 36, 0.6);
+}
+
+.playlist-detail-header-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.playlist-detail-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.playlist-detail-stats {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* 顶部快捷操作组 */
+.playlist-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.playlist-hero-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-hero-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.playlist-hero-btn.primary {
+  background: rgba(110, 231, 183, 0.15);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+}
+
+.playlist-hero-btn.primary:hover {
+  background: rgba(110, 231, 183, 0.25);
+  border-color: rgba(110, 231, 183, 0.6);
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.2);
+  transform: translateY(-1px);
+}
+
+.playlist-hero-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.playlist-hero-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.playlist-hero-btn.secondary.active {
+  background: rgba(110, 231, 183, 0.14);
+  border-color: rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+}
+
+/* ------------------------------------------------------------
+   添加单曲抽屉面板 (Add Songs Inline Panel)
+   ------------------------------------------------------------ */
+.playlist-add-panel {
+  display: flex;
+  flex-direction: column;
+  background: rgba(16, 20, 30, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 200px;
+  flex-shrink: 0;
+  animation: fadeInDown 0.2s ease forwards;
+}
+
+.playlist-add-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.playlist-add-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 11.5px;
+  color: #ffffff;
+}
+
+.playlist-add-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.playlist-add-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 10px;
+  max-height: 150px;
+}
+
+.playlist-add-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.playlist-add-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 44px;
+}
+
+.playlist-add-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.playlist-add-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 8px;
+}
+
+.playlist-add-item-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-add-item-artist {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-add-item-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  cursor: pointer;
+  outline: none;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.3);
+  color: #6ee7b7;
+  transition: all 0.16s ease;
+}
+
+.playlist-add-item-btn:hover {
+  background: rgba(110, 231, 183, 0.22);
+}
+
+.playlist-add-item-btn.added {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+}
+
+/* ------------------------------------------------------------
+   详情单曲列表项 (Song Item in Playlist Detail)
+   ------------------------------------------------------------ */
+.playlist-song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.playlist-song-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 54px;
+  padding: 0 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  outline: none;
+  border: none;
+  box-sizing: border-box;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 54px;
+}
+
+.playlist-song-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+.playlist-song-item:hover::before {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(110, 231, 183, 0.25);
+  transform: scale(1.012);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.playlist-song-item.active::before {
+  background: rgba(110, 231, 183, 0.08);
+  border-color: rgba(110, 231, 183, 0.4);
+}
+
+/* 序号列 */
+.playlist-song-index {
+  position: relative;
+  z-index: 2;
+  width: 20px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.playlist-song-item.active .playlist-song-index {
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+/* 封面缩略图 (38px) */
+.playlist-song-cover-box {
+  position: relative;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.playlist-song-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 单曲标题与歌手专辑 */
+.playlist-song-meta {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.playlist-song-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-song-item.active .playlist-song-title {
+  color: #6ee7b7;
+}
+
+.playlist-song-subinfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-song-artist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 音质徽标 */
+.playlist-badge-sq {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.playlist-badge-hires {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.playlist-badge-hq {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+  flex-shrink: 0;
+}
+
+.playlist-badge-std {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+/* 时长 */
+.playlist-song-duration {
+  position: relative;
+  z-index: 2;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.35);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.playlist-song-item.active .playlist-song-duration {
+  color: rgba(110, 231, 183, 0.75);
+}
+
+/* 二态操作开关按键 (+ 添加 / - 移出) */
+.playlist-song-toggle-btn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-song-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.1);
+}
+
+.playlist-song-toggle-btn.queued {
+  background: rgba(110, 231, 183, 0.15);
+  border-color: rgba(110, 231, 183, 0.45);
+  color: #6ee7b7;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.2);
+}
+
+.playlist-song-toggle-btn.queued:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+}
+
+/* 从歌单移除按钮 */
+.playlist-song-remove-btn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-song-item:hover .playlist-song-remove-btn {
+  opacity: 0.9;
+}
+
+.playlist-song-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.playlist-song-remove-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 空状态提示 */
+.playlist-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 20px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  text-align: center;
+  gap: 10px;
+}
+
+.playlist-empty-state.mini {
+  padding: 20px 10px;
+  font-size: 11px;
+}
+
+.playlist-empty-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.playlist-empty-create-btn:hover {
+  background: rgba(110, 231, 183, 0.22);
+  border-color: rgba(110, 231, 183, 0.6);
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.2);
+  transform: translateY(-1px);
+}

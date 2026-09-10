@@ -41,6 +41,24 @@ export const IPC_CHANNELS = {
   MPD_SET_VOLUME: 'mpd:set-volume',
   /** 设置 MPD 播放模式 ('sequence' | 'shuffle' | 'single') */
   MPD_SET_MODE: 'mpd:set-mode',
+  /** 获取所有已保存歌单列表 */
+  MPD_GET_PLAYLISTS: 'mpd:get-playlists',
+  /** 获取指定歌单的单曲列表 */
+  MPD_GET_PLAYLIST_SONGS: 'mpd:get-playlist-songs',
+  /** 新建歌单 */
+  MPD_CREATE_PLAYLIST: 'mpd:create-playlist',
+  /** 删除歌单 */
+  MPD_DELETE_PLAYLIST: 'mpd:delete-playlist',
+  /** 重命名歌单 */
+  MPD_RENAME_PLAYLIST: 'mpd:rename-playlist',
+  /** 向歌单追加歌曲 */
+  MPD_ADD_TO_PLAYLIST: 'mpd:add-to-playlist',
+  /** 从歌单移除歌曲 */
+  MPD_REMOVE_FROM_PLAYLIST: 'mpd:remove-from-playlist',
+  /** 播放指定歌单 */
+  MPD_PLAY_PLAYLIST: 'mpd:play-playlist',
+  /** 将整张歌单全部歌曲追加至当前播放队列 (自动去重) */
+  MPD_ENQUEUE_PLAYLIST: 'mpd:enqueue-playlist',
   /** 主进程向渲染层广播的播放器状态变更事件 */
   MPD_STATUS_CHANGED: 'mpd:status-changed',
   /** 获取当前应用全局配置 */

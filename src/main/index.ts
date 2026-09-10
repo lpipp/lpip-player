@@ -8,21 +8,30 @@ import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
 import { IPC_CHANNELS } from './ipc-channels'
 import type { PlaybackMode } from '../types/music'
 import {
+  addToPlaylist,
   addToQueue,
   clearQueue,
+  createPlaylist,
   deduplicateQueue,
+  deletePlaylist,
+  enqueuePlaylist,
   getLibrary,
   getOrExtractAlbumCover,
+  getPlaylists,
+  getPlaylistSongs,
   getQueue,
   getSongLyrics,
   getStatus,
   moveQueueItem,
   nextSong,
   pausePlayback,
+  playPlaylist,
   playQueueItem,
   playSong,
   prevSong,
+  removeFromPlaylist,
   removeQueueItem,
+  renamePlaylist,
   rescanLibrary,
   resumePlayback,
   seekSong,
@@ -345,6 +354,47 @@ app.whenReady().then(() => {
 
   ipcMain.handle(IPC_CHANNELS.MPD_SET_MODE, async (_event, mode: PlaybackMode) => {
     const res = await setPlaybackMode(mode)
+    broadcastStatus()
+    return res
+  })
+
+  // 歌单相关 IPC 处理程序
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_PLAYLISTS, async () => {
+    return getPlaylists()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_PLAYLIST_SONGS, async (_event, name: string) => {
+    return getPlaylistSongs(name)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_CREATE_PLAYLIST, async (_event, name: string) => {
+    return createPlaylist(name)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_DELETE_PLAYLIST, async (_event, name: string) => {
+    return deletePlaylist(name)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_RENAME_PLAYLIST, async (_event, oldName: string, newName: string) => {
+    return renamePlaylist(oldName, newName)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_ADD_TO_PLAYLIST, async (_event, name: string, file: string) => {
+    return addToPlaylist(name, file)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_REMOVE_FROM_PLAYLIST, async (_event, name: string, pos: number) => {
+    return removeFromPlaylist(name, pos)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_PLAY_PLAYLIST, async (_event, name: string) => {
+    const res = await playPlaylist(name)
+    broadcastStatus()
+    return res
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_ENQUEUE_PLAYLIST, async (_event, name: string) => {
+    const res = await enqueuePlaylist(name)
     broadcastStatus()
     return res
   })
