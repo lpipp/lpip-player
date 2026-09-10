@@ -385,9 +385,21 @@
 }
 
 /* ------------------------------------------------------------
-   右侧微圆环加号按键 (加入当前播放队列)
+   右侧微圆环队列二态开关按键 (+ / - Toggle Switch)
+   状态 A: 未在队列 (+)
+   状态 B: 已在队列 (-)，翡翠绿微光高亮与平滑过渡
+   动静分离: 宿主卡片物理绝对静止，按键独立复合图层渲染
    ------------------------------------------------------------ */
+.music-track-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .music-track-add-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -397,116 +409,83 @@
   min-height: 24px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
   outline: none;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  will-change: transform, background, border-color, color, box-shadow;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .music-track-add-btn:hover {
   background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(110, 231, 183, 0.4);
+  border-color: rgba(110, 231, 183, 0.45);
   color: #6ee7b7;
   transform: scale(1.1);
 }
 
-/* 已添加队列成功态 (打勾反馈) */
-.music-track-add-btn.added {
-  background: rgba(110, 231, 183, 0.18);
+.music-track-add-btn:active {
+  transform: scale(0.94);
+}
+
+.music-track-add-btn:focus-visible {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 2px;
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.45);
+}
+
+/* 状态 B: 已在 MPD 播放队列中 (减号 -，翡翠绿微光高亮与通透液态玻璃) */
+.music-track-add-btn.in-queue {
+  background: rgba(110, 231, 183, 0.14);
+  border-color: rgba(110, 231, 183, 0.45);
+  color: #6ee7b7;
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.22), inset 0 0 4px rgba(110, 231, 183, 0.1);
+}
+
+.music-track-add-btn.in-queue:hover {
+  background: rgba(110, 231, 183, 0.24);
   border-color: #6ee7b7;
-  color: #6ee7b7;
-  transform: scale(1.05);
+  color: #a7f3d0;
+  box-shadow: 0 0 14px rgba(110, 231, 183, 0.4), inset 0 0 6px rgba(110, 231, 183, 0.18);
+  transform: scale(1.1);
 }
 
-/* 重复添加态按钮高亮 (微光指示已在队列) */
-.music-track-add-btn.duplicate {
-  background: rgba(110, 231, 183, 0.16);
-  border-color: rgba(110, 231, 183, 0.5);
-  color: #6ee7b7;
-  box-shadow: 0 0 10px rgba(110, 231, 183, 0.25);
-  transform: scale(1.06);
+.music-track-add-btn.in-queue:active {
+  transform: scale(0.94);
 }
 
-/* 右侧动作区 (承载加号按钮与已在队列提示) */
-.music-track-actions {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.music-track-btn-icon {
+  display: block;
   flex-shrink: 0;
+  overflow: visible;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 已在队列即时气泡标签 */
-.music-track-duplicate-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #6ee7b7;
-  background: rgba(110, 231, 183, 0.12);
-  border: 1px solid rgba(110, 231, 183, 0.28);
-  border-radius: 12px;
-  white-space: nowrap;
-  letter-spacing: 0.2px;
-  pointer-events: none;
-  animation: badgeFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.music-track-btn-line-h {
+  transform-origin: 12px 12px;
+  stroke: currentColor;
 }
 
-@keyframes badgeFadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(6px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
+.music-track-btn-line-v {
+  transform-origin: 12px 12px;
+  stroke: currentColor;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.18s ease;
 }
 
-/* ------------------------------------------------------------
-   曲库中心液态玻璃 Toast 提示条
-   ------------------------------------------------------------ */
-.music-library-toast {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 120;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 20px;
-  background: rgba(14, 18, 26, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(110, 231, 183, 0.35);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(110, 231, 183, 0.16);
-  color: #f1f5f9;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  pointer-events: none;
-  animation: toastSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.music-library-toast .toast-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@keyframes toastSlideDown {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -10px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0) scale(1);
-  }
+/* 状态 B: 已在 MPD 播放队列中 (竖线平滑等比收缩并淡出，纯粹保留减号 -) */
+.music-track-add-btn.in-queue .music-track-btn-line-v {
+  opacity: 0;
+  transform: scaleY(0);
 }

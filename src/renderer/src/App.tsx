@@ -279,6 +279,7 @@ export default function App() {
           await window.electronAPI.mpd.playQueueItem(existing.pos ?? 0, existing.queueId)
         } else {
           await window.electronAPI.mpd.addToQueue(song.file)
+          window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
           const updatedQueue = await window.electronAPI.mpd.getQueue()
           const newlyAdded = updatedQueue.find((item) => item.file === song.file)
           if (newlyAdded) {

@@ -19,6 +19,13 @@ let cachedSongs: MpdSong[] | null = null
 const cachedLyrics = new Map<string, LyricLine[]>()
 
 /**
+ * 转义 MPD 指令中的双引号与反斜杠，杜绝指令注入与路径语法解析错误
+ */
+export function escapeMpdString(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+}
+
+/**
  * 执行原生 MPD 纯文本 TCP 协议指令
  *
  * @param command 要发送给 MPD 的命令文本 (末尾自动补齐 \n)
@@ -49,15 +56,27 @@ export function sendMpdCommand(command: string, timeoutMs = 6000): Promise<strin
       reject(new Error(`[lpip-player:mpd] 指令执行超时: ${command.trim()}`))
     })
 
+    const trimmedCmd = command.trim()
+    const isCommandList = trimmedCmd.startsWith('command_list_begin')
+    const expectedOkCount = isCommandList
+      ? 1
+      : trimmedCmd.split('\n').filter((l) => l.trim().length > 0).length
+
     socket.on('data', (chunk) => {
       buffer += chunk.toString('utf-8')
-      // MPD 协议规范: 成功以 \nOK\n (或行末 OK\n) 终止; 错误以 ACK [error] 终止
-      if (
-        buffer.includes('\nOK\n') ||
-        buffer.endsWith('OK\n') ||
-        buffer.includes('\nACK ') ||
-        buffer.startsWith('ACK ')
-      ) {
+      const lines = buffer.split('\n')
+
+      // MPD 协议规范: 错误以以 ACK 开头的行指示
+      const ackLine = lines.find((l) => l.startsWith('ACK '))
+      if (ackLine) {
+        cleanup()
+        reject(new Error(`[lpip-player:mpd] 指令执行失败: ${command.trim()} -> ${ackLine.trim()}`))
+        return
+      }
+
+      // 统计已返回的独立 OK 终止行数 (排除 MPD 欢迎语 OK MPD ...)
+      const okCount = lines.filter((l) => l.trim() === 'OK').length
+      if (okCount >= expectedOkCount) {
         cleanup()
         resolve(buffer)
       }
@@ -70,7 +89,13 @@ export function sendMpdCommand(command: string, timeoutMs = 6000): Promise<strin
 
     socket.on('end', () => {
       cleanup()
-      resolve(buffer)
+      const lines = buffer.split('\n')
+      const ackLine = lines.find((l) => l.startsWith('ACK '))
+      if (ackLine) {
+        reject(new Error(`[lpip-player:mpd] 指令执行失败: ${command.trim()} -> ${ackLine.trim()}`))
+      } else {
+        resolve(buffer)
+      }
     })
   })
 }
@@ -420,15 +445,16 @@ export async function getStatus(): Promise<MpdStatus> {
  */
 export async function playSong(file: string): Promise<boolean> {
   try {
+    const escaped = escapeMpdString(file)
     // 检查当前队列是否已包含此曲
-    const findRes = await sendMpdCommand(`playlistfind "file" "${file}"`)
+    const findRes = await sendMpdCommand(`playlistfind "file" "${escaped}"`)
     const idMatch = findRes.match(/Id:\s*(\d+)/i)
 
     if (idMatch) {
       const songId = idMatch[1]
       await sendMpdCommand(`playid ${songId}`)
     } else {
-      const addRes = await sendMpdCommand(`addid "${file}"`)
+      const addRes = await sendMpdCommand(`addid "${escaped}"`)
       const newIdMatch = addRes.match(/Id:\s*(\d+)/i)
       if (newIdMatch) {
         await sendMpdCommand(`playid ${newIdMatch[1]}`)
@@ -590,8 +616,8 @@ export async function addToQueue(file: string): Promise<AddToQueueResult> {
       return { success: true, alreadyInQueue: true }
     }
 
-    // 2. 不存在时真正向 MPD 发送 add 指令
-    await sendMpdCommand(`add "${file}"`)
+    // 2. 不存在时真正向 MPD 发送 add 指令 (转义路径避免语法解析错误)
+    await sendMpdCommand(`add "${escapeMpdString(file)}"`)
     return { success: true, alreadyInQueue: false }
   } catch (error) {
     console.error(`[lpip-player:mpd] 添加到队列失败: ${file}`, error)
@@ -632,16 +658,36 @@ export async function playQueueItem(pos: number, queueId?: number): Promise<bool
 /**
  * 从队列中移除指定曲目
  */
-export async function removeQueueItem(pos: number, queueId?: number): Promise<boolean> {
+export async function removeQueueItem(pos: number, queueId?: number, file?: string): Promise<boolean> {
   try {
+    // 场景 1: 传入了具体文件路径 (优先彻底清理队列中所有该文件的条目，并准确返回是否命中)
+    if (file) {
+      const queue = await getQueue()
+      let found = false
+      for (const item of queue) {
+        if (item.file === file && typeof item.queueId === 'number' && !Number.isNaN(item.queueId)) {
+          await sendMpdCommand(`deleteid ${item.queueId}`)
+          found = true
+        }
+      }
+      return found
+    }
+
+    // 场景 2: 按 queueId 删除指定单项 (如 QueueDrawer 中按队列 ID 移除)
     if (typeof queueId === 'number' && !Number.isNaN(queueId)) {
       await sendMpdCommand(`deleteid ${queueId}`)
-    } else {
-      await sendMpdCommand(`delete ${pos}`)
+      return true
     }
-    return true
+
+    // 场景 3: 按 pos 索引删除单项 (保底按队列槽位)
+    if (typeof pos === 'number' && !Number.isNaN(pos) && pos >= 0) {
+      await sendMpdCommand(`delete ${pos}`)
+      return true
+    }
+
+    return false
   } catch (error) {
-    console.error(`[lpip-player:mpd] 移除队列曲目失败 (pos: ${pos}, queueId: ${queueId}):`, error)
+    console.error(`[lpip-player:mpd] 移除队列曲目失败 (pos: ${pos}, queueId: ${queueId}, file: ${file}):`, error)
     return false
   }
 }

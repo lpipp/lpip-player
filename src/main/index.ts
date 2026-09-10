@@ -319,8 +319,8 @@ app.whenReady().then(() => {
     return res
   })
 
-  ipcMain.handle(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, async (_event, pos: number, queueId?: number) => {
-    const res = await removeQueueItem(pos, queueId)
+  ipcMain.handle(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, async (_event, pos: number, queueId?: number, file?: string) => {
+    const res = await removeQueueItem(pos, queueId, file)
     broadcastStatus()
     return res
   })

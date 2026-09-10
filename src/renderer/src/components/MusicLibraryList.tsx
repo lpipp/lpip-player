@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo, useRef, type MouseEvent } from 'react'
-import type { MpdSong } from '../../../types/music'
+import { useEffect, useState, useMemo, useRef, useCallback, type MouseEvent, type KeyboardEvent } from 'react'
+import type { MpdSong, MpdStatus } from '../../../types/music'
 import './MusicLibraryList.css'
 
 /**
@@ -97,27 +97,29 @@ export default function MusicLibraryList({
   const [isRescanning, setIsRescanning] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
-  const [addedMap, setAddedMap] = useState<Record<string, boolean>>({})
-  const [duplicateMap, setDuplicateMap] = useState<Record<string, boolean>>({})
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // MPD 播放队列数据映射 (以 file 与 id 双键索引，保证 O(1) 匹配)
+  const [queuedSongs, setQueuedSongs] = useState<Map<string, MpdSong>>(new Map())
+  const lastPlaylistLenRef = useRef<number>(-1)
+  const lastPlaylistVerRef = useRef<number>(-1)
+  const syncSeqRef = useRef<number>(0)
+  const clickLockRef = useRef<Set<string>>(new Set())
+  const pendingOpsRef = useRef<Map<string, 'add' | 'remove'>>(new Map())
+  const isMountedRef = useRef<boolean>(true)
 
-  // 组件卸载时清理定时器
   useEffect(() => {
+    isMountedRef.current = true
     return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+      isMountedRef.current = false
     }
   }, [])
 
   // 加载本地曲库
   useEffect(() => {
-    let isMounted = true
-
     const fetchSongs = async (): Promise<void> => {
       try {
         if (window.electronAPI?.mpd) {
           const list = await window.electronAPI.mpd.getLibrary()
-          if (isMounted) {
+          if (isMountedRef.current) {
             setSongs(list)
             setLoading(false)
           }
@@ -126,16 +128,86 @@ export default function MusicLibraryList({
         }
       } catch (err) {
         console.error('[lpip-player:ui] 获取曲库失败:', err)
-        if (isMounted) setLoading(false)
+        if (isMountedRef.current) setLoading(false)
       }
     }
 
     fetchSongs()
+  }, [])
+
+  // 极速同步 MPD 当前实时播放队列 (支持版本序列锁与乐观状态锁定，杜绝闪烁与乱序)
+  const syncQueue = useCallback(async (): Promise<void> => {
+    const seq = ++syncSeqRef.current
+    try {
+      if (window.electronAPI?.mpd) {
+        const [queue, status] = await Promise.all([
+          window.electronAPI.mpd.getQueue(),
+          window.electronAPI.mpd.getStatus()
+        ])
+        if (!isMountedRef.current || seq !== syncSeqRef.current) return
+
+        const map = new Map<string, MpdSong>()
+        for (const item of queue) {
+          if (item.file) map.set(item.file, item)
+          if (item.id) map.set(item.id, item)
+        }
+        // 维持尚在执行中的乐观状态，避免在 500ms 轮询间隙发生按键闪烁
+        for (const [file, op] of pendingOpsRef.current.entries()) {
+          if (op === 'add') {
+            if (!map.has(file)) {
+              map.set(file, { id: file, file } as MpdSong)
+            }
+          } else if (op === 'remove') {
+            const existing = map.get(file)
+            if (existing?.id) map.delete(existing.id)
+            map.delete(file)
+          }
+        }
+        if (isMountedRef.current) {
+          setQueuedSongs(map)
+          lastPlaylistLenRef.current = queue.length
+          if (status?.playlistVersion !== undefined) {
+            lastPlaylistVerRef.current = status.playlistVersion
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[lpip-player:library] 同步播放队列失败:', err)
+    }
+  }, [])
+
+  // 监听 MPD 播放器状态广播与全局队列事件，实现双向响应式同步
+  useEffect(() => {
+    let isMounted = true
+
+    syncQueue()
+
+    // 监听 MPD 状态广播：当队列长度或版本号改变时自动同步
+    const unsubscribe = window.electronAPI?.mpd.onStatusChange((status: MpdStatus) => {
+      if (!isMounted) return
+      const lenChanged = status.playlistLength !== lastPlaylistLenRef.current
+      const verChanged =
+        status.playlistVersion !== undefined && status.playlistVersion !== lastPlaylistVerRef.current
+      if (lenChanged || verChanged) {
+        if (status.playlistVersion !== undefined) {
+          lastPlaylistVerRef.current = status.playlistVersion
+        }
+        syncQueue()
+      }
+    })
+
+    // 监听全局队列变化自定义事件 (跨组件极速响应)
+    const handleQueueChanged = (): void => {
+      if (isMounted) syncQueue()
+    }
+    window.addEventListener('lpip:queue-changed', handleQueueChanged)
 
     return () => {
       isMounted = false
+      unsubscribe?.()
+      window.removeEventListener('lpip:queue-changed', handleQueueChanged)
     }
-  }, [])
+  }, [syncQueue])
 
   // 触发 MPD 曲库重新扫描
   const handleRescan = async (e: MouseEvent): Promise<void> => {
@@ -159,38 +231,87 @@ export default function MusicLibraryList({
     setImgErrors((prev) => ({ ...prev, [fileId]: true }))
   }
 
-  // 点击添加至播放队列 (严格去重约束: 不能有两首同样的歌，已在队列时明确提示)
-  const handleAddClick = async (e: MouseEvent, song: MpdSong): Promise<void> => {
+  // 点击切换队列状态 (二态开关: 未在队列为 +，点击追加并切换为 -；已在队列为 -，点击移出并切换为 +)
+  const handleToggleQueue = async (
+    e: MouseEvent | KeyboardEvent,
+    song: MpdSong
+  ): Promise<void> => {
     e.stopPropagation()
     if (!window.electronAPI?.mpd) return
 
-    const res = await window.electronAPI.mpd.addToQueue(song.file)
+    // 避免对同一首歌曲连续点击产生并发竞争 (操作互斥锁)
+    if (clickLockRef.current.has(song.file)) return
+    clickLockRef.current.add(song.file)
 
-    // 若歌曲已在队列中：不重复添加，明确呈现“该歌曲已在队列”
-    if (res.alreadyInQueue) {
-      // 触发当前曲目按钮与徽标微光提示 (1.8s)
-      setDuplicateMap((prev) => ({ ...prev, [song.id]: true }))
-      setTimeout(() => {
-        setDuplicateMap((prev) => ({ ...prev, [song.id]: false }))
-      }, 1800)
+    const isCurrentlyQueued = queuedSongs.has(song.file) || (song.id ? queuedSongs.has(song.id) : false)
 
-      // 触发顶部液态玻璃 Toast 提示 (2s)
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-      setToastMessage('该歌曲已在队列')
-      toastTimerRef.current = setTimeout(() => {
-        setToastMessage(null)
-      }, 2000)
-      return
-    }
+    if (isCurrentlyQueued) {
+      // ------------------------------------------------------------
+      // 状态 B -> 状态 A: 从播放队列移出
+      // ------------------------------------------------------------
+      pendingOpsRef.current.set(song.file, 'remove')
+      const queuedItem = queuedSongs.get(song.file) || (song.id ? queuedSongs.get(song.id) : undefined)
 
-    if (res.success) {
-      onAddToQueue?.(song)
+      // 乐观更新：即刻切换按键为状态 A (+)
+      setQueuedSongs((prev) => {
+        const next = new Map(prev)
+        next.delete(song.file)
+        if (song.id) next.delete(song.id)
+        if (queuedItem?.id) next.delete(queuedItem.id)
+        return next
+      })
 
-      // 首次添加成功：显示 1.5s 翡翠绿打勾反馈
-      setAddedMap((prev) => ({ ...prev, [song.id]: true }))
-      setTimeout(() => {
-        setAddedMap((prev) => ({ ...prev, [song.id]: false }))
-      }, 1500)
+      try {
+        const ok = await window.electronAPI.mpd.removeQueueItem(
+          queuedItem?.pos ?? -1,
+          queuedItem?.queueId,
+          song.file
+        )
+        if (ok) {
+          window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
+        }
+      } catch (err) {
+        console.error('[lpip-player:library] 移出播放队列失败:', err)
+      } finally {
+        // IPC 飞行操作已返回，移除 pendingOps 记录以允许 syncQueue 依据真实状态对齐（含失败回滚）
+        pendingOpsRef.current.delete(song.file)
+        try {
+          await syncQueue()
+        } finally {
+          clickLockRef.current.delete(song.file)
+        }
+      }
+    } else {
+      // ------------------------------------------------------------
+      // 状态 A -> 状态 B: 追加至播放队列
+      // ------------------------------------------------------------
+      pendingOpsRef.current.set(song.file, 'add')
+
+      // 乐观更新：即刻切换按键为状态 B (-)
+      setQueuedSongs((prev) => {
+        const next = new Map(prev)
+        next.set(song.file, song)
+        if (song.id) next.set(song.id, song)
+        return next
+      })
+
+      try {
+        const res = await window.electronAPI.mpd.addToQueue(song.file)
+        if (res.success) {
+          onAddToQueue?.(song)
+          window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
+        }
+      } catch (err) {
+        console.error('[lpip-player:library] 添加至播放队列失败:', err)
+      } finally {
+        // IPC 飞行操作已返回，移除 pendingOps 记录以允许 syncQueue 依据真实状态对齐（含失败回滚）
+        pendingOpsRef.current.delete(song.file)
+        try {
+          await syncQueue()
+        } finally {
+          clickLockRef.current.delete(song.file)
+        }
+      }
     }
   }
 
@@ -214,20 +335,6 @@ export default function MusicLibraryList({
 
   return (
     <div className="music-library-container">
-      {/* 轻量液态玻璃 Toast 浮层提示: "该歌曲已在队列" */}
-      {toastMessage && (
-        <div className="music-library-toast" role="status">
-          <span className="toast-icon">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </span>
-          <span className="toast-text">{toastMessage}</span>
-        </div>
-      )}
-
       {/* 搜索与曲库信息微控制栏 */}
       <div className="music-library-toolbar">
         <div className="music-search-box">
@@ -289,7 +396,7 @@ export default function MusicLibraryList({
             {filteredSongs.map((song) => {
               const isCurrent = currentSongId === song.id || currentSongId === song.file
               const hasImgError = imgErrors[song.id]
-              const isAdded = addedMap[song.id]
+              const isQueued = queuedSongs.has(song.file) || (song.id ? queuedSongs.has(song.id) : false)
 
               return (
                 <div
@@ -349,32 +456,35 @@ export default function MusicLibraryList({
                     </div>
                   </div>
 
-                  {/* 右侧微圆环加号按键区: 加入播放队列与去重反馈 */}
+                  {/* 右侧微圆环队列二态开关按键区: 状态 A 为 +，状态 B 为 - */}
                   <div className="music-track-actions">
-                    {duplicateMap[song.id] && (
-                      <span className="music-track-duplicate-badge">该歌曲已在队列</span>
-                    )}
                     <button
                       type="button"
-                      className={`music-track-add-btn ${isAdded ? 'added' : ''} ${duplicateMap[song.id] ? 'duplicate' : ''}`}
-                      onClick={(e) => handleAddClick(e, song)}
-                      title={duplicateMap[song.id] ? '该歌曲已在队列' : isAdded ? '已追加至当前队列' : '添加到播放队列'}
-                      aria-label={duplicateMap[song.id] ? '该歌曲已在队列' : isAdded ? '已追加至当前队列' : '添加到播放队列'}
+                      className={`music-track-add-btn ${isQueued ? 'in-queue' : ''}`}
+                      onClick={(e) => handleToggleQueue(e, song)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation()
+                        }
+                      }}
+                      title={isQueued ? '从播放队列移出' : '添加至播放队列'}
+                      aria-label={isQueued ? '从播放队列移出' : '添加至播放队列'}
+                      aria-pressed={isQueued}
                     >
-                      {duplicateMap[song.id] ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      ) : isAdded ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      ) : (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                      )}
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="music-track-btn-icon"
+                      >
+                        <line x1="5" y1="12" x2="19" y2="12" className="music-track-btn-line-h" />
+                        <line x1="12" y1="5" x2="12" y2="19" className="music-track-btn-line-v" />
+                      </svg>
                     </button>
                   </div>
                 </div>

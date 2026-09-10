@@ -271,10 +271,17 @@ export default function QueueDrawer({
     }
     window.addEventListener('lpip:favorites-changed', handleFavChange)
 
+    // 监听全局队列变动事件广播 (如曲库中心加入/移出)
+    const handleQueueChange = (): void => {
+      if (isMounted) refreshQueue(false)
+    }
+    window.addEventListener('lpip:queue-changed', handleQueueChange)
+
     return () => {
       isMounted = false
       unsubscribe?.()
       window.removeEventListener('lpip:favorites-changed', handleFavChange)
+      window.removeEventListener('lpip:queue-changed', handleQueueChange)
     }
   }, [refreshQueue])
 
@@ -344,6 +351,8 @@ export default function QueueDrawer({
     } catch (err) {
       console.error('[lpip-player:queue] 移除单曲失败:', err)
       refreshQueue(false)
+    } finally {
+      window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
     }
   }
 
@@ -359,6 +368,8 @@ export default function QueueDrawer({
     } catch (err) {
       console.error('[lpip-player:queue] 清空队列失败:', err)
       refreshQueue(false)
+    } finally {
+      window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
     }
   }
 
@@ -471,6 +482,8 @@ export default function QueueDrawer({
     } catch (err) {
       console.error('[lpip-player:queue] 拖拽排序同步失败:', err)
       refreshQueue(false)
+    } finally {
+      window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
     }
   }
 

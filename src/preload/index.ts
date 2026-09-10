@@ -41,7 +41,7 @@ export interface ElectronAPI {
     /** 播放队列中指定位置或 ID 的曲目 */
     playQueueItem: (pos: number, queueId?: number) => Promise<boolean>
     /** 从当前队列中移除指定曲目 */
-    removeQueueItem: (pos: number, queueId?: number) => Promise<boolean>
+    removeQueueItem: (pos: number, queueId?: number, file?: string) => Promise<boolean>
     /** 清空当前播放队列 */
     clearQueue: () => Promise<boolean>
     /** 移动队列中曲目的位置 */
@@ -76,8 +76,8 @@ const api: ElectronAPI = {
     getQueue: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_QUEUE),
     playQueueItem: (pos: number, queueId?: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.MPD_PLAY_QUEUE_ITEM, pos, queueId),
-    removeQueueItem: (pos: number, queueId?: number) =>
-      ipcRenderer.invoke(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, pos, queueId),
+    removeQueueItem: (pos: number, queueId?: number, file?: string) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, pos, queueId, file),
     clearQueue: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_CLEAR_QUEUE),
     moveQueueItem: (fromPos: number, toPos: number) =>
       ipcRenderer.invoke(IPC_CHANNELS.MPD_MOVE_QUEUE_ITEM, fromPos, toPos),
