@@ -357,6 +357,26 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
   - 真实静音 0s，卡顿 0s，CPU 增加 < 1%；
   - 原生打通 WebAudio `AnalyserNode`，实时提取 FFT 频域能量，直接为 M2-1 频谱动效奠定物理底座。
 
+### 4.10 切歌与歌词跳转音频平滑淡出淡入与配置系统落地 (2026-09-10)
+
+- **用户需求**:
+  方案 C 瞬间排空虽然实现了 44ms 极速响应，但 0ms 硬截断会在切歌与歌词跳转时产生突兀感甚至微弱的截断爆音。要求增加可配置的淡出淡入（Fade-Out / Fade-In）平滑过渡，并在配置文件中支持开关与时长调节。
+- **架构设计与双级增益拓扑 (Two-Tier Gain)**:
+  1. **音频图解耦**:
+     - 拓扑：`AudioBufferSourceNode -> fadeGainNode (过渡专用) -> masterGainNode (音量/静音专用) -> analyserNode (FFT) -> destination`；
+     - 彻底解耦用户音量控制与切换过渡，用户在任何音量或静音状态下，过渡曲线均不污染用户设置。
+  2. **切换与排空过渡驱动 (`flushAndReconnect`)**:
+     - **淡出 (Fade-Out)**: 若 `fadeConfig.enabled` 为 true，当前 `fadeGainNode` 线性淡出至 0 (`linearRampToValueAtTime(0, now + fadeSec)`)，旧源延迟精准停止并自动销毁；若为 false 则 0ms 硬切；
+     - **接续淡入 (Fade-In)**: 首块新 PCM 数据到达时，在调度起点 `nextPlayTime` 将 `fadeGainNode` 线性淡入至 1.0 (`0 -> 1.0`)；旧流淡出与新流到达（~35-45ms）精准接续，形成极佳听感的下凹平滑过渡（Dipped Crossfade）。
+     - **暂停柔化 (`pause`)**: 暂停时执行 80ms 柔和微淡出，杜绝卡哒声。
+  3. **配置系统支持与文件热重载**:
+     - 配置文件 `~/.config/lpip-player/config.json` 与 `config.example.json` 新增 `audio.fade` 配置段（`enabled: boolean, duration: number`）；
+     - 主进程通过 `node:fs` 的 `watch()` 监听配置文件变动，带 150ms 防抖，通过 `CONFIG_CHANGED` IPC 实时广播；
+     - Preload 暴露 `window.electronAPI.config.get()` 与 `onChange()`；渲染层订阅即时更新 `pcmPlayer.setFadeConfig()`，无需重启应用即可秒级生效。
+- **实测验证 (CDP 增益采样与热更测试)**:
+  - 切歌实测增益轨迹：`dtMs: 23ms -> 1.0`, `55ms -> 0.168`, `75ms -> 0.337`, `96ms -> 0.506`, `119ms -> 0.700`, `139ms -> 0.869`, `160ms -> 1.0`，完全符合平滑过渡预期；
+  - 动态切换测试：通过脚本动态修改 `enabled: false`，渲染端 400ms 内即时收到广播并切回硬切模式；还原后即刻恢复平滑淡入淡出。
+
 ---
 
 ## 5. 下一步开发计划 (Next Milestone)
@@ -373,4 +393,6 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 ### 音频响应滞后决策结论 (已完结)
 - **方案 A**: 前端不干预 `<audio>`（已淘汰，残留 3.2s 滞后）；
 - **方案 B**: MPD 本地硬件输出（已否决，前端拿不到流导致 M2-1 无法实现）；
-- **方案 C**: 自建 `fetch` + WebAudio PCM 流式管道（**已于 2026-09-10 成功落地，3~4s 滞后彻底根除**）。
+- **方案 C**: 自建 `fetch` + WebAudio PCM 流式管道（**已于 2026-09-10 成功落地，3~4s 滞后彻底根除**）；
+- **方案 C 增强**: 双级增益平滑淡出淡入 + 配置文件热重载（**已于 2026-09-10 成功落地**）。
+

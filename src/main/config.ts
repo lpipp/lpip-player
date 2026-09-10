@@ -147,6 +147,24 @@ export interface WindowConfig {
 }
 
 /**
+ * 切歌与歌词跳转时的音频淡出淡入过渡配置
+ */
+export interface FadeConfig {
+  /** 是否开启淡出淡入平滑过渡 (默认 true; 为 false 时为瞬时硬切换) */
+  enabled: boolean
+  /** 淡入淡出时长 (毫秒, 范围 20 ~ 1000, 推荐 80 ~ 200, 默认 120) */
+  duration: number
+}
+
+/**
+ * 音频播放与音效微调配置项
+ */
+export interface AudioConfig {
+  /** 切歌与歌词跳转淡出淡入配置 */
+  fade: FadeConfig
+}
+
+/**
  * MPD 服务端连接配置项
  */
 export interface MpdConfig {
@@ -160,6 +178,7 @@ export interface MpdConfig {
  */
 export interface AppConfig {
   window: WindowConfig
+  audio: AudioConfig
   mpd: MpdConfig
 }
 
@@ -224,6 +243,21 @@ export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
 }
 
 /**
+ * 默认音频淡出淡入配置
+ */
+export const DEFAULT_FADE_CONFIG: FadeConfig = {
+  enabled: true,
+  duration: 120
+}
+
+/**
+ * 默认音频配置
+ */
+export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
+  fade: DEFAULT_FADE_CONFIG
+}
+
+/**
  * 默认配置 (当配置文件不存在或缺省字段时使用)
  */
 export const DEFAULT_CONFIG: AppConfig = {
@@ -234,6 +268,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     sidebar: DEFAULT_SIDEBAR_CONFIG,
     mica: DEFAULT_MICA_CONFIG
   },
+  audio: DEFAULT_AUDIO_CONFIG,
   mpd: {
     host: '127.0.0.1',
     port: 6600,
@@ -460,6 +495,44 @@ export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
 }
 
 /**
+ * 解析并校验音频淡出淡入过渡配置
+ */
+export function parseFadeConfig(rawFade: unknown): FadeConfig {
+  if (typeof rawFade === 'boolean') {
+    return {
+      enabled: rawFade,
+      duration: DEFAULT_FADE_CONFIG.duration
+    }
+  }
+
+  if (typeof rawFade === 'object' && rawFade !== null) {
+    const obj = rawFade as Record<string, unknown>
+    return {
+      enabled: typeof obj['enabled'] === 'boolean' ? obj['enabled'] : DEFAULT_FADE_CONFIG.enabled,
+      duration: typeof obj['duration'] === 'number'
+        ? clamp(obj['duration'], 20, 1000)
+        : DEFAULT_FADE_CONFIG.duration
+    }
+  }
+
+  return DEFAULT_FADE_CONFIG
+}
+
+/**
+ * 解析并校验音频模块全局配置
+ */
+export function parseAudioConfig(rawAudio: unknown): AudioConfig {
+  if (typeof rawAudio === 'object' && rawAudio !== null) {
+    const obj = rawAudio as Record<string, unknown>
+    return {
+      fade: parseFadeConfig(obj['fade'])
+    }
+  }
+
+  return DEFAULT_AUDIO_CONFIG
+}
+
+/**
  * 剥除 JSON 文本中的单行与多行注释 (支持 JSONC)
  * 严格保护字符串字面量内的斜杠与转义符 (例如 "http://..." 不会被破坏)
  */
@@ -560,6 +633,7 @@ export function loadConfig(customPath?: string): AppConfig {
     const theme = parseThemeConfig(parsed.window?.theme)
     const background = parseBackgroundConfig(parsed.window?.background, parsed.window?.mica)
     const sidebar = parseSidebarConfig(parsed.window?.sidebar)
+    const audio = parseAudioConfig(parsed.audio)
 
     return {
       window: {
@@ -571,6 +645,7 @@ export function loadConfig(customPath?: string): AppConfig {
         sidebar,
         mica: background.mica
       },
+      audio,
       mpd: {
         host: typeof parsed.mpd?.host === 'string' ? parsed.mpd.host : DEFAULT_CONFIG.mpd.host,
         port: typeof parsed.mpd?.port === 'number' ? parsed.mpd.port : DEFAULT_CONFIG.mpd.port,

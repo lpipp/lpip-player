@@ -6,13 +6,25 @@
  * 2. 基于 fetch + ReadableStream 零拷贝直接拉取 MPD httpd (:8000) wave/PCM 44100:16:2 无损流;
  * 3. 极速跳过 44 字节 WAV 头部, 将 16-bit 线性 PCM 小端数据实时转换为 WebAudio Float32Array;
  * 4. 采用 AudioBufferSourceNode 极低延迟调度 (基准抖动缓冲仅 35ms, 比上一代 3500ms 降低 100 倍);
- * 5. 寻道 / 切歌时实现毫秒级排空 (flushAndReconnect), 瞬间停止旧音频源, 0ms 截断旧音, ~50ms 起播新音;
- * 6. 原生集成 GainNode (平滑音量控制与静音) 与 AnalyserNode (WebAudio FFT 频域分析, 为 M2-1 奠定底座).
+ * 5. 寻道 / 切歌时实现平滑淡出淡入过渡 (支持配置文件灵活开关与时长调节, 彻底消除生硬硬切爆音);
+ * 6. 双级增益拓扑: fadeGainNode (平滑淡入淡出) -> masterGainNode (音量/静音) -> AnalyserNode (FFT 频域分析).
  */
+
+/**
+ * 音频淡出淡入过渡配置项
+ */
+export interface FadeConfig {
+  /** 是否开启淡出淡入平滑过渡 (默认 true; 为 false 时为瞬时硬切换) */
+  enabled: boolean
+  /** 淡入淡出时长 (毫秒, 范围 20 ~ 1000, 推荐 80 ~ 200, 默认 120) */
+  duration: number
+}
 
 export class PcmPlayer {
   private audioCtx: AudioContext | null = null
-  private gainNode: GainNode | null = null
+  // 双级增益拓扑: fadeGain 专职切歌/寻道平滑过渡, masterGain 专职用户主音量与静音
+  private fadeGainNode: GainNode | null = null
+  private masterGainNode: GainNode | null = null
   private analyserNode: AnalyserNode | null = null
 
   // fetch 读取流的 AbortController 句柄
@@ -29,6 +41,13 @@ export class PcmPlayer {
   private isMuted: boolean = false
   private isPlayingState: boolean = false
 
+  // 淡出淡入过渡配置与淡入标记
+  private fadeConfig: FadeConfig = {
+    enabled: true,
+    duration: 120
+  }
+  private isFadingIn: boolean = false
+
   // WAV 头部解析缓存与尾部残余字节
   private headerParsed: boolean = false
   private headerBuffer: Uint8Array = new Uint8Array(0)
@@ -39,7 +58,7 @@ export class PcmPlayer {
 
   /**
    * 初始化或获取 AudioContext 及其音频图
-   * 链路: AudioBufferSourceNode -> GainNode -> AnalyserNode -> destination
+   * 拓扑: AudioBufferSourceNode -> fadeGainNode -> masterGainNode -> AnalyserNode -> destination
    */
   public initAudioContext(): AudioContext {
     if (!this.audioCtx) {
@@ -48,7 +67,14 @@ export class PcmPlayer {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       this.audioCtx = new AudioContextClass({ sampleRate: 44100 })
 
-      this.gainNode = this.audioCtx.createGain()
+      // 1. 淡入淡出专用增益节点 (默认满增益 1.0)
+      this.fadeGainNode = this.audioCtx.createGain()
+      this.fadeGainNode.gain.setValueAtTime(1.0, this.audioCtx.currentTime)
+
+      // 2. 用户主音量与静音专用增益节点
+      this.masterGainNode = this.audioCtx.createGain()
+
+      // 3. FFT 频域分析器 (为 M2-1 频谱律动奠定底座)
       this.analyserNode = this.audioCtx.createAnalyser()
       this.analyserNode.fftSize = 256
       this.analyserNode.smoothingTimeConstant = 0.8
@@ -56,7 +82,8 @@ export class PcmPlayer {
       this.updateGain()
 
       // 串联音频拓扑
-      this.gainNode.connect(this.analyserNode)
+      this.fadeGainNode.connect(this.masterGainNode)
+      this.masterGainNode.connect(this.analyserNode)
       this.analyserNode.connect(this.audioCtx.destination)
     }
 
@@ -67,6 +94,33 @@ export class PcmPlayer {
     }
 
     return this.audioCtx
+  }
+
+  /**
+   * 动态更新淡入淡出配置 (支持配置文件热更新即时生效)
+   */
+  public setFadeConfig(config: Partial<FadeConfig>): void {
+    this.fadeConfig = {
+      enabled: typeof config.enabled === 'boolean' ? config.enabled : this.fadeConfig.enabled,
+      duration:
+        typeof config.duration === 'number'
+          ? Math.max(20, Math.min(1000, Math.round(config.duration)))
+          : this.fadeConfig.duration
+    }
+
+    // 若禁用淡出淡入, 立即复位 fadeGainNode 至 1.0 满增益并取消淡入等待
+    if (!this.fadeConfig.enabled && this.fadeGainNode && this.audioCtx) {
+      this.fadeGainNode.gain.cancelScheduledValues(this.audioCtx.currentTime)
+      this.fadeGainNode.gain.setValueAtTime(1.0, this.audioCtx.currentTime)
+      this.isFadingIn = false
+    }
+  }
+
+  /**
+   * 获取当前淡出淡入配置快照
+   */
+  public getFadeConfig(): FadeConfig {
+    return { ...this.fadeConfig }
   }
 
   /**
@@ -90,29 +144,58 @@ export class PcmPlayer {
   }
 
   /**
-   * 核心: 寻道 / 切歌时的瞬间排空与极速重连
-   * 彻底杜绝旧歌曲/旧位置音频在扬声器中滞后残留 3~4 秒
+   * 核心: 寻道 / 切歌时的瞬间排空与极速重连 (支持平滑淡出淡入)
    */
   public flushAndReconnect(url: string): void {
     this.currentStreamUrl = url
     this.isPlayingState = true
 
-    // 1. 立即中断正在接收的 HTTP fetch 流
+    const audioCtx = this.initAudioContext()
+    const now = audioCtx.currentTime
+
+    // 1. 若启用了淡入淡出且当前有正在发声的音源, 执行平滑淡出
+    if (this.fadeConfig.enabled && this.activeSources.size > 0 && this.fadeGainNode) {
+      const fadeSec = Math.max(0.02, Math.min(1.0, this.fadeConfig.duration / 1000))
+
+      // 优雅从当前增益线性淡出至 0
+      this.fadeGainNode.gain.cancelScheduledValues(now)
+      this.fadeGainNode.gain.setValueAtTime(this.fadeGainNode.gain.value, now)
+      this.fadeGainNode.gain.linearRampToValueAtTime(0, now + fadeSec)
+
+      // 旧源节点延时至淡出结束点精准停止, 随后由 onended 回调安全销毁
+      const oldSources = new Set(this.activeSources)
+      for (const src of oldSources) {
+        try {
+          src.stop(now + fadeSec)
+        } catch {
+          // 忽略已自然播放完的节点
+        }
+      }
+      this.activeSources.clear()
+
+      // 标记新流首个音频块到达时启动淡入
+      this.isFadingIn = true
+    } else {
+      // 未启用淡出淡入: 0ms 硬截断
+      if (this.fadeGainNode) {
+        this.fadeGainNode.gain.cancelScheduledValues(now)
+        this.fadeGainNode.gain.setValueAtTime(1.0, now)
+      }
+      for (const src of this.activeSources) {
+        try {
+          src.stop(0)
+          src.disconnect()
+        } catch {}
+      }
+      this.activeSources.clear()
+      this.isFadingIn = false
+    }
+
+    // 2. 立即中断正在拉取的旧 fetch HTTP 流
     if (this.abortController) {
       this.abortController.abort()
       this.abortController = null
     }
-
-    // 2. 瞬间停止并断开所有已调度至 WebAudio 队列的音频源 (0ms 硬截断)
-    for (const src of this.activeSources) {
-      try {
-        src.stop(0)
-        src.disconnect()
-      } catch {
-        // 已结束的节点忽略异常
-      }
-    }
-    this.activeSources.clear()
 
     // 3. 重置调度时间轴与数据残留缓冲
     this.nextPlayTime = 0
@@ -130,24 +213,41 @@ export class PcmPlayer {
   public pause(): void {
     this.isPlayingState = false
 
-    // 中断 fetch, 停止所有正在发声的节点
     if (this.abortController) {
       this.abortController.abort()
       this.abortController = null
     }
 
-    for (const src of this.activeSources) {
-      try {
-        src.stop(0)
-        src.disconnect()
-      } catch {}
+    const audioCtx = this.audioCtx
+    if (this.fadeConfig.enabled && this.fadeGainNode && audioCtx && this.activeSources.size > 0) {
+      const now = audioCtx.currentTime
+      const fadeSec = Math.min(0.08, this.fadeConfig.duration / 1000)
+      this.fadeGainNode.gain.cancelScheduledValues(now)
+      this.fadeGainNode.gain.setValueAtTime(this.fadeGainNode.gain.value, now)
+      this.fadeGainNode.gain.linearRampToValueAtTime(0, now + fadeSec)
+
+      const sourcesToStop = new Set(this.activeSources)
+      for (const src of sourcesToStop) {
+        try {
+          src.stop(now + fadeSec)
+        } catch {}
+      }
+      this.activeSources.clear()
+    } else {
+      for (const src of this.activeSources) {
+        try {
+          src.stop(0)
+          src.disconnect()
+        } catch {}
+      }
+      this.activeSources.clear()
     }
-    this.activeSources.clear()
 
     this.nextPlayTime = 0
     this.headerParsed = false
     this.headerBuffer = new Uint8Array(0)
     this.residualBytes = new Uint8Array(0)
+    this.isFadingIn = false
 
     if (this.audioCtx && this.audioCtx.state === 'running') {
       this.audioCtx.suspend().catch(() => {})
@@ -323,8 +423,9 @@ export class PcmPlayer {
 
     const source = audioCtx.createBufferSource()
     source.buffer = audioBuffer
-    if (this.gainNode) {
-      source.connect(this.gainNode)
+    // 接入淡入淡出增益节点
+    if (this.fadeGainNode) {
+      source.connect(this.fadeGainNode)
     }
 
     const now = audioCtx.currentTime
@@ -332,6 +433,16 @@ export class PcmPlayer {
     // 若调度时钟落后于当前真实时间 (初建连或系统卡顿), 强制对齐到 now + 35ms 重新连续平铺
     if (this.nextPlayTime < now + 0.015) {
       this.nextPlayTime = now + 0.035
+    }
+
+    // 若当前为切歌或寻道后的淡入阶段, 启动从 0 渐进至 1.0 的平滑淡入
+    if (this.isFadingIn && this.fadeGainNode) {
+      this.isFadingIn = false
+      const fadeSec = Math.max(0.02, Math.min(1.0, this.fadeConfig.duration / 1000))
+      const fadeInStart = this.nextPlayTime
+      this.fadeGainNode.gain.cancelScheduledValues(fadeInStart)
+      this.fadeGainNode.gain.setValueAtTime(0, fadeInStart)
+      this.fadeGainNode.gain.linearRampToValueAtTime(1.0, fadeInStart + fadeSec)
     }
 
     source.start(this.nextPlayTime)
@@ -347,12 +458,12 @@ export class PcmPlayer {
   }
 
   /**
-   * 平滑更新增益 (5ms 线性微渐变, 杜绝音量瞬变产生的喀哒爆音)
+   * 平滑更新主增益 (5ms 线性微渐变, 杜绝用户音量瞬变产生的喀哒爆音)
    */
   private updateGain(): void {
-    if (!this.gainNode || !this.audioCtx) return
+    if (!this.masterGainNode || !this.audioCtx) return
     const targetGain = this.isMuted ? 0 : this.currentVolume
-    this.gainNode.gain.setTargetAtTime(targetGain, this.audioCtx.currentTime, 0.005)
+    this.masterGainNode.gain.setTargetAtTime(targetGain, this.audioCtx.currentTime, 0.005)
   }
 }
 

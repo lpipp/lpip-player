@@ -85,9 +85,25 @@ export default function App() {
     }
   }
 
-  // 挂载时初始化状态查询与订阅 IPC 状态广播
+  // 挂载时初始化状态查询、应用全局配置与订阅 IPC 广播
   useEffect(() => {
     let isMounted = true
+
+    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡)
+    window.electronAPI?.config.get().then((cfg) => {
+      if (!isMounted || !cfg) return
+      if (cfg.audio?.fade) {
+        pcmPlayer.setFadeConfig(cfg.audio.fade)
+      }
+    })
+
+    // 监听运行时配置热更新 (用户编辑 config.json 后即时生效)
+    const unsubConfig = window.electronAPI?.config.onChange((cfg) => {
+      if (!isMounted || !cfg) return
+      if (cfg.audio?.fade) {
+        pcmPlayer.setFadeConfig(cfg.audio.fade)
+      }
+    })
 
     window.electronAPI?.mpd.getStatus().then((status) => {
       if (!isMounted || !status) return
@@ -101,6 +117,7 @@ export default function App() {
 
     return () => {
       isMounted = false
+      unsubConfig?.()
       unsubscribe?.()
       pcmPlayer.stop()
     }

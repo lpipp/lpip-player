@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs'
+import { existsSync, watch } from 'node:fs'
 import { extname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, protocol, net, ipcMain } from 'electron'
 
-import { loadConfig } from './config'
+import { loadConfig, getDefaultConfigPath } from './config'
 import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
 import { IPC_CHANNELS } from './ipc-channels'
 import type { PlaybackMode } from '../types/music'
@@ -281,6 +281,35 @@ app.whenReady().then(() => {
   ipcMain.handle(IPC_CHANNELS.MPD_SET_MODE, async (_event, mode: PlaybackMode) => {
     return setPlaybackMode(mode)
   })
+
+  // 获取当前应用运行时全局配置
+  ipcMain.handle(IPC_CHANNELS.CONFIG_GET, async () => {
+    return loadConfig()
+  })
+
+  // 监听配置文件变更并向渲染层广播热更新
+  const configFilePath = getDefaultConfigPath()
+  let configDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  if (existsSync(configFilePath)) {
+    try {
+      watch(configFilePath, () => {
+        if (configDebounceTimer) clearTimeout(configDebounceTimer)
+        configDebounceTimer = setTimeout(() => {
+          try {
+            const updatedConfig = loadConfig()
+            const windows = BrowserWindow.getAllWindows()
+            if (windows.length > 0 && !windows[0].isDestroyed()) {
+              windows[0].webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+            }
+          } catch {
+            // 忽略文件读取过程中的瞬态竞争
+          }
+        }, 150)
+      })
+    } catch {
+      // 忽略文件监听异常
+    }
+  }
 
   // 启动 MPD 实时播放状态监听轮询器 (500ms 刷新并广播变更)
   setInterval(async () => {

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../main/ipc-channels'
 import type { LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AppConfig } from '../main/config'
 
 /**
  * 暴露给渲染进程的安全 API 接口定义
@@ -38,6 +39,12 @@ export interface ElectronAPI {
     /** 监听 MPD 播放器状态实时变更 */
     onStatusChange: (callback: (status: MpdStatus) => void) => () => void
   }
+  config: {
+    /** 获取当前应用全局运行时配置 */
+    get: () => Promise<AppConfig>
+    /** 监听配置文件变更并触发回调 */
+    onChange: (callback: (config: AppConfig) => void) => () => void
+  }
 }
 
 const api: ElectronAPI = {
@@ -61,6 +68,16 @@ const api: ElectronAPI = {
       ipcRenderer.on(IPC_CHANNELS.MPD_STATUS_CHANGED, handler)
       return (): void => {
         ipcRenderer.removeListener(IPC_CHANNELS.MPD_STATUS_CHANGED, handler)
+      }
+    }
+  },
+  config: {
+    get: () => ipcRenderer.invoke(IPC_CHANNELS.CONFIG_GET),
+    onChange: (callback: (config: AppConfig) => void) => {
+      const handler = (_event: unknown, cfg: AppConfig): void => callback(cfg)
+      ipcRenderer.on(IPC_CHANNELS.CONFIG_CHANGED, handler)
+      return (): void => {
+        ipcRenderer.removeListener(IPC_CHANNELS.CONFIG_CHANGED, handler)
       }
     }
   }

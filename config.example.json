@@ -122,6 +122,19 @@
     }
   },
 
+  // 音频播放与音效过渡配置 (Audio & Transition Effects):
+  "audio": {
+    // 切歌与歌词跳转时的淡出淡入过渡配置 (Crossfade / Fade Transition)
+    "fade": {
+      // 开关: 是否启用切歌与歌词跳转时的平滑淡出淡入 (true: 开启, false: 瞬时硬切)
+      "enabled": true,
+
+      // 淡入淡出过渡时长 (单位 ms，范围 20 ~ 1000，推荐 80 ~ 200，默认 120):
+      // 切歌或跳转歌词时，上一段音频以该时长线性淡出，新音频以该时长平滑淡入，完全杜绝爆音与突兀截断感
+      "duration": 120
+    }
+  },
+
   // MPD (Music Player Daemon) 后端连接配置
   // 本地服务已开机自启 (systemctl --user status mpd)，无需重复探测
   "mpd": {

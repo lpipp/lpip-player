@@ -32,5 +32,9 @@ export const IPC_CHANNELS = {
   /** 设置 MPD 播放模式 ('sequence' | 'shuffle' | 'single') */
   MPD_SET_MODE: 'mpd:set-mode',
   /** 主进程向渲染层广播的播放器状态变更事件 */
-  MPD_STATUS_CHANGED: 'mpd:status-changed'
+  MPD_STATUS_CHANGED: 'mpd:status-changed',
+  /** 获取当前应用全局配置 */
+  CONFIG_GET: 'config:get',
+  /** 主进程向渲染层广播的配置变更事件 (文件热更新) */
+  CONFIG_CHANGED: 'config:changed'
 } as const
