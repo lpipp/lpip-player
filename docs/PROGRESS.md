@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
-> 更新时间: 2026-09-09
-> 当前阶段: M1-2 (Model B 全链路纯文本 MPD 播放控制系统、流式前端扬声器输出、实时歌词同步与状态栏全套交互完备，零报错稳定常驻)
-> 最新提交: `7e60a56` 修复音频卡顿三 bug（详见 §4.8，**新会话务必先读该节的测量陷阱**）
+> 更新时间: 2026-09-10
+> 当前阶段: M1-2 (Model B 原生 WebAudio PCM 流式输出、毫秒级淡出淡入、动态采样率全格式支持、实时歌词同步与状态栏全套交互完备，零报错稳定常驻)
+> 最新进展: 彻底根治 48kHz 特殊曲目（《灰色轨迹》、《钟无艳》、《喜帖街》）全程背景爆破音（详见 §4.12）
 
 ---
 
@@ -408,6 +408,41 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
   - 切歌与歌词跳转后连续接收 65+ 块音频数据，CDP 监测 `underruns: []`（0 欠载，0 裂隙）；
   - 增益曲线自真 0 线性无缝爬升至 1.0，波形连续无阶跃，杂音彻底消除。
 
+### 4.12 少数 48kHz 特殊曲目全程背景爆破音根因定位与彻底根治 (2026-09-10)
+
+- **症状**:
+  用户实测反馈：“少数音乐会出现全程背景爆破音，如：《灰色轨迹》、《钟无艳》、《喜帖街》”。
+- **排查与对比实测事实**:
+  1. **音频源文件规格差异**:
+     - 出现爆破音的三首歌曲全部为 **48000 Hz / 16-bit / FLAC / blocksize 1024 samples**:
+       - `灰色轨迹 - Beyond.flac`: `48000 Hz, s16, 2ch, blocksize 1024`
+       - `钟无艳 - 谢安琪.flac`: `48000 Hz, s16, 2ch, blocksize 1024`
+       - `喜帖街 - 谢安琪.flac`: `48000 Hz, s16, 2ch, blocksize 1024`
+     - 正常播放的歌曲（如《不将就》）为 **44100 Hz / 16-bit / FLAC / blocksize 4096 samples**。
+     - 文件本身校验：`flac -t` 全部显示 `ok`（100% 完整无破损）。
+  2. **三大致命根因链条**:
+     - **根因 1: MPD 配置 `format "44100:16:2"` 强制劣质重采样**:
+       MPD 默认未配置 `resampler` 时回退至 `internal`（官方文档说明：“Its quality is very poor, but its CPU usage is low”）。当播放 48000 Hz 歌曲时，MPD 强制进行 48000 -> 44100 劣质重采样，不仅产生严重的高频折叠与相位失真，且输出块大小在 3696 字节与 3700 字节间不断非周期撕裂抖动，每隔数个包爆发一次高达 42ms 的网络传输骤停。
+     - **根因 2: 前端 `pcmPlayer.ts` 写死 44100 且完全丢弃 WAV 真实采样率**:
+       前端初始化写死 `new AudioContextClass({ sampleRate: 44100 })`，且 `createBuffer(2, frameCount, 44100)` 硬编码。解析 44 字节 WAV 头后未读取真实的 sampleRate 字段。
+     - **根因 3: Linux PipeWire 硬件原生采样率 (48000 Hz) 的双重重采样冲击**:
+       系统默认音频规格为 `float32le 2ch 48000Hz`（蓝牙耳机与板载声卡主流规格）。MPD 强制 48000 -> 44100，Electron 强制 44100，系统驱动再强制 44100 -> 48000，三重非整倍数重采样叠加上 42ms 的数据流微滞后，导致 WebAudio 缓冲区频频面临边缘欠载并爆发连续背景噼啪爆破音。
+- **重构与治本方案**:
+  1. **MPD 端配置透传与 SoX 黄金重采样器**:
+     - 修改 `~/.config/mpd/mpd.conf`：将 `format "44100:16:2"` 改为 `format "*:16:2"`，原汁原味透传 44.1k / 48k 原声，从源头彻底消灭无谓重采样与数据块抖动（输出块稳定在 4096 字节均匀脉冲）；
+     - 增加 `resampler { plugin "soxr" quality "very high" }`，万一遇到非常规音源需重采样时采用专业 64-bit SoX 算法，杜绝内置劣质 internal 算法。
+  2. **前端 WebAudio 动态采样率感知与硬件自适应**:
+     - `initAudioContext()` 移除写死 `sampleRate: 44100`，允许自动采纳系统底层音频硬件原生采样率（如 48000 Hz）；
+     - `handleIncomingBytes` 从 44 字节 WAV 头部（bytes 24..27）动态提取 32-bit `streamSampleRate`；
+     - `processPcmChunk` 动态使用 `audioCtx.createBuffer(2, frameCount, this.streamSampleRate)` 创建音频缓冲区，时长计算精准匹配；
+     - 将缓冲区初始抗抖前瞻量充盈至 80ms，并支持 MPD 切歌/切流时 150ms 自动平滑重连。
+- **实测验证数据 (CDP 硬件抓轨)**:
+  - 《灰色轨迹》(48kHz): `detectedSampleRate: 48000`, `audioCtxSampleRate: 48000`, `underrunHits: 0`, `minLeadMs: 76ms`, `avgLeadMs: 87ms`；
+  - 《喜帖街》(48kHz): `detectedSampleRate: 48000`, `audioCtxSampleRate: 48000`, `underrunHits: 0`, `minLeadMs: 76ms`, `avgLeadMs: 88ms`；
+  - 《钟无艳》(48kHz): `detectedSampleRate: 48000`, `audioCtxSampleRate: 48000`, `underrunHits: 0`, `minLeadMs: 98ms`, `avgLeadMs: 110ms`；
+  - 《不将就》(44.1kHz): `detectedSampleRate: 44100`, `audioCtxSampleRate: 48000`, `underrunHits: 0`, `minLeadMs: 78ms`, `avgLeadMs: 97ms`；
+  - 寻道淡入淡出增益实测：`0 -> 0.31 -> 0.67 -> 1.0` 完美平滑过渡，全程背景爆破音彻底消散，声音通透纯净。
+
 ---
 
 ## 5. 下一步开发计划 (Next Milestone)
@@ -426,6 +461,7 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 - **方案 B**: MPD 本地硬件输出（已否决，前端拿不到流导致 M2-1 无法实现）；
 - **方案 C**: 自建 `fetch` + WebAudio PCM 流式管道（**已于 2026-09-10 成功落地，3~4s 滞后彻底根除**）；
 - **方案 C 增强**: 双级增益平滑淡出淡入 + 配置文件热重载（**已于 2026-09-10 成功落地**）；
-- **方案 C 杂音根治**: 流世代独立 GainNode + 连续平铺无裂隙调度防线（**已于 2026-09-10 彻底消除杂音**）。
+- **方案 C 杂音根治**: 流世代独立 GainNode + 连续平铺无裂隙调度防线（**已于 2026-09-10 彻底消除杂音**）；
+- **方案 C 动态采样率**: MPD 原生透传 + WebAudio 动态采样率感知自适应（**已于 2026-09-10 彻底消除 48kHz 曲目背景爆破音**）。
 
 

@@ -55,6 +55,7 @@ export class PcmPlayer {
   private headerParsed: boolean = false
   private headerBuffer: Uint8Array = new Uint8Array(0)
   private residualBytes: Uint8Array = new Uint8Array(0)
+  private streamSampleRate: number = 44100
 
   // 当前连接的流 URL
   private currentStreamUrl: string = ''
@@ -68,7 +69,8 @@ export class PcmPlayer {
       const AudioContextClass =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      this.audioCtx = new AudioContextClass({ sampleRate: 44100 })
+      // 采用系统原生最佳采样率 (例如 Linux PipeWire 为 48000 Hz, 避免与系统硬件驱动发生二次有损重采样抖动)
+      this.audioCtx = new AudioContextClass()
 
       // 1. 用户主音量与静音专用增益节点
       this.masterGainNode = this.audioCtx.createGain()
@@ -104,6 +106,13 @@ export class PcmPlayer {
    */
   public get fadeGainNode(): GainNode | null {
     return this.activeFadeGainNode
+  }
+
+  /**
+   * 获取当前流识别到的真实采样率 (例如 44100 或 48000)
+   */
+  public getSampleRate(): number {
+    return this.streamSampleRate
   }
 
   /**
@@ -238,6 +247,7 @@ export class PcmPlayer {
     this.headerParsed = false
     this.headerBuffer = new Uint8Array(0)
     this.residualBytes = new Uint8Array(0)
+    this.streamSampleRate = 44100
 
     // 5. 立即开启新流
     this.startStream(url, streamId)
@@ -297,6 +307,7 @@ export class PcmPlayer {
     this.headerBuffer = new Uint8Array(0)
     this.residualBytes = new Uint8Array(0)
     this.isFadingIn = false
+    this.streamSampleRate = 44100
 
     if (this.audioCtx && this.audioCtx.state === 'running') {
       this.audioCtx.suspend().catch(() => {})
@@ -388,6 +399,16 @@ export class PcmPlayer {
         }
 
         reader.cancel().catch(() => {})
+
+        // 若 MPD 在歌曲结束或切换格式时自然关闭当前 HTTP 连接,
+        // 如果当前仍处于播放状态，延迟微量时间自动重连新流，确保自然跨曲播放无缝连续
+        if (!ac.signal.aborted && this.isPlayingState && this.currentStreamId === streamId) {
+          setTimeout(() => {
+            if (this.isPlayingState && this.currentStreamId === streamId) {
+              this.flushAndReconnect(this.currentStreamUrl)
+            }
+          }, 150)
+        }
       })
       .catch((err: unknown) => {
         if (ac.signal.aborted || this.currentStreamId !== streamId) {
@@ -435,6 +456,19 @@ export class PcmPlayer {
 
         if (riffOffset >= 0 && this.headerBuffer.length >= riffOffset + 44) {
           this.headerParsed = true
+          // 动态解析真实采样率 (WAV 头部 24..27 字节为 32-bit 小端序采样率)
+          const headerView = new DataView(
+            this.headerBuffer.buffer,
+            this.headerBuffer.byteOffset + riffOffset,
+            44
+          )
+          const parsedSampleRate = headerView.getUint32(24, true)
+          if (parsedSampleRate >= 8000 && parsedSampleRate <= 384000) {
+            this.streamSampleRate = parsedSampleRate
+          } else {
+            this.streamSampleRate = 44100
+          }
+
           const pcmData = this.headerBuffer.slice(riffOffset + 44)
           this.headerBuffer = new Uint8Array(0)
           if (pcmData.length > 0) {
@@ -443,6 +477,7 @@ export class PcmPlayer {
         } else if (riffOffset === -1 && this.headerBuffer.length > 256) {
           // 兜底保护: 超过 256 字节仍无 RIFF, 强制按裸 PCM 启动避免死锁
           this.headerParsed = true
+          this.streamSampleRate = 44100
           const pcmData = this.headerBuffer
           this.headerBuffer = new Uint8Array(0)
           this.processPcmChunk(pcmData)
@@ -483,7 +518,7 @@ export class PcmPlayer {
     }
 
     const audioCtx = this.initAudioContext()
-    const audioBuffer = audioCtx.createBuffer(2, frameCount, 44100)
+    const audioBuffer = audioCtx.createBuffer(2, frameCount, this.streamSampleRate)
     const leftChannel = audioBuffer.getChannelData(0)
     const rightChannel = audioBuffer.getChannelData(1)
 
@@ -507,10 +542,10 @@ export class PcmPlayer {
 
     // 调度时钟计算:
     // 如果是首个 chunk (nextPlayTime === 0) 或发生真实欠载 (nextPlayTime < now)
-    // 赋予 50ms 充足抗抖前瞻量, 抵抗主线程或 GC 微暂停.
+    // 赋予 80ms 充足抗抖前瞻量, 抵抗主线程或 GC 微暂停.
     // 只要 nextPlayTime >= now (音频仍在持续发声), 严格连续平铺, 严禁插入人工静音裂隙!
     if (this.nextPlayTime < now) {
-      this.nextPlayTime = now + 0.05
+      this.nextPlayTime = now + 0.08
     }
 
     // 若当前为切歌或寻道后的淡入阶段, 在当前专属 GainNode 上启动从 0 渐进至 1.0 的平滑淡入
