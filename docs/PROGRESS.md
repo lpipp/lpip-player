@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-10
-> 当前阶段: M2-2 (悬浮长条胶囊第3按键“艺人分类 (ArtistDrawer)”双级钻取画册流完备，460px 宽阔视窗，零报错稳定常驻)
-> 最新进展: 完成悬浮胶囊第 3 按钮重构为艺人分类（方案 A 双级钻取微画册流落地：艺人总览 + 44px 圆形微棱头像 + 详情页 Hero 卡片 + 单曲二态开关闭环，详见 §2.13）
+> 当前阶段: M2-2 (曲库中心、播放队列、艺人分类统一配备液态玻璃微光滑动条，460px 宽阔视窗，零报错稳定常驻)
+> 最新进展: 完成曲库中心、播放队列与艺人分类（总览+单曲）的统一液态玻璃微光滑动条全覆盖（5px/6px 药丸胶囊圆角 + 薄荷绿翡翠微光高亮 + 零原生粗灰条 + 通配抑制解构，详见 §2.14）
 
 ---
 
@@ -311,6 +311,28 @@
   - 展开即刻呈现 238 位艺人，周杰伦（28首）、陈奕迅（24首）、薛之谦（19首）等热门艺人依作品数优先排布；
   - 单击艺人卡片钻取进入单曲详情，返回按钮一键秒回总览列表，零卡顿零报错。
 
+### 2.14 曲库中心、播放队列与艺人分类液态玻璃微光滑动条 (`Liquid Glass Scrollbar`)
+- **设计哲学与参数规范**:
+  - 彻底杜绝系统原生粗灰方块或杂乱边框滚动条，在 `global.css` 中抽象通用的 `.liquid-scrollbar` 规范类与 WebKit 伪元素族；
+  - **滑轨宽度**: 常态极细 `5px`，鼠标悬停于滚动容器或拖拽滑块时平滑扩展至 `6px`，既保证可点击拖拽，又绝不遮挡或挤压 380px 卡片面积；
+  - **轨道 (Track)**: `background: transparent` 完全隐形，透出后方黑曜石磨砂底色与动态壁纸；
+  - **滑块形态 (Thumb)**: 胶囊药丸圆角 `border-radius: 999px`，常态黑曜石半透明微白 `rgba(255, 255, 255, 0.18)`；
+  - **微光互动反馈**: Hover 与 Active 状态点亮品牌薄荷翡翠高光 `rgba(110, 231, 183, 0.65)` 并附带拟物微外发光 `box-shadow: 0 0 8px rgba(110, 231, 183, 0.4)`；
+  - **全主题支持**: 支持深色黑曜石模式与浅色白玉霜雪模式自适应变量（浅色下为墨玉黑半透 `rgba(0, 0, 0, 0.16)` 与草木绿高光）。
+- **三大核心歌曲栏全场景覆盖**:
+  1. **曲库中心 (`MusicLibraryList`)**: 400+ 本地音源长列表平滑滚动，右侧预留 3px 缝隙；
+  2. **播放队列 (`QueueDrawer`)**: 实时播放队列随曲目增多平滑展现，与 HTML5 原生拖拽排序互不干扰；
+  3. **艺人分类 (`ArtistDrawer`)**: 艺人总览列表（238 位歌手）与详情页单曲列表同步获得液态玻璃滑动条支持。
+- **防抖与通配符解构**:
+  - 重构 `SidebarCapsule.css` 中的全通配隐藏规则，排除 `:not(.liquid-scrollbar)`，释放子组件滚动条展示权；
+  - 滚动容器严格保持 `overflow-x: hidden`，卡片定格 380px，彻底杜绝出现横向滚动条与布局挤压抖动。
+- **实测数据 (CDP 硬件抓轨)**:
+  - 曲库中心: `scrollHeight: 33720`, `clientHeight: 237`, `isLiquid: true`；
+  - 播放队列: 入队后 `scrollHeight: 614`, `clientHeight: 364`, `isLiquid: true`；
+  - 艺人分类总览: `scrollHeight: 15728`, `clientHeight: 364`, `isLiquid: true`；
+  - 艺人单曲详情: `scrollHeight: 1646`, `clientHeight: 264`, `isLiquid: true`；
+  - CSS 规则: `hasLiquidRule: true`, `thumbColor: rgba(255, 255, 255, 0.18)`, `thumbHover: rgba(110, 231, 183, 0.65)`。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -575,6 +597,18 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 4. **MPD 按文件移除队列曲目的安全阻断 (Pos 0 Guard)**:
    - 调用 `removeQueueItem(pos, queueId, file)` 时，若传入了 `file` 参数，在遍历队列尝试移除完毕后必须立即 `return found`；
    - 严禁在文件未命中时继续下泄执行默认的 `delete pos`，防止回退位置默认值 `0` 误删队列第 0 号无辜歌曲。
+
+### 4.15 悬浮抽屉滚动条全局通配隐藏霸道抑制与特许放行纪律 (2026-09-10)
+
+1. **子组件伪类规则被父级通配符压制**:
+   - 在子组件的 CSS 中即便写了 `::-webkit-scrollbar { display: block !important; }`，滚动条依然不可见；
+   - 根因：祖先容器 `SidebarCapsule.css` 中声明了 `.sidebar-capsule *::-webkit-scrollbar { display: none !important; }` 与 `.sidebar-capsule * { scrollbar-width: none !important; }`，由于通配符选择器带 `!important` 且挂在最外层祖先上，子组件局部的样式规则会被霸道覆盖。
+2. **精准排除与特许放行模式 (Whitelist Approach)**:
+   - 不能用一刀切的全局通配抑制，应将规则精准收敛为 `:not(.liquid-scrollbar)::-webkit-scrollbar` 与 `*:not(.liquid-scrollbar)`；
+   - 这样未声明滑动条的视口（如父层容器、工具栏、导轨等）依然保持干净平整无原生粗灰条，而挂载了 `.liquid-scrollbar` 的核心歌曲列表区域则能完美展示定制的高质感液态玻璃微光滑动条。
+3. **零抖动与防挤压间距 (Anti-Jitter Gutter)**:
+   - 滚动容器严格配置 `overflow-x: hidden`，内部卡片固定为 380px，右侧预留 3px~8px 内边距；
+   - 极细 5px 滑轨在鼠标悬停时平滑微扩至 6px，不引起内容横向重排或文字位移抖动。
 
 ---
 
