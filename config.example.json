@@ -135,6 +135,24 @@
     }
   },
 
+  // 音频频谱可视化律动配置 (Spectrum Visualizer):
+  "visualizer": {
+    // 频谱开关: true 启用频谱动效, false 彻底休眠 RAF 循环并隐藏画布
+    "enabled": true,
+
+    // 频谱画布高度 (单位 px, 范围 40 ~ 600, 推荐 120 ~ 240, 默认 160)
+    "height": 160,
+
+    // 可视化整体不透明度 (范围 0.0 ~ 1.0, 默认 0.85)
+    "opacity": 0.85,
+
+    // 视觉渲染风格:
+    // "blueprint": 高级制表纯线条蓝图工程风 + 散点粒子微光 (推荐, 默认)
+    // "wave": 极细高频工程波形正弦包络线
+    // "bars": 精密制表刻度柱状频段
+    "style": "blueprint"
+  },
+
   // MPD (Music Player Daemon) 后端连接配置
   // 本地服务已开机自启 (systemctl --user status mpd)，无需重复探测
   "mpd": {

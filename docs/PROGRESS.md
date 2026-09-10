@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-10
-> 当前阶段: M1-2 (Model B 原生 WebAudio PCM 流式输出、毫秒级淡出淡入、动态采样率全格式支持、实时歌词同步与状态栏全套交互完备，零报错稳定常驻)
-> 最新进展: 彻底根治 48kHz 特殊曲目（《灰色轨迹》、《钟无艳》、《喜帖街》）全程背景爆破音（详见 §4.12）
+> 当前阶段: M2-1 (高级制表纯线条蓝图音频频谱律动图层 SpectrumVisualizer 完备，Canvas 2D 零内存分配与自适应 RAF 休眠落地，零报错稳定常驻)
+> 最新进展: 完成 M2-1 高性能 WebAudio FFT 蓝图频谱律动图层（详见 §2.8）
 
 ---
 
@@ -202,6 +202,26 @@
 - **实机运行与桌面常驻**:
   - KDE Plasma 6 Wayland 桌面常驻运行中，CDP 与实机核验均 100% 达成预期；
   - `pnpm typecheck` 与 `pnpm build` 持续保持 0 错误通过。
+
+### 2.8 高级制表纯线条蓝图音频频谱律动图层 (`SpectrumVisualizer`) - M2-1 完成
+- **设计风格**: 瑞士高级制表工艺纯线条蓝图工程风 (High Horology Line Blueprint)
+  - 严格遵守 `fill: none` 纯线条与 `#6ee7b7` 薄荷绿微光漫射；
+  - 底部基准标尺刻度线 (Vernier Caliper Datum Baseline) + 30px 微米分度刻度齿 + 120px 大刻度工程微型十字瞄准准星；
+  - 双轨工程包络线：主频域轮廓三阶样条曲线 (`Catmull-Rom` 贝塞尔平滑) + 延时衰减冷青虚线 (`ghostPoints`，4px 4px 点划)；
+  - 峰值机芯轴承枢轴 (Nodal Bearings)：局部频域峰值点绘制微圆轴承与垂向投影辅助虚线；
+  - 散点粒子微光 (Scattered Particle Glimmers)：声浪迸发时激活动态微光粒子升起并柔和消散。
+- **布局定位与严格图层层级 (Layer Hierarchy)**:
+  - 物理位置定格于状态栏正上方 (`bottom: 80px; width: 100%`)；
+  - 严格图层层级：壁纸图层 `WallpaperLayer` (0) < 频谱图层 `SpectrumVisualizer` (5) < 机械齿轮 `MechanicalGear` (10~12) < 底部状态栏 `StatusBar` (100)；
+  - 全局声明 `pointer-events: none`，完全透传鼠标交互，不遮挡星盘歌词、齿轮与胶囊抽屉。
+- **极致性能与防劣化保障 (Zero-Degradation)**:
+  - **零 React State 循环**: 60fps 渲染全走原生 Canvas 2D + direct ref，绝不触发任何组件重渲染；
+  - **零内存分配 (Zero-Allocation)**: `Uint8Array`, `Float32Array`, `BlueprintPoint[]`, `GlimmerParticle[]` 全生命周期复用预分配对象池，杜绝 GC 内存抖动；
+  - **自适应 RAF 智能休眠 (Adaptive RAF Sleeping)**: 播放暂停、停止或检测到持续静音时，曲线平滑归零后彻底清空画布并停用 `requestAnimationFrame`，释放 CPU/GPU 算力。
+- **配置体系与热重载 (`visualizer`)**:
+  - 在 `config.json` 与 `config.example.json` 中扩展 `visualizer` 配置块；
+  - 支持 `enabled`（总开关）、`height`（画布高度 40~600px）、`opacity`（不透明度 0.0~1.0）、`style`（'blueprint' | 'wave' | 'bars'）；
+  - 主进程与渲染端通过 IPC `CONFIG_CHANGED` 实时热更，修改配置文件秒级生效。
 
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
@@ -447,9 +467,9 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 
 ## 5. 下一步开发计划 (Next Milestone)
 
-- **M2-1 阶段: WebAudio FFT 音频频谱分析与机芯/背景律动联动**:
-  - 原生复用 `pcmPlayer.getAnalyserNode()`，零性能损耗提取 60fps 高/中/低频能量特征；
-  - 驱动右侧精密机械齿轮边缘翡翠微光、摆轮游丝振幅收放与背景液态水波的共振律动。
+- **M2-1 阶段: WebAudio FFT 蓝图频谱律动图层 (SpectrumVisualizer) [已完成]**:
+  - 原生复用 `pcmPlayer.getAnalyserNode()`，零性能损耗提取 60fps 频域与时域特征；
+  - 采用高级制表纯线条工程蓝图风，底栏正上方定格，自适应休眠与配置热重载完备。
 - **M2-2 阶段: 悬浮胶囊第二按键“播放队列”管理 (`QueueDrawer`)**:
   - 悬浮胶囊第 2 个图标（播放队列）子菜单展开：展示当前 MPD 实时播放队列（436 首或当前追加列表）；
   - 支持定位正在播放曲目、歌曲拖拽排序、单曲移除、红心收藏与一键清空队列。

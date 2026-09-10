@@ -213,7 +213,8 @@ app.whenReady().then(() => {
     }
 
     // 场景 2: 常规静态图片或大尺寸视频流 Range 请求
-    let filePath = decodeURIComponent(url.replace(/^app-media:\/\//, ''))
+    const pathWithoutQuery = url.replace(/^app-media:\/\//, '').split('?')[0]
+    let filePath = decodeURIComponent(pathWithoutQuery)
     if (!filePath.startsWith('/')) {
       filePath = '/' + filePath
     }

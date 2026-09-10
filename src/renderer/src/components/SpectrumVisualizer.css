@@ -1,0 +1,28 @@
+/* ============================================================
+   音频频谱蓝图工程律动组件 (SpectrumVisualizer) 样式
+   设计风格:
+     - 瑞士高级制表工艺纯线条蓝图工程风 (High Horology Line Blueprint)
+     - 散点粒子微光 (Scattered Particle Glimmer)
+     - 严格层级规范: Wallpaper(0) < SpectrumVisualizer(5) < MechanicalGear(10~12) < StatusBar(100)
+     - 零事件捕获穿透 (pointer-events: none)
+   ============================================================ */
+
+.spectrum-visualizer-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--statusbar-height, 80px);
+  width: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+  user-select: none;
+  transition: opacity 0.25s ease;
+}
+
+.spectrum-visualizer-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

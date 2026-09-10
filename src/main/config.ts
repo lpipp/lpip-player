@@ -173,12 +173,23 @@ export interface MpdConfig {
   streamPort: number
 }
 
+import {
+  DEFAULT_VISUALIZER_CONFIG,
+  parseVisualizerConfig,
+  type VisualizerConfig,
+  type VisualizerStyle
+} from '../types/config'
+
+export type { VisualizerConfig, VisualizerStyle }
+export { DEFAULT_VISUALIZER_CONFIG, parseVisualizerConfig }
+
 /**
  * 应用全局运行时配置结构
  */
 export interface AppConfig {
   window: WindowConfig
   audio: AudioConfig
+  visualizer: VisualizerConfig
   mpd: MpdConfig
 }
 
@@ -269,6 +280,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     mica: DEFAULT_MICA_CONFIG
   },
   audio: DEFAULT_AUDIO_CONFIG,
+  visualizer: DEFAULT_VISUALIZER_CONFIG,
   mpd: {
     host: '127.0.0.1',
     port: 6600,
@@ -634,6 +646,7 @@ export function loadConfig(customPath?: string): AppConfig {
     const background = parseBackgroundConfig(parsed.window?.background, parsed.window?.mica)
     const sidebar = parseSidebarConfig(parsed.window?.sidebar)
     const audio = parseAudioConfig(parsed.audio)
+    const visualizer = parseVisualizerConfig(parsed.visualizer)
 
     return {
       window: {
@@ -646,6 +659,7 @@ export function loadConfig(customPath?: string): AppConfig {
         mica: background.mica
       },
       audio,
+      visualizer,
       mpd: {
         host: typeof parsed.mpd?.host === 'string' ? parsed.mpd.host : DEFAULT_CONFIG.mpd.host,
         port: typeof parsed.mpd?.port === 'number' ? parsed.mpd.port : DEFAULT_CONFIG.mpd.port,

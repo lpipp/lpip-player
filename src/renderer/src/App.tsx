@@ -5,7 +5,14 @@ import WallpaperLayer from './components/WallpaperLayer'
 import StatusBar from './components/StatusBar'
 import MechanicalGear from './components/MechanicalGear'
 import LyricsOrbit from './components/LyricsOrbit'
+import SpectrumVisualizer from './components/SpectrumVisualizer'
 import { pcmPlayer } from './services/pcmPlayer'
+import {
+  DEFAULT_VISUALIZER_CONFIG,
+  parseVisualizerConfig,
+  stripJsonComments,
+  type VisualizerConfig
+} from '../../types/config'
 
 // 挂载到 window 供调试与运行时状态分析
 if (typeof window !== 'undefined') {
@@ -33,6 +40,7 @@ export default function App() {
   const [mode, setMode] = useState<PlaybackMode>('sequence')
   const [volume, setVolume] = useState(100)
   const [isMuted, setIsMuted] = useState(false)
+  const [visualizerConfig, setVisualizerConfig] = useState<VisualizerConfig>(DEFAULT_VISUALIZER_CONFIG)
 
   const lastFileRef = useRef<string | null>(null)
   const isSeekingRef = useRef(false)
@@ -89,11 +97,32 @@ export default function App() {
   useEffect(() => {
     let isMounted = true
 
-    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡)
+    // 辅助: 从配置文件直接读取 visualizer 配置 (作为主进程热更新双保险)
+    const syncVisualizerFromFile = async (): Promise<void> => {
+      try {
+        const resp = await fetch('app-media:///home/lpipwei/.config/lpip-player/config.json', {
+          cache: 'no-store'
+        })
+        if (!resp.ok) return
+        const text = await resp.text()
+        const clean = stripJsonComments(text)
+        const parsed = JSON.parse(clean) as { visualizer?: unknown }
+        if (isMounted && parsed.visualizer !== undefined) {
+          setVisualizerConfig(parseVisualizerConfig(parsed.visualizer))
+        }
+      } catch {}
+    }
+
+    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡、频谱律动配置)
     window.electronAPI?.config.get().then((cfg) => {
       if (!isMounted || !cfg) return
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
+      }
+      if (cfg.visualizer) {
+        setVisualizerConfig(cfg.visualizer)
+      } else {
+        syncVisualizerFromFile()
       }
     })
 
@@ -102,6 +131,11 @@ export default function App() {
       if (!isMounted || !cfg) return
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
+      }
+      if (cfg.visualizer) {
+        setVisualizerConfig(cfg.visualizer)
+      } else {
+        syncVisualizerFromFile()
       }
     })
 
@@ -249,6 +283,12 @@ export default function App() {
     <div className="stage">
       {/* 动态视频壁纸图层 (当配置视频壁纸时自动激活硬件加速播放) */}
       <WallpaperLayer />
+
+      {/* 高级制表纯线条蓝图音频频谱律动图层 (SpectrumVisualizer, z-index: 5, 定位于状态栏上方) */}
+      <SpectrumVisualizer
+        isPlaying={isPlaying}
+        config={visualizerConfig}
+      />
 
       {/* 右侧精密机械表齿轮 (直径 500px，圆心距右边框 30px，外露 280px，垂直居中) */}
       <MechanicalGear />
