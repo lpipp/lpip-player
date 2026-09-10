@@ -38,14 +38,15 @@
 
 ---
 
-## 2. git 状态（截至 9442c03）
+## 2. git 状态（截至 9914be0）
 
 ```
-9442c03 fix(ui): 消除星盘歌词背景暗角层硬边导致的纵向色差分层
-e8d9927 feat(visualizer): 完成 M2-1 高级制表蓝图纯线条音频频谱律动图层
-59e5853 fix(audio): 彻底根治 48kHz 特殊音频曲目全程背景爆破音与重采样抖动
-91b7c37 fix(audio): 彻底根治切歌与歌词跳转后的短暂杂音与交叠爆音
-41802b8 feat(audio): 新增切歌与歌词跳转淡出淡入平滑过渡及配置开关支持
+9914be0 feat(queue): 曲库队列按键重构为二态开关(+添加/-移出)并支持双向实时同步
+c4adfc1 fix(queue): 播放队列防重复添加并增加该歌曲已在队列提示
+10a422a fix(queue): 修复键盘移除/收藏冒泡切歌缺陷、空队列时长00:01异常及冗余标题与IPC重连
+af4ac5f fix(queue): 彻底消除清空后点播全量目录灌入缺陷，修复清空后底栏状态残留并增加拖拽释放切歌保护
+9ad04da fix(queue): 优化外部音源点播原子化 playid 绑定并禁用封面图片原生幽灵拖拽
+8ecd293 feat(queue): 完成 M2-2 悬浮胶囊播放队列抽屉与完整交互控制闭环
 ```
 
 - 工作区**干净**，无未跟踪文件
@@ -53,21 +54,21 @@ e8d9927 feat(visualizer): 完成 M2-1 高级制表蓝图纯线条音频频谱律
 
 ---
 
-## 3. 源码现状（M2-1 完备）
+## 3. 源码现状（M2-2 完备）
 
 ```
 src/
 ├─ main/
-│  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222)
+│  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222, 启动自动去重)
 │  ├─ config.ts                 XDG 统一配置中心 (~/.config/lpip-player/config.json, 支持 JSONC 中文注释与热重载)
-│  ├─ mpd.ts                    纯文本原生 TCP 6600 MPD 客户端 (零第三方库，状态轮询与广播)
+│  ├─ mpd.ts                    纯文本原生 TCP 6600 MPD 客户端 (零第三方库，状态轮询、防重追加、安全移除)
 │  ├─ wallpaper.ts              app-media:// 安全协议流式直驱本地动静态壁纸
 │  ├─ mica.ts                   云母背景材质图层计算
-│  └─ ipc-channels.ts           统一 IPC 通道常量集中管理
+│  └─ ipc-channels.ts           统一 IPC 通道常量集中管理 (含队列增删移清全套信道)
 ├─ preload/
-│  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI
+│  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI (含队列操作 API)
 ├─ types/
-│  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行定义
+│  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行与队列返回结果定义
 │  └─ config.ts                 应用配置模型、频谱律动配置与 JSONC 注释解析器
 └─ renderer/
    ├─ index.html                CSP 策略与 DOM 挂载入口
@@ -78,12 +79,13 @@ src/
       ├─ services/
       │  └─ pcmPlayer.ts        Model B / 方案 C WebAudio PCM 流式管道 (自适应硬件采样率/流世代淡入淡出/防抖调度)
       └─ components/
-         ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (.css 动静分离防拉伸抖动)
+         ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (多抽屉切换，导轨锁定 56px 零抖动)
          ├─ StatusBar.tsx       底部磨砂玻璃状态栏 (.css 动静分离液态流动按键、等宽数字防抖进度条)
          ├─ LyricsOrbit.tsx     极坐标星盘歌词天文钟 (.css 擒纵阻尼齿轮跳齿、三级游标分划、全视窗暗角渐变)
          ├─ MechanicalGear.tsx  右侧精密机械表机芯 (.css 蓝图矢量纯线条、多级减速齿轮与摆轮游丝)
          ├─ SpectrumVisualizer.tsx 高级制表蓝图纯线条频谱律动 (.css Canvas 2D 零内存分配/自适应休眠)
-         ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css GPU 视窗裁剪 60fps 模糊检索列表)
+         ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css 二态开关 +/-、60fps 模糊检索列表)
+         ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/红心收藏/单曲移除/一键清空)
          └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
 ```
 
