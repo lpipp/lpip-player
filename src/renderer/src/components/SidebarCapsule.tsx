@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { MpdSong } from '../../../types/music'
 import MusicLibraryList from './MusicLibraryList'
 import QueueDrawer from './QueueDrawer'
+import ArtistDrawer from './ArtistDrawer'
 import './SidebarCapsule.css'
 
 /**
@@ -50,14 +51,11 @@ function QueueIcon() {
   )
 }
 
-function RadioIcon() {
+function ArtistsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
-      <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
-      <circle cx="12" cy="12" r="2" />
-      <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
-      <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19.1" />
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   )
 }
@@ -129,13 +127,11 @@ const MODULES: NavModule[] = [
     ]
   },
   {
-    id: 'radio',
-    label: '网络电台',
-    icon: <RadioIcon />,
+    id: 'artists',
+    label: '艺人分类',
+    icon: <ArtistsIcon />,
     items: [
-      { id: 'rad-local', title: '本地 HTTPD 音频流', desc: '127.0.0.1:8000 (Ogg/Opus 320k)', badge: '8000' },
-      { id: 'rad-lofi', title: 'Lofi 空间慢调', desc: '专注轻音乐与编码节奏' },
-      { id: 'rad-noise', title: '环境白噪音', desc: '黑胶唱片底噪与温润雨声' }
+      { id: 'art-all', title: '全部艺人', desc: '按歌手分组浏览作品' }
     ]
   },
   {
@@ -457,7 +453,9 @@ export default function SidebarCapsule({
               ? 'subpanel-content-library'
               : activeModuleId === 'queue'
                 ? 'subpanel-content-queue'
-                : ''
+                : activeModuleId === 'artists'
+                  ? 'subpanel-content-artists'
+                  : ''
           }`}
         >
           {activeModuleId === 'library' ? (
@@ -471,6 +469,13 @@ export default function SidebarCapsule({
               currentSong={currentSong}
               currentSongId={currentSongId}
               onPlayQueueSong={onPlaySong}
+            />
+          ) : activeModuleId === 'artists' ? (
+            <ArtistDrawer
+              currentSong={currentSong}
+              currentSongId={currentSongId}
+              onPlaySong={onPlaySong}
+              onAddToQueue={onAddToQueue}
             />
           ) : (
             <>
