@@ -463,6 +463,15 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
   - 《不将就》(44.1kHz): `detectedSampleRate: 44100`, `audioCtxSampleRate: 48000`, `underrunHits: 0`, `minLeadMs: 78ms`, `avgLeadMs: 97ms`；
   - 寻道淡入淡出增益实测：`0 -> 0.31 -> 0.67 -> 1.0` 完美平滑过渡，全程背景爆破音彻底消散，声音通透纯净。
 
+### 4.13 星盘歌词背景暗角硬边纵向色差分层定位与彻底消除 (2026-09-10)
+
+- **症状**:
+  用户截图反馈胶囊右侧区域存在明显垂直色差分层（一条突兀的竖直暗边切开背景）。
+- **根因**:
+  在 `src/renderer/src/components/LyricsOrbit.css` 中，`.lyrics-orbit-wrapper::before` 设置了 `left: 100px`。左侧悬浮胶囊收起态右边缘为 `72px`，在 `72px ~ 100px` 之间留出了 28px 宽度的未遮罩壁纸明亮间隙，而在 `x = 100px` 处暗色径向渐变（`rgba(8, 12, 20, 0.45)`）硬性截断切入，形成通顶到底的硬边分层。
+- **解决方案**:
+  将 `.lyrics-orbit-wrapper::before` 的 `left: 100px` 改为 `inset: 0`，使柔和径向渐变自视觉中心平滑扩散至视窗四周边缘（`transparent 85%`），彻底消除了局部矩形硬边切口，背景动态壁纸与星盘机芯浑然一体。
+
 ---
 
 ## 5. 下一步开发计划 (Next Milestone)

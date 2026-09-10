@@ -19,14 +19,11 @@
   user-select: none;
 }
 
-/* 柔和暗角微光层: 确保歌词在动态壁纸与右侧表盘之上具备顶级对比度与呼吸景深 */
+/* 柔和暗角微光层: 确保歌词在动态壁纸与右侧表盘之上具备顶级对比度与呼吸景深 (全视窗平滑渐变，无突兀硬边缝隙) */
 .lyrics-orbit-wrapper::before {
   content: '';
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 100px;
+  inset: 0;
   background: radial-gradient(ellipse 750px 480px at 45% 50%, rgba(8, 12, 20, 0.45) 0%, rgba(8, 12, 20, 0.15) 60%, transparent 85%);
   pointer-events: none;
   z-index: 1;
