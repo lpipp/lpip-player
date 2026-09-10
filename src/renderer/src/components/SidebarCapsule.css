@@ -72,7 +72,7 @@
    状态 2: 展开态 (向右伸长并上下各延展 verticalExtension px)
    ------------------------------------------------------------ */
 .sidebar-capsule.expanded {
-  width: var(--sidebar-width, 360px);
+  width: var(--sidebar-width, 460px);
   height: calc(var(--sidebar-base-height, 400px) + calc(var(--sidebar-vertical-extension, 50px) * 2));
   border-radius: 22px;
   background: var(--sidebar-bg-expanded, rgba(12, 14, 22, calc(var(--sidebar-opacity, 0.78) + 0.12)));
@@ -221,9 +221,9 @@
 .capsule-subpanel {
   position: relative;
   z-index: 1;
-  width: calc(var(--sidebar-width, 360px) - 56px);
-  min-width: calc(var(--sidebar-width, 360px) - 56px);
-  max-width: calc(var(--sidebar-width, 360px) - 56px);
+  width: calc(var(--sidebar-width, 460px) - 56px);
+  min-width: calc(var(--sidebar-width, 460px) - 56px);
+  max-width: calc(var(--sidebar-width, 460px) - 56px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

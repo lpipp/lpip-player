@@ -98,7 +98,7 @@ export interface SidebarConfig {
   animationDuration: number
   /** 动画缓动函数 (默认 'cubic-bezier(0.16, 1, 0.3, 1)') */
   animationEasing: string
-  /** 气泡弹窗展开宽度 (单位 px, 范围 160 ~ 480, 默认 360) */
+  /** 气泡弹窗展开宽度 (单位 px, 范围 160 ~ 600, 默认 460) */
   width: number
   /** 抽屉展开时上下各延伸的像素幅度 (单位 px, 范围 0 ~ 200, 默认 50) */
   verticalExtension: number
@@ -248,7 +248,7 @@ export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
   closeDelay: 300,
   animationDuration: 280,
   animationEasing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-  width: 360,
+  width: 460,
   verticalExtension: 50,
   opacity: 0.78
 }
@@ -488,7 +488,7 @@ export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
         ? obj['animationEasing'].trim()
         : DEFAULT_SIDEBAR_CONFIG.animationEasing,
       width: typeof obj['width'] === 'number'
-        ? clamp(obj['width'], 160, 480)
+        ? clamp(obj['width'], 160, 600)
         : DEFAULT_SIDEBAR_CONFIG.width,
       verticalExtension: typeof obj['verticalExtension'] === 'number'
         ? clamp(obj['verticalExtension'], 0, 200)
