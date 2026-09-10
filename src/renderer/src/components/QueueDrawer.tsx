@@ -82,23 +82,6 @@ function RemoveIcon() {
   )
 }
 
-/**
- * 红心收藏矢量图标
- */
-function HeartIcon({ filled }: { filled: boolean }) {
-  if (filled) {
-    return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="#6ee7b7" stroke="#6ee7b7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
-    )
-  }
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  )
-}
 
 /**
  * 拖拽手柄 6 点矢量图标
@@ -155,34 +138,6 @@ function formatDuration(seconds: number): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const FAVORITES_STORAGE_KEY = 'lpip_player_favorites'
-
-/**
- * 获取本地红心收藏集合
- */
-function loadFavorites(): Set<string> {
-  try {
-    const raw = localStorage.getItem(FAVORITES_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as string[]
-      if (Array.isArray(parsed)) {
-        return new Set(parsed)
-      }
-    }
-  } catch {}
-  return new Set()
-}
-
-/**
- * 保存本地红心收藏集合
- */
-function saveFavorites(favs: Set<string>): void {
-  try {
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(favs)))
-    window.dispatchEvent(new CustomEvent('lpip:favorites-changed', { detail: Array.from(favs) }))
-  } catch {}
-}
-
 /**
  * 悬浮胶囊第二按键：播放队列管理抽屉组件 (QueueDrawer)
  *
@@ -202,7 +157,6 @@ export default function QueueDrawer({
   const [songs, setSongs] = useState<MpdSong[]>([])
   const [loading, setLoading] = useState(true)
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
-  const [favorites, setFavorites] = useState<Set<string>>(() => loadFavorites())
 
   // 拖拽排序状态
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -265,12 +219,6 @@ export default function QueueDrawer({
       }
     })
 
-    // 监听收藏状态同步广播
-    const handleFavChange = (): void => {
-      if (isMounted) setFavorites(loadFavorites())
-    }
-    window.addEventListener('lpip:favorites-changed', handleFavChange)
-
     // 监听全局队列变动事件广播 (如曲库中心加入/移出)
     const handleQueueChange = (): void => {
       if (isMounted) refreshQueue(false)
@@ -280,7 +228,6 @@ export default function QueueDrawer({
     return () => {
       isMounted = false
       unsubscribe?.()
-      window.removeEventListener('lpip:favorites-changed', handleFavChange)
       window.removeEventListener('lpip:queue-changed', handleQueueChange)
     }
   }, [refreshQueue])
@@ -373,18 +320,6 @@ export default function QueueDrawer({
     }
   }
 
-  // 切换红心收藏状态
-  const handleToggleFavorite = (e: MouseEvent, song: MpdSong): void => {
-    e.stopPropagation()
-    const nextFavs = new Set(favorites)
-    if (nextFavs.has(song.file)) {
-      nextFavs.delete(song.file)
-    } else {
-      nextFavs.add(song.file)
-    }
-    setFavorites(nextFavs)
-    saveFavorites(nextFavs)
-  }
 
   // 封面加载失败
   const handleImageError = (id: string): void => {
@@ -546,7 +481,6 @@ export default function QueueDrawer({
             {songs.map((song, index) => {
               const isCurrent = isSongActive(song)
               const hasImgError = imgErrors[song.id || String(song.queueId)]
-              const isFav = favorites.has(song.file)
               const isDragging = draggedIndex === index
               const isOver = dragOverIndex === index
               const dropCls = isOver ? (dropPosition === 'top' ? 'drag-over-top' : 'drag-over-bottom') : ''
@@ -630,23 +564,13 @@ export default function QueueDrawer({
                     {formatDuration(song.duration)}
                   </span>
 
-                  {/* 右侧交互按键组: 红心收藏与移除单曲 */}
+                  {/* 右侧交互按键: 移除单曲 */}
                   <div
                     className="queue-track-actions"
                     draggable={false}
                     onDragStart={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      className={`queue-track-fav-btn ${isFav ? 'favorited' : ''}`}
-                      onClick={(e) => handleToggleFavorite(e, song)}
-                      title={isFav ? '取消红心收藏' : '添加红心收藏'}
-                      aria-label="红心收藏"
-                    >
-                      <HeartIcon filled={isFav} />
-                    </button>
-
                     <button
                       type="button"
                       className="queue-track-remove-btn"
