@@ -81,12 +81,21 @@
 ## 6. 里程碑路线（当前进度）
 
 ```
-[x] M0-1 空窗口骨架               → 已提交 (844f21a)
-[ ] M0-2 玻璃组件 + 布局骨架        → 从 GlassPanel 开始，一次一个
-[ ] M1 手写 MPD 客户端 + IPC + zustand
-[ ] M2 httpd 音频流 (Electron 出声) + AnalyserNode 预留
-[ ] M3 全屏 shader + 透明无边框模式
+[x] M0-1 空窗口骨架 (844f21a)
+[x] M0-2 液态玻璃系统 (沉浸式窗口/多模背景引擎/视频壁纸/悬浮胶囊伸缩抽屉)
+[x] M1-1 MPD 控制协议体系 (纯文本 TCP 6600 原生客户端 + 磨砂底栏 + 全量曲库检索)
+[x] M1-2 极坐标星盘歌词与 Model B 原生音频管线:
+    - 极坐标星盘天文钟歌词轨道 (LyricsOrbit) + 机械齿轮机芯 (MechanicalGear)
+    - 方案 C WebAudio PCM 直送管道 (pcmPlayer: 80ms 抖动缓冲彻底根除 3~4s 滞后)
+    - 双级解耦增益淡出淡入过渡系统 (FadeConfig, 配置文件热重载)
+    - 动态采样率感知与全格式自适应 (MPD *:16:2 透传 + SoX 专业重采样 + 48kHz 背景爆破音根除)
+[ ] M2-1 WebAudio FFT 频谱分析与机芯/水波律动联动 (即将开启)
+[ ] M2-2 悬浮胶囊第二按键“播放队列”管理 (QueueDrawer)
+[ ] M2-3 主工作区居中液态玻璃面板 (GlassPanel) / 页面切换与黑胶大舞台
 ```
 
-- 后端 MPD 已就绪（见 ENVIRONMENT.md §4），M1 只需写客户端连接，不用再碰系统配置。
-- 窗口形态 `system | frameless | frameless-transparent` 配置化，M3 阶段实现。
+- **音频架构约束 (Model B / 方案 C 铁律)**:
+  - 严禁倒退使用 HTML5 `<audio>` 标签拉取流媒体（会导致不可控的 3.5s 黑盒预缓冲并引发严重切歌/寻道滞后）；
+  - 严禁引入任何第三方重型音频库，坚守纯原生 WebAudio 直驱架构；
+  - 必须保持双级增益解耦（流世代独立 `activeFadeGainNode` -> 主音量 `masterGainNode` -> `analyserNode` -> `destination`）；
+  - 音频流采样率必须从 WAV 头部动态提取自适应，严禁在 WebAudio 缓冲区创建中硬编码。

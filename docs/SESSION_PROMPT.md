@@ -16,17 +16,17 @@
   用 allowBuilds { electron: true, esbuild: true }（旧 onlyBuiltDependencies 已移除）
 - 依赖：运行时仅 react/react-dom，无多余依赖；zustand 计划 M1 再装；node_modules(1.2G) 保留
 
-【架构 Model B】
-- MPD 只做 httpd 流服务器(:8000)；Electron <audio> 播放 httpd 流 + WebAudio FFT 取频谱；
-  控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，不用任何第三方 npm 库）
-- 后端已就绪，勿重复配置：~/.config/mpd/mpd.conf（**wave/PCM 未压缩, 44100:16:2**；
-  2026-09-09 由 vorbis 320k 改为 wave，备份 mpd.conf.bak，原因见 PROGRESS.md §4.8）+ 用户级
+【架构 Model B / 方案 C】
+- MPD 只做 httpd 流服务器(:8000)；前端通过 fetch + WebAudio 原生 PCM 管道直送 (pcmPlayer.ts) 驱动扬声器，
+  预留 AnalyserNode 取频谱；控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）
+- 后端已就绪，勿重复配置：~/.config/mpd/mpd.conf（**encoder "wave", format "*:16:2" 原生自适应采样率透传** +
+  **resampler { plugin "soxr" quality "very high" }** 备用高保真重采样器，备份 mpd.conf.modelB.bak）+ 用户级
   systemd 服务已 enable 开机自启（systemctl --user status/restart/stop mpd）
 - 实测行为：httpd 流惰性绑定——空闲不监听 8000、播放时自动监听、stop 后端口保持；
   前端拉流按 MPD state=play 判断，勿依赖端口
-- 运行时配置 ~/.config/lpip-player/config.json（支持完整 JSONC 中文注释）
+- 运行时配置 ~/.config/lpip-player/config.json（支持完整 JSONC 中文注释与热重载）
 
-【当前进度 (M1-2)】
+【当前进度 (M1-2 完备)】
 - 已完成功能与架构：
   1. 窗口沉浸式效果（window.immersive，无边框与系统原生边框自由切换，纯净无前端冗余控件）；
   2. 统一背景效果系统（window.background，支持 mode: "default" | "mica" | "wallpaper"）；
@@ -68,10 +68,12 @@
       - 严格按用户参考图高保真像素排版（左侧 44px 封面/黑胶占位 + 居中标题与 SQ 天蓝/Hi-Res 琥珀金/HQ 徽标与歌手专辑 + 右侧微圆环加号 1.5s 绿勾反馈）；
       - 支持全量 436 首音源极速关键字模糊搜索（标题、歌手、专辑多维检索）、数量统计与 MPD 后端刷新；
       - 启用 Chromium GPU 视窗裁剪（content-visibility: auto; contain-intrinsic-size: 0 58px;），零卡顿 60fps 原生手势滚动。
-  23. Model B 全链路音频流与纯文本 TCP 控制体系：
-      - MPD 本地解码并推流至 :8000 (wave/PCM 无损)，前端 HTML5 <audio> 播放，彻底根除双音重音；
-      - 手写纯文本 TCP 客户端连接 MPD 127.0.0.1:6600（零第三方库依赖），实现 play/pause/resume/togglePlay/next/prev/seek/setVolume/setPlaybackMode/getStatus/getSongLyrics；
-      - 500ms 主进程状态轮询主动广播，双向无缝同步。
+  23. Model B / 方案 C WebAudio PCM 流式管道 (pcmPlayer.ts)：
+      - 彻底弃用 HTML5 <audio> 标签黑盒预缓冲，前端 fetch 零拷贝拉取 MPD :8000 wave 流，直接通过 AudioBufferSourceNode 调度；
+      - 35~80ms 极低抗抖前瞻，切歌与歌词跳转从 3.5 秒严重滞后跃升至即时秒播；
+      - 双级解耦增益拓扑：每个流世代拥有独立自生自灭的 activeFadeGainNode，彻底消灭旧流淡出与新流淡入在同一 GainNode 相互污染拉扯导致的阶跃爆音；
+      - 平滑淡出淡入过渡配置系统（FadeConfig，支持配置文件 audio.fade 动态热重载）；
+      - 动态采样率感知与全格式支持：WAV 头部 24..27 字节动态提取采样率，自适应 PipeWire/系统硬件原生采样率（48000 Hz），彻底解决《灰色轨迹》、《钟无艳》、《喜帖街》等 48kHz 特殊曲目全程背景爆破音。
   24. 底部状态栏右侧全控制功能闭环 (StatusBar)：
       - 歌曲元数据卡片：加粗歌曲名、SQ/Hi-Res/HQ 徽标、歌手与专辑副文本；
       - 播放模式切换：3 态循环（列表循环 🔁 / 随机播放 🔀 / 单曲循环 🔂），专属矢量按键；
@@ -80,89 +82,22 @@
   - src/main: index.ts, config.ts, wallpaper.ts, mica.ts, mpd.ts, ipc-channels.ts
   - src/preload: index.ts
   - src/types: music.ts
-  - src/renderer/src: App.tsx, styles/global.css, components/SidebarCapsule.tsx & .css, components/WallpaperLayer.tsx & .css, components/StatusBar.tsx & .css, components/MechanicalGear.tsx & .css, components/LyricsOrbit.tsx & .css, components/MusicLibraryList.tsx & .css
+  - src/renderer/src: App.tsx, styles/global.css, services/pcmPlayer.ts, components/SidebarCapsule.tsx & .css, components/WallpaperLayer.tsx & .css, components/StatusBar.tsx & .css, components/MechanicalGear.tsx & .css, components/LyricsOrbit.tsx & .css, components/MusicLibraryList.tsx & .css
   - 静态/类型检查：pnpm typecheck && pnpm build 通过，零错误。
 - 当前运行状态：Electron 实例在桌面常驻运行中（KDE Wayland），正在播放视频壁纸、MPD :8000 音频流前端扬声器出声、星盘歌词与机械齿轮实时跳齿同步、状态栏全部控制项正常工作。
 - 下一步任务：M2 阶段 —— M2-1 WebAudio FFT 频谱分析与机芯/水波律动共振；M2-2 悬浮胶囊第二按键“播放队列”管理（QueueDrawer）；M2-3 主工作区居中液态玻璃面板（GlassPanel）。
 
-【卡顿修复会话交接 (2026-09-09, 音频三 bug 已修, 提交 7e60a56)】
-用户报告的三个 bug（专修 bug，禁止借机开发 M2 新功能）:
-1. 点击歌词跳转后先跳到选中行的上一句 + 卡顿 —— 错行与卡顿均已修复
-2. 歌曲暂停后恢复播放卡顿 —— 已修复 (真实静音 0.2s, 499ms 出声)
-3. 拖动进度条跳转卡顿 —— 已修复 (真实静音 0s)
-※ 用户尚未亲手复测最新版本, 新会话应先请用户确认听感。
-
-★★ 音频卡顿根因 (已实测闭环, 勿再走弯路) ★★
-MPD httpd 是「一条连续实时直播流」(实测 audio.currentTime 可达 4006s, 即连播一小时,
-流时间轴与歌曲进度完全解耦), 服务端按真实速率喂数据、无初始 burst。
-故前端任何对 <audio> 的干预都有害, 三代实现对照:
-  一代 换 src 重建连接 → Chromium 按真实时间重攒缓冲, 2110ms 静音 + 反复 stalled
-  二代 改写 currentTime 追边 → playing 事件很快回来(被误判已修复), 但强制 seek 丢弃
-       解码管线已就绪样本, 耳朵仍断续 (真实静音 0.23s)
-  三代 什么都不做, 只保证在播 → 真实静音 0s  ← 现行方案
-正解: seekcur 改变的是 MPD 往同一条流推送的内容, 前端绝不触碰 src 与 currentTime;
-仅保留断供看门狗(1500ms)兜底 MPD connection_timeout 60s 单方面断连。
-详见 docs/PROGRESS.md §4.8。
-
-★★ 测量方法铁律 (本次最大教训) ★★
-<audio> 的 playing/canplay/readyState 只代表解码器收到数据, 绝不代表扬声器真的出声。
-二代实现正是据此误判为"已修复", 被用户当场否证。
-→ 唯一可信指标: 按 200ms 采样 audio.currentTime 检验是否匀速前进,
-  Δct < Δt×0.3 即一次真实卡顿, 累加得真实静音时长; 辅看 cushion(buffered.end - currentTime)。
-
-已被实测否证的假设（勿重复排查）:
-- ✗ GPU/backdrop-filter/UI 动画管线: 前会话曾长时间追此方向。用户"纯音频卡顿、画面无影响"
-  一句即排除 —— UI 合成压力只会掉帧发涩, 造不出 2~3 秒静音。
-  (该方向对「整体流畅度」仍有效, 但与音频三 bug 无关, 属独立议题)
-- ✗ MPD seek 后开启新 Ogg 逻辑流: 跨 seek 抓包证明只有 1 个 serial、1 个 BOS 页, 流完全连续
-- ✗ setvol 0 作流内容标记物测服务端延迟: httpd 输出无 mixer, status 不返回 volume, 探针无效
-
-已实施修改（随 git 提交入库，勿回退）:
-- src/main/mpd.ts seekSong: Math.floor → Math.round(t*100)/100 保留浮点秒 (根治落点退回上一句)
-- src/renderer/src/App.tsx (7e60a56): 移除 flushAudioStream/catchUpToLiveEdge,
-  改为 ensurePlaying/ensurePlayingWithWatchdog —— 只 play(), 不碰 src 与 currentTime;
-  500ms 轮询路径亦只做最轻量保持出声
-- src/renderer/src/components/LyricsOrbit.tsx: seekLockUntilRef 手动选行后 1200ms 寻道锁定
-- src/renderer/src/components/StatusBar.tsx: 拖拽 seek 目标保留浮点(不再 Math.round)
-- src/main/index.ts: use-angle=gl-egl + disable-vulkan + VaapiOnNvidiaGPUs 等 enable-features
-  + remote-debugging-port 9222; 已移除 LIBVA_DRIVER_NAME (见下方陷阱)
-- ~/.config/mpd/mpd.conf: httpd encoder vorbis 320k → wave (未压缩 PCM), 备份 mpd.conf.bak
-  ※ 同样字节的服务端队列 PCM 只装 vorbis 1/4.4 时长, 是静音归零的关键因素之一;
-    附带收益: 不再对 FLAC 二次有损压缩。静音归零是「不碰 <audio> + PCM」共同结果, 无法单独归因。
-
-壁纸软解已解决（此部分结论仍有效）:
-- 早期最大 CPU 源 = 壁纸视频软解 (H.264 1600x1200@60fps): renderer 曾 ~90% 瞬时
-- 已实施 NVDEC 硬解: GPU 进程加载 /usr/lib/dri/nvidia_drv_video.so (610 驱动自带 VA-API) + libEGL_nvidia,
-  renderer 解码线程消失, 壁纸解码开销仅剩 ~4% (GPU 进程)
-
-测量陷阱教训（务必遵守）:
-1. ps %CPU 是生命周期累计均值, 短窗实验看不出变化, 勿用; 用 /proc/<pid>/stat utime+stime 差分,
-   pct = Δticks / 秒数 (CLK_TCK=100)
-2. pgrep -f "electron/dist/electron \." 只匹配无 --type 的主进程; pkill/pgrep -f 模式会匹配到
-   自己的命令行导致自杀, 清理用精确 PID 或变量拼接
-3. display:none 的 <video> 仍解码, 必须 video.pause() 才是真暂停
-4. pgrep "type=gpu-process" 会抓到系统 Chrome, 必须用 electron 完整路径过滤
-5. LIBVA_DRIVER_NAME=nvidia 导致 Electron GPU 进程不启动 (硬解全无), 已移除; 不设也能自动探测
-6. X11 方案死路: --ozone-platform=x11 下 NVIDIA 610 GPU 进程 segfault(139) 循环崩溃, 勿再试
-7. Electron dev 模式有 jsxDEV 校验开销 (renderer 约多 10%), 验证用 pnpm start (生产构建版)
-8. 默认 shell (fish/zsh) 没有 /dev/tcp, MPD 协议调试必须套 bash -c '...'; bc 未安装, 换算用 awk 或 node
-
-当前运行状态:
-- 生产构建版 (pnpm start, out/ 已 build) 在桌面运行, CDP 9222; MPD 播放中 (436 首曲库, wave/PCM :8000)
-- 壁纸: /home/lpipwei/Movies/【哲风壁纸】HH-卡通-小xx.mp4 (H.264 1600x1200@60fps, 15MB/10s 循环)
-- 重启命令 (生产版, 更贴近真实):
-  nohup env XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE XDG_RUNTIME_DIR=/run/user/1000 \
-  WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 pnpm start > /tmp/lpip-player-start.log 2>&1 &
-
-遗留未验 / 下一步:
-1. 先请用户亲手复测三操作确认听感 (用户尚未验证 7e60a56)
-2. 方案 A 残留的约 3.2s 响应滞后 (先听到旧位置声音, 非静音) 改 PCM 后未做专项复测,
-   不可声称已解决; 彻底消除需动架构 —— 方案 B/C 取舍表见 PROGRESS.md §5 末尾, 必须先请用户拍板
-3. mpd.conf 改 PCM 一事超出了用户「留待后续」的授权范围 (用户已知情, 备份在 mpd.conf.bak),
-   若用户要求回滚需重测三项指标
-4. 「整体流畅度」(renderer ~45% + GPU ~70%, backdrop-filter 占合成 ~22%) 是与音频无关的独立议题,
-   若用户提出再处理; 候选方向: 歌词虚拟滚动 / rAF 限帧 / 减 backdrop-filter 层 / 壁纸降分辨率
-   (均涉及视觉取舍, 必须先问用户拍板)
+【关键音频架构教训与测量铁律】
+1. 音频架构 Model B / 方案 C 铁律:
+   - 严禁倒退使用 HTML5 <audio> 标签；
+   - 严禁引入任何第三方重型音频库，坚守纯原生 WebAudio 直驱架构；
+   - 保持双级增益解耦（流世代独立 activeFadeGainNode -> 主音量 masterGainNode -> analyserNode -> destination）；
+   - 音频流采样率必须从 WAV 头部动态提取自适应，严禁在 WebAudio 缓冲区创建中硬编码。
+2. 测量方法铁律:
+   - 验证音频是否真的出声与抗抖缓冲健康度，通过 CDP 采样：
+     window.__pcmPlayer.activeSources.size（通常 3~6 个）与
+     (window.__pcmPlayer.nextPlayTime - window.__pcmPlayer.audioCtx.currentTime) * 1000（健康值 70~110ms）。
+3. 默认 shell (fish/zsh) 没有 /dev/tcp，MPD 协议调试必须套 bash -c '...'; bc 未安装, 换算用 awk 或 node。
 
 【工作方式（严格遵守）】
 1. 分功能分会话：本会话只做这一个功能；开工前先说清"做什么、怎么验收"

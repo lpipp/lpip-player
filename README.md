@@ -33,34 +33,55 @@
 | `window.sidebar.verticalExtension` | `50` | 抽屉展开时上下各延伸的像素幅度（px） |
 | `window.sidebar.closeBuffer` | `40` | 鼠标离开抽屉触发收起的安全距离（px） |
 | `window.sidebar.closeDelay` | `300` | 移出安全距离后的收起倒计时时长（ms） |
-| `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 控制协议地址 |
-| `mpd.streamPort` | `8000` | MPD httpd 音频流端口 |
+| `audio.fade.enabled` | `true` | 切歌与歌词跳转时的平滑淡出淡入总开关（`true` / `false`） |
+| `audio.fade.duration` | `120` | 淡出淡入过渡时长（ms，推荐 `80` ~ `200`，范围 `20` ~ `1000`） |
+| `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 纯文本 TCP 控制协议地址（原生 Client 零依赖） |
+| `mpd.streamPort` | `8000` | MPD httpd wave/PCM 音频流端口（WebAudio 零拷贝直接拉流） |
 
 > 详细配置项与注释范例见 `config.example.json` 与 `docs/PROGRESS.md`。
 > MPD 自身的配置见 `~/.config/mpd/mpd.conf`。
 
 ## 里程碑路线
 
-- [x] M0-1 空窗口（骨架跑通，当前）
-- [ ] M0-2 液态玻璃面板组件 + 假数据 UI
-- [ ] M1 手写 MPD 客户端 + 真实播放控制（附 mpd.conf 模板）
-- [ ] M2 httpd 音频流（Electron 出声）+ AnalyserNode 预留
-- [ ] M3 全屏 shader 背景 + 透明无边框模式打磨
+- [x] **M0-1 空窗口骨架**：electron-vite + React 19 + TypeScript 7 + 纯净黑曜石舞台
+- [x] **M0-2 液态玻璃材质系统**：
+  - [x] 沉浸式窗口（`window.immersive` 无边框与系统窗框自由切换）
+  - [x] 多模背景引擎（深色黑曜石 / 云母矿物晶体微光 / 动态视频壁纸图层，NVDEC 硬件加速流式循环播放）
+  - [x] 左侧悬浮长条胶囊伸缩抽屉（`SidebarCapsule`，双态自适应、Clip Reveal 视窗遮罩展开、动静分离防拉伸抖动）
+- [x] **M1-1 MPD 控制协议与状态栏交互**：
+  - [x] 纯文本 TCP 客户端连接 MPD 6600（零第三方库依赖，支持播放/暂停/切歌/寻道/音量/模式切换）
+  - [x] 底部通透磨砂状态栏（`StatusBar`，动静分离液态流动播放按键、等宽数字防抖进度条、黑胶唱片占位符）
+  - [x] 悬浮胶囊本地全量曲库中心（`MusicLibraryList`，400+ 曲目 GPU 视窗裁剪快速检索与状态同步）
+- [x] **M1-2 极坐标星盘歌词与 Model B 原生音频管线**：
+  - [x] 极坐标星盘天文钟歌词轨道（`LyricsOrbit`，三级同心刻度圈、擒纵阻尼齿轮联动切行、滑动窗口防堆叠、滚轮与点击快速跳转）
+  - [x] 右侧精密机械表机芯系统（`MechanicalGear`，纯线条蓝图工程风、多级传动齿轮与摆轮游丝）
+  - [x] **Model B / 方案 C WebAudio PCM 流式管道**：废弃 `<audio>` 黑盒缓冲，采用 `fetch` + `AudioBufferSourceNode` 直送，将 3~4 秒滞后降低至 35ms 极速响应
+  - [x] **切歌与歌词跳转平滑淡出淡入**：独立流世代 GainNode 架构，配置文件动态热生效，彻底根除交叠爆音
+  - [x] **动态采样率感知与全格式支持**：MPD 原生透传 `*:16:2` + SoX 高阶重采样 + WAV 头动态解析 + 硬件自适应，彻底根治 48kHz 特殊曲目背景爆破音
+- [ ] **M2-1 WebAudio FFT 频谱分析与机芯/水波律动联动**（即将开启）
+- [ ] **M2-2 悬浮胶囊第二按键“播放队列”管理 (`QueueDrawer`)**
+- [ ] **M2-3 主工作区居中液态玻璃面板 (`GlassPanel`) / 页面切换与黑胶大舞台**
 
 ## 开发
 
 ```bash
-npm install
-npm run dev        # 开发模式 (热更新)
-npm run build      # 构建到 out/
-npm run typecheck  # TS 类型检查
+pnpm install       # 安装依赖 (依赖锁定: node 24 + pnpm 11)
+pnpm dev           # 开发模式 (热更新)
+pnpm build         # 构建到 out/ (主进程/预加载/渲染层产物)
+pnpm typecheck     # TS 类型检查 (tsc --noEmit)
+pnpm start         # 运行生产构建版
 ```
 
 ## 目录结构
 
 ```
 src/
-├─ main/       主进程: 窗口创建
-├─ preload/    contextBridge 安全桥 (M1 填充)
-└─ renderer/   React 前端
+├─ main/           主进程: 窗口生命周期、配置管理、MPD TCP 客户端、特权流协议
+├─ preload/        contextBridge 安全桥: 暴露最小安全 electronAPI
+├─ types/          共享类型定义: 歌曲模型、MPD 状态、配置模型
+└─ renderer/       React 前端:
+   ├─ components/  UI 组件 (胶囊抽屉、磨砂底栏、星盘歌词、机械机芯、曲库列表、视频壁纸)
+   ├─ services/    核心驱动 (pcmPlayer: WebAudio PCM 流式播放、流世代淡入淡出、动态采样率)
+   ├─ styles/      全局视觉风格与重置样式
+   └─ App.tsx      主舞台逻辑与状态驱动中心
 ```
