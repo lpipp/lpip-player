@@ -244,7 +244,7 @@ export default function App() {
     pcmPlayer.setMuted(nextMuted)
   }
 
-  // 处理曲库单曲选择与播放
+  // 处理曲库与队列单曲选择与播放
   const handlePlaySong = async (song: MpdSong): Promise<void> => {
     setCurrentSong(song)
     setIsPlaying(true)
@@ -257,9 +257,23 @@ export default function App() {
     })
 
     if (window.electronAPI?.mpd) {
-      await window.electronAPI.mpd.play(song.file)
+      if (typeof song.queueId === 'number' || typeof song.pos === 'number') {
+        await window.electronAPI.mpd.playQueueItem(song.pos ?? 0, song.queueId)
+      } else {
+        await window.electronAPI.mpd.play(song.file)
+      }
       // 方案 C: 点播切歌瞬间排空旧音频, 零延迟起播新曲
       pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+    }
+  }
+
+  // 处理添加单曲至队列
+  const handleAddToQueue = async (_song: MpdSong): Promise<void> => {
+    if (window.electronAPI?.mpd) {
+      const status = await window.electronAPI.mpd.getStatus()
+      if (status) {
+        syncFromMpdStatus(status)
+      }
     }
   }
 
@@ -300,10 +314,12 @@ export default function App() {
         onSeek={handleSeek}
       />
 
-      {/* 悬浮长条形胶囊伸缩抽屉 (曲库中心子菜单展示所有 MPD 音源) */}
+      {/* 悬浮长条形胶囊伸缩抽屉 (曲库中心与播放队列管理抽屉) */}
       <SidebarCapsule
+        currentSong={currentSong}
         currentSongId={currentSong?.id}
         onPlaySong={handlePlaySong}
+        onAddToQueue={handleAddToQueue}
       />
 
       {/* 窗口底部磨砂状态栏 (80px 纯净骨架与控制组) */}

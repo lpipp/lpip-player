@@ -36,6 +36,16 @@ export interface ElectronAPI {
     getLyrics: (file: string) => Promise<LyricLine[]>
     /** 追加指定音源文件至队列 */
     addToQueue: (file: string) => Promise<boolean>
+    /** 获取当前播放队列中的全部曲目列表 */
+    getQueue: () => Promise<MpdSong[]>
+    /** 播放队列中指定位置或 ID 的曲目 */
+    playQueueItem: (pos: number, queueId?: number) => Promise<boolean>
+    /** 从当前队列中移除指定曲目 */
+    removeQueueItem: (pos: number, queueId?: number) => Promise<boolean>
+    /** 清空当前播放队列 */
+    clearQueue: () => Promise<boolean>
+    /** 移动队列中曲目的位置 */
+    moveQueueItem: (fromPos: number, toPos: number) => Promise<boolean>
     /** 监听 MPD 播放器状态实时变更 */
     onStatusChange: (callback: (status: MpdStatus) => void) => () => void
   }
@@ -63,6 +73,14 @@ const api: ElectronAPI = {
     getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_STATUS),
     getLyrics: (file: string) => ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_LYRICS, file),
     addToQueue: (file: string) => ipcRenderer.invoke(IPC_CHANNELS.MPD_ADD_QUEUE, file),
+    getQueue: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_QUEUE),
+    playQueueItem: (pos: number, queueId?: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_PLAY_QUEUE_ITEM, pos, queueId),
+    removeQueueItem: (pos: number, queueId?: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, pos, queueId),
+    clearQueue: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_CLEAR_QUEUE),
+    moveQueueItem: (fromPos: number, toPos: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.MPD_MOVE_QUEUE_ITEM, fromPos, toPos),
     onStatusChange: (callback: (status: MpdStatus) => void) => {
       const handler = (_event: unknown, status: MpdStatus): void => callback(status)
       ipcRenderer.on(IPC_CHANNELS.MPD_STATUS_CHANGED, handler)

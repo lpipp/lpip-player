@@ -9,14 +9,19 @@ import { IPC_CHANNELS } from './ipc-channels'
 import type { PlaybackMode } from '../types/music'
 import {
   addToQueue,
+  clearQueue,
   getLibrary,
   getOrExtractAlbumCover,
+  getQueue,
   getSongLyrics,
   getStatus,
+  moveQueueItem,
   nextSong,
   pausePlayback,
+  playQueueItem,
   playSong,
   prevSong,
+  removeQueueItem,
   rescanLibrary,
   resumePlayback,
   seekSong,
@@ -273,6 +278,26 @@ app.whenReady().then(() => {
 
   ipcMain.handle(IPC_CHANNELS.MPD_ADD_QUEUE, async (_event, file: string) => {
     return addToQueue(file)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_QUEUE, async () => {
+    return getQueue()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_PLAY_QUEUE_ITEM, async (_event, pos: number, queueId?: number) => {
+    return playQueueItem(pos, queueId)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_REMOVE_QUEUE_ITEM, async (_event, pos: number, queueId?: number) => {
+    return removeQueueItem(pos, queueId)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_CLEAR_QUEUE, async () => {
+    return clearQueue()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_MOVE_QUEUE_ITEM, async (_event, fromPos: number, toPos: number) => {
+    return moveQueueItem(fromPos, toPos)
   })
 
   ipcMain.handle(IPC_CHANNELS.MPD_SET_VOLUME, async (_event, volume: number) => {

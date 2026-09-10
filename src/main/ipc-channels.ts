@@ -27,6 +27,16 @@ export const IPC_CHANNELS = {
   MPD_GET_LYRICS: 'mpd:get-lyrics',
   /** 将指定音频文件追加至 MPD 当前播放队列末尾 */
   MPD_ADD_QUEUE: 'mpd:add-queue',
+  /** 获取 MPD 当前播放队列中的曲目列表 */
+  MPD_GET_QUEUE: 'mpd:get-queue',
+  /** 播放当前队列中的指定曲目 */
+  MPD_PLAY_QUEUE_ITEM: 'mpd:play-queue-item',
+  /** 从当前队列中移除指定曲目 */
+  MPD_REMOVE_QUEUE_ITEM: 'mpd:remove-queue-item',
+  /** 清空当前播放队列 */
+  MPD_CLEAR_QUEUE: 'mpd:clear-queue',
+  /** 移动/重排队列中的曲目位置 */
+  MPD_MOVE_QUEUE_ITEM: 'mpd:move-queue-item',
   /** 设置 MPD 音量 (0 ~ 100) */
   MPD_SET_VOLUME: 'mpd:set-volume',
   /** 设置 MPD 播放模式 ('sequence' | 'shuffle' | 'single') */

@@ -24,6 +24,10 @@ export interface MpdSong {
   date?: string
   /** 音轨编号 */
   track?: string
+  /** 队列内位置 (0-based) */
+  pos?: number
+  /** 队列内 MPD 唯一 ID */
+  queueId?: number
 }
 
 /**
@@ -63,6 +67,8 @@ export interface MpdStatus {
   playlistLength: number
   /** 当前歌曲在队列中的索引号 */
   songPos: number
+  /** 当前歌曲在队列中的 MPD 唯一 ID */
+  songId?: number
   /** 是否开启列表循环 */
   repeat: boolean
   /** 是否开启随机播放 */

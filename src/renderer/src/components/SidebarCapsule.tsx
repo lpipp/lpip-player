@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { MpdSong } from '../../../types/music'
 import MusicLibraryList from './MusicLibraryList'
+import QueueDrawer from './QueueDrawer'
 import './SidebarCapsule.css'
 
 /**
@@ -187,6 +188,8 @@ function getDistanceToRect(x: number, y: number, rect: DOMRect): number {
  * 悬浮胶囊抽屉组件属性
  */
 export interface SidebarCapsuleProps {
+  /** 当前正在播放的曲目对象 */
+  currentSong?: MpdSong | null
   /** 当前正在播放的曲目 ID / file */
   currentSongId?: string
   /** 点击播放曲目回调 */
@@ -203,6 +206,7 @@ export interface SidebarCapsuleProps {
  *             等待 closeDelay 延迟平滑收回；若移回安全距离内自动取消收回
  */
 export default function SidebarCapsule({
+  currentSong,
   currentSongId,
   onPlaySong,
   onAddToQueue
@@ -448,13 +452,25 @@ export default function SidebarCapsule({
         {/* 子菜单项列表 (带模块切换轻量过渡) */}
         <div
           key={activeModuleId}
-          className={`subpanel-content subpanel-module-switch ${activeModuleId === 'library' ? 'subpanel-content-library' : ''}`}
+          className={`subpanel-content subpanel-module-switch ${
+            activeModuleId === 'library'
+              ? 'subpanel-content-library'
+              : activeModuleId === 'queue'
+                ? 'subpanel-content-queue'
+                : ''
+          }`}
         >
           {activeModuleId === 'library' ? (
             <MusicLibraryList
               currentSongId={currentSongId}
               onPlaySong={onPlaySong}
               onAddToQueue={onAddToQueue}
+            />
+          ) : activeModuleId === 'queue' ? (
+            <QueueDrawer
+              currentSong={currentSong}
+              currentSongId={currentSongId}
+              onPlayQueueSong={onPlaySong}
             />
           ) : (
             <>

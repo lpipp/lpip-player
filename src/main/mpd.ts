@@ -199,8 +199,64 @@ function finalizeSong(item: Partial<MpdSong>): MpdSong {
     quality,
     coverUrl: item.coverUrl || `app-media://cover/${encodeURIComponent(file)}`,
     date: item.date,
-    track: item.track
+    track: item.track,
+    pos: item.pos,
+    queueId: item.queueId
   }
+}
+
+/**
+ * 解析 MPD `playlistinfo` 指令返回的纯文本内容为结构化歌曲对象队列
+ */
+export function parseMpdPlaylist(raw: string): MpdSong[] {
+  const lines = raw.split('\n')
+  const songs: MpdSong[] = []
+  let cur: Partial<MpdSong> | null = null
+
+  for (const line of lines) {
+    if (line.startsWith('file: ')) {
+      if (cur && cur.file) {
+        songs.push(finalizeSong(cur))
+      }
+      const file = line.slice(6).trim()
+      cur = {
+        id: file,
+        file,
+        title: '',
+        artist: '',
+        album: '',
+        duration: 0,
+        format: '',
+        quality: 'STD',
+        coverUrl: `app-media://cover/${encodeURIComponent(file)}`
+      }
+    } else if (cur) {
+      const idx = line.indexOf(': ')
+      if (idx !== -1) {
+        const key = line.slice(0, idx).toLowerCase()
+        const val = line.slice(idx + 2).trim()
+        if (key === 'title') cur.title = val
+        else if (key === 'artist') cur.artist = val
+        else if (key === 'album') cur.album = val
+        else if (key === 'duration') cur.duration = Number.parseFloat(val) || 0
+        else if (key === 'time' && !cur.duration) cur.duration = Number.parseInt(val, 10) || 0
+        else if (key === 'format') cur.format = val
+        else if (key === 'date') cur.date = val
+        else if (key === 'track') cur.track = val
+        else if (key === 'pos') cur.pos = Number.parseInt(val, 10)
+        else if (key === 'id') {
+          cur.queueId = Number.parseInt(val, 10)
+          cur.id = `q_${cur.queueId}`
+        }
+      }
+    }
+  }
+
+  if (cur && cur.file) {
+    songs.push(finalizeSong(cur))
+  }
+
+  return songs
 }
 
 /**
@@ -296,6 +352,8 @@ export async function getStatus(): Promise<MpdStatus> {
             result.playlistLength = Number.parseInt(v, 10) || 0
           } else if (k === 'song') {
             result.songPos = Number.parseInt(v, 10) || 0
+          } else if (k === 'songid') {
+            result.songId = Number.parseInt(v, 10) || 0
           } else if (k === 'repeat') {
             repeat = v === '1'
           } else if (k === 'random') {
@@ -320,6 +378,7 @@ export async function getStatus(): Promise<MpdStatus> {
     }
 
     if (songData['file']) {
+      const qId = songData['id'] ? Number.parseInt(songData['id'], 10) : result.songId
       result.currentSong = finalizeSong({
         id: songData['file'],
         file: songData['file'],
@@ -329,7 +388,9 @@ export async function getStatus(): Promise<MpdStatus> {
         duration: Number.parseFloat(songData['duration']) || result.duration,
         format: songData['format'],
         date: songData['date'],
-        track: songData['track']
+        track: songData['track'],
+        pos: songData['pos'] ? Number.parseInt(songData['pos'], 10) : result.songPos,
+        queueId: qId
       })
     }
 
@@ -491,6 +552,79 @@ export async function addToQueue(file: string): Promise<boolean> {
     return true
   } catch (error) {
     console.error(`[lpip-player:mpd] 添加到队列失败: ${file}`, error)
+    return false
+  }
+}
+
+/**
+ * 获取 MPD 实时播放队列中的全部曲目列表
+ */
+export async function getQueue(): Promise<MpdSong[]> {
+  try {
+    const raw = await sendMpdCommand('playlistinfo')
+    return parseMpdPlaylist(raw)
+  } catch (error) {
+    console.error('[lpip-player:mpd] 获取播放队列失败:', error)
+    return []
+  }
+}
+
+/**
+ * 播放队列中指定曲目
+ */
+export async function playQueueItem(pos: number, queueId?: number): Promise<boolean> {
+  try {
+    if (typeof queueId === 'number' && !Number.isNaN(queueId)) {
+      await sendMpdCommand(`playid ${queueId}`)
+    } else {
+      await sendMpdCommand(`play ${pos}`)
+    }
+    return true
+  } catch (error) {
+    console.error(`[lpip-player:mpd] 播放队列曲目失败 (pos: ${pos}, queueId: ${queueId}):`, error)
+    return false
+  }
+}
+
+/**
+ * 从队列中移除指定曲目
+ */
+export async function removeQueueItem(pos: number, queueId?: number): Promise<boolean> {
+  try {
+    if (typeof queueId === 'number' && !Number.isNaN(queueId)) {
+      await sendMpdCommand(`deleteid ${queueId}`)
+    } else {
+      await sendMpdCommand(`delete ${pos}`)
+    }
+    return true
+  } catch (error) {
+    console.error(`[lpip-player:mpd] 移除队列曲目失败 (pos: ${pos}, queueId: ${queueId}):`, error)
+    return false
+  }
+}
+
+/**
+ * 清空当前播放队列
+ */
+export async function clearQueue(): Promise<boolean> {
+  try {
+    await sendMpdCommand('clear')
+    return true
+  } catch (error) {
+    console.error('[lpip-player:mpd] 清空队列失败:', error)
+    return false
+  }
+}
+
+/**
+ * 移动队列中的曲目顺序
+ */
+export async function moveQueueItem(fromPos: number, toPos: number): Promise<boolean> {
+  try {
+    await sendMpdCommand(`move ${fromPos} ${toPos}`)
+    return true
+  } catch (error) {
+    console.error(`[lpip-player:mpd] 移动队列曲目失败 (${fromPos} -> ${toPos}):`, error)
     return false
   }
 }

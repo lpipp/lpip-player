@@ -1,0 +1,564 @@
+/* ============================================================
+   播放队列抽屉组件样式 (QueueDrawer)
+   设计规范:
+     - 严格遵循 Model B / 液态玻璃美学与翡翠绿 (#6ee7b7) 视觉语言
+     - 动静分离铁律: 宿主卡片整像素物理定位，::before 承载磨砂与等比微放大
+     - 启用 GPU 视窗裁剪，彻底隐藏滚动条，保持 60fps 原生手势/滚轮平滑滚动
+     - 原生拖拽排序指示线与红心收藏动效反馈
+   ============================================================ */
+
+.queue-drawer-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------
+   顶部工具栏: 标题、总曲数与操作按键组 (定位、清空)
+   ------------------------------------------------------------ */
+.queue-drawer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.queue-toolbar-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.queue-toolbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3px;
+}
+
+.queue-toolbar-count {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 工具栏轻量操作按键 (CSS reset + 磨砂微光) */
+.queue-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  outline: none;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.queue-toolbar-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.queue-toolbar-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 定位当前曲目高亮 */
+.queue-btn-locate:hover:not(:disabled) {
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.15);
+}
+
+/* 清空队列悬停微红警示 */
+.queue-btn-clear:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+/* ------------------------------------------------------------
+   队列滚动主体: 彻底隐藏滚动条，GPU 硬件加速
+   ------------------------------------------------------------ */
+.queue-drawer-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding-bottom: 14px;
+}
+
+.queue-drawer-scroll-area::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 空状态展示 */
+.queue-drawer-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  gap: 10px;
+  text-align: center;
+}
+
+.queue-empty-svg {
+  color: rgba(255, 255, 255, 0.2);
+  margin-bottom: 2px;
+}
+
+.queue-empty-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.queue-empty-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.queue-drawer-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 10px #6ee7b7;
+  animation: queueDotPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes queueDotPulse {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* 歌曲列表流 */
+.queue-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ============================================================
+   队列项 (Queue Item) - 严格执行动静分离与高保真美学
+   ============================================================ */
+.queue-track-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  outline: none;
+  user-select: none;
+  /* 启用 GPU 视窗裁剪加速 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 58px;
+}
+
+/* 动静分离外壳: 背景、边框与 hover 缩放 */
+.queue-track-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: var(--theme-subpanel-card-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--theme-subpanel-card-border, rgba(255, 255, 255, 0.05));
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: -1;
+  transform-origin: center center;
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.18s ease;
+}
+
+.queue-track-item:hover {
+  z-index: 5;
+}
+
+.queue-track-item:hover::before {
+  transform: scale(1.012) translateZ(0);
+  background: var(--theme-subpanel-card-hover-bg, rgba(255, 255, 255, 0.07));
+  border-color: var(--theme-subpanel-card-hover-border, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* 激活态: 正在播放该曲目 (翡翠绿高亮与微光弥散) */
+.queue-track-item.active::before {
+  background: rgba(110, 231, 183, 0.095);
+  border-color: rgba(110, 231, 183, 0.38);
+  box-shadow: 0 0 14px rgba(110, 231, 183, 0.16);
+}
+
+/* 拖拽中状态 */
+.queue-track-item.dragging {
+  opacity: 0.42;
+  cursor: grabbing;
+}
+
+/* 拖拽悬停吸附指示线 (翡翠绿激光标线) */
+.queue-track-item.drag-over-top::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: #6ee7b7;
+  border-radius: 2px;
+  box-shadow: 0 0 8px #6ee7b7;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.queue-track-item.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: #6ee7b7;
+  border-radius: 2px;
+  box-shadow: 0 0 8px #6ee7b7;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ------------------------------------------------------------
+   序号与拖拽手柄列 (20px 宽度)
+   ------------------------------------------------------------ */
+.queue-track-index-col {
+  position: relative;
+  width: 20px;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.32);
+  flex-shrink: 0;
+}
+
+.queue-track-item.active .queue-track-index-num {
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+.queue-track-grip {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.45);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+  pointer-events: none;
+}
+
+.queue-track-item:hover .queue-track-index-num {
+  opacity: 0;
+}
+
+.queue-track-item:hover .queue-track-grip {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------
+   封面缩略图 (38px × 38px, 圆角 6px)
+   ------------------------------------------------------------ */
+.queue-track-cover-wrapper {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.queue-track-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.queue-track-cover-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.queue-track-disc-icon {
+  width: 22px;
+  height: 22px;
+}
+
+/* 正在播放的微型频谱条动效 */
+.queue-mini-equalizer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(10, 10, 15, 0.65);
+  backdrop-filter: blur(2px);
+}
+
+.queue-mini-bar {
+  width: 2.5px;
+  border-radius: 2px;
+  background-color: #6ee7b7;
+  box-shadow: 0 0 4px #6ee7b7;
+  animation: miniBarJump 0.8s ease-in-out infinite alternate;
+}
+
+.queue-mini-bar.bar-1 {
+  height: 10px;
+  animation-delay: 0.1s;
+}
+
+.queue-mini-bar.bar-2 {
+  height: 16px;
+  animation-delay: 0.3s;
+}
+
+.queue-mini-bar.bar-3 {
+  height: 7px;
+  animation-delay: 0.5s;
+}
+
+@keyframes miniBarJump {
+  0% {
+    transform: scaleY(0.35);
+  }
+  100% {
+    transform: scaleY(1.05);
+  }
+}
+
+/* ------------------------------------------------------------
+   中间曲目元数据区
+   ------------------------------------------------------------ */
+.queue-track-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+}
+
+.queue-track-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.queue-track-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.1px;
+}
+
+.queue-track-item.active .queue-track-title {
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+.queue-track-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+/* 音质徽标 */
+.queue-quality-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 2.5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.queue-quality-badge.badge-sq {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.queue-quality-badge.badge-hi-res {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.queue-quality-badge.badge-hq {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.32);
+}
+
+.queue-quality-badge.badge-std {
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.queue-track-artist-album {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.48);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------
+   曲目时长与操作按键组
+   ------------------------------------------------------------ */
+.queue-track-duration {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.queue-track-item.active .queue-track-duration {
+  color: rgba(110, 231, 183, 0.75);
+}
+
+.queue-track-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+/* 红心收藏按键 (CSS reset + 动效) */
+.queue-track-fav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.queue-track-fav-btn:hover {
+  color: #6ee7b7;
+  transform: scale(1.18);
+}
+
+.queue-track-fav-btn.favorited {
+  color: #6ee7b7;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.5));
+  animation: heartBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes heartBounce {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 单曲移除叉号按键 */
+.queue-track-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.16s ease;
+}
+
+.queue-track-remove-btn:hover {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  transform: scale(1.15);
+}
