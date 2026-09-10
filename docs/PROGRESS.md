@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-10
-> 当前阶段: M2-2 (悬浮长条胶囊第二按键“播放队列管理 (QueueDrawer)”完备 + 曲库二态开关 (+添加/-移出) 双向实时同步落地，零报错稳定常驻)
-> 最新进展: 完成 M2-2 播放队列管理抽屉与曲库二态开关重构（详见 §2.9、§2.10 与 §4.14）
+> 当前阶段: M2-2 (悬浮长条胶囊第二按键“播放队列管理 (QueueDrawer)”完备 + 曲库二态开关 (+添加/-移出) 双向实时同步落地，队列精简移除红心收藏，零报错稳定常驻)
+> 最新进展: 移除播放队列抽屉中的红心收藏功能与样式，保持纯净单曲移除与原生拖拽重排（详见 §2.11）
 
 ---
 
@@ -237,7 +237,7 @@
     - 采用原生 HTML5 `draggable` 机制，悬停于序号列时无缝显现 6 点拖拽手柄（`DragGripIcon`）；
     - 支持双向（向下/向上）拖动，计算上中下半区吸附，翡翠绿激光标线动态指示插入位点；
     - 前端即时乐观重排，底层通过 MPD `move <from> <to>` 指令原子化对齐，实测位点与 MPD 状态 100% 吻合，零第三方重型依赖；
-  - **红心收藏标记 (`Favorites`)**: 每行提供红心点击收藏，轻量持久化至 `localStorage`，并通过自定义事件 `lpip:favorites-changed` 广播全局。
+  - **红心收藏标记 (`Favorites`)**: （已于 §2.11 移除收敛，队列右侧仅保留单曲移除叉号按键）。
 - **动静分离铁律与视窗裁剪性能**:
   - `.queue-track-item` 宿主容器锁定整像素绝对网格，文字坐标恒定静止；
   - `::before` 独立伪元素承载卡片磨砂背景、边框高光与 `scale(1.012)` 悬停微缩放与投影；
@@ -258,6 +258,20 @@
   - 引入 `syncSeqRef` 防乱序序列号与 `clickLockRef` 快速点击互斥锁，彻底杜绝 500ms 轮询覆盖乐观 UI 导致的瞬间闪烁；
   - 按钮添加 `onKeyDown` 事件冒泡阻断，彻底根除键盘 Tab 聚焦后回车激活误触发整行切歌的边界缺陷。
 
+### 2.11 播放队列精简收敛与红心收藏功能移除 (`QueueDrawer Simplification`)
+- **精简收敛背景与设计哲学**:
+  - 播放队列的核心使命在于精准呈现当前播放序列、极速切歌、单曲移除与拖拽排序；
+  - 移除队列行内冗余的红心收藏按钮，消除界面右侧的视觉杂质，使等宽时长与单曲移除叉号拥有更加空灵通透的呼吸空间；
+- **彻底清理的代码链路**:
+  1. 移除 `QueueDrawer.tsx` 中的 `HeartIcon` 矢量图标组件；
+  2. 移除 `FAVORITES_STORAGE_KEY` 及 `loadFavorites` / `saveFavorites` 本地存储逻辑；
+  3. 移除 `favorites` 状态及 `lpip:favorites-changed` 自定义事件广播与订阅；
+  4. 移除曲目行右侧的 `<button className="queue-track-fav-btn">` 元素，仅保留单曲移除按键（`queue-track-remove-btn`）；
+  5. 移除 `QueueDrawer.css` 中的 `.queue-track-fav-btn` 样式规则集及 `@keyframes heartBounce` 动画；
+- **实测验证结果**:
+  - `pnpm typecheck` 0 错误通过；
+  - CDP 实机探测 `.queue-track-fav-btn` 数量恒为 0，`.queue-track-actions` 容器严格仅含 1 个移除子按键；
+  - 拖拽重排、单曲移除、一键清空与切歌功能完好无损，桌面常驻窗口运行平稳。
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc

@@ -38,9 +38,10 @@
 
 ---
 
-## 2. git 状态（截至 9914be0）
+## 2. git 状态（截至 65585ee）
 
 ```
+65585ee refactor(queue): 删除播放队列中的红心收藏功能
 9914be0 feat(queue): 曲库队列按键重构为二态开关(+添加/-移出)并支持双向实时同步
 c4adfc1 fix(queue): 播放队列防重复添加并增加该歌曲已在队列提示
 10a422a fix(queue): 修复键盘移除/收藏冒泡切歌缺陷、空队列时长00:01异常及冗余标题与IPC重连
@@ -85,7 +86,7 @@ src/
          ├─ MechanicalGear.tsx  右侧精密机械表机芯 (.css 蓝图矢量纯线条、多级减速齿轮与摆轮游丝)
          ├─ SpectrumVisualizer.tsx 高级制表蓝图纯线条频谱律动 (.css Canvas 2D 零内存分配/自适应休眠)
          ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css 二态开关 +/-、60fps 模糊检索列表)
-         ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/红心收藏/单曲移除/一键清空)
+         ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/单曲移除/一键清空/定位正在播放)
          └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
 ```
 
