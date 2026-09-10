@@ -555,6 +555,7 @@ export default function QueueDrawer({
                         alt={song.album || song.title}
                         className="queue-track-cover-img"
                         loading="lazy"
+                        draggable={false}
                         onError={() => handleImageError(song.id || String(song.queueId))}
                       />
                     ) : (
@@ -593,7 +594,11 @@ export default function QueueDrawer({
                   </span>
 
                   {/* 右侧交互按键组: 红心收藏与移除单曲 */}
-                  <div className="queue-track-actions">
+                  <div
+                    className="queue-track-actions"
+                    draggable={false}
+                    onDragStart={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       className={`queue-track-fav-btn ${isFav ? 'favorited' : ''}`}

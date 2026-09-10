@@ -269,6 +269,7 @@ export default function MusicLibraryList({
                         alt={song.album || song.title}
                         className="music-track-cover-img"
                         loading="lazy"
+                        draggable={false}
                         onError={() => handleImageError(song.id)}
                       />
                     ) : (

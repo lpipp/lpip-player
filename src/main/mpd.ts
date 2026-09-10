@@ -442,7 +442,13 @@ export async function playSong(file: string): Promise<boolean> {
       const songId = idMatch[1]
       await sendMpdCommand(`playid ${songId}`)
     } else {
-      await sendMpdCommand(`command_list_begin\nadd "${file}"\nplay\ncommand_list_end`)
+      const addRes = await sendMpdCommand(`addid "${file}"`)
+      const newIdMatch = addRes.match(/Id:\s*(\d+)/i)
+      if (newIdMatch) {
+        await sendMpdCommand(`playid ${newIdMatch[1]}`)
+      } else {
+        await sendMpdCommand('play')
+      }
     }
     return true
   } catch (error) {
