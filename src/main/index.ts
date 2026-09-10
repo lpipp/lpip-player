@@ -10,6 +10,7 @@ import type { PlaybackMode } from '../types/music'
 import {
   addToQueue,
   clearQueue,
+  deduplicateQueue,
   getLibrary,
   getOrExtractAlbumCover,
   getQueue,
@@ -376,6 +377,9 @@ app.whenReady().then(() => {
       // 忽略文件监听异常
     }
   }
+
+  // 启动前去重 MPD 队列中的历史重复歌曲
+  deduplicateQueue().catch(() => {})
 
   // 启动 MPD 实时播放状态监听轮询器 (500ms 刷新并广播变更)
   setInterval(broadcastStatus, 500)

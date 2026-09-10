@@ -228,8 +228,12 @@ export default function QueueDrawer({
           window.electronAPI.mpd.getQueue(),
           window.electronAPI.mpd.getStatus()
         ])
-        setSongs(queue)
-        lastPlaylistLenRef.current = queue.length
+        // 核心防重保证：过滤重复的 file 项，确保队列展示中每一首歌绝对唯一
+        const uniqueQueue = queue.filter(
+          (song, index, self) => index === self.findIndex((s) => s.file === song.file)
+        )
+        setSongs(uniqueQueue)
+        lastPlaylistLenRef.current = uniqueQueue.length
         if (status?.playlistVersion !== undefined) {
           lastPlaylistVerRef.current = status.playlistVersion
         }

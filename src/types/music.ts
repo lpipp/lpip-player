@@ -80,3 +80,13 @@ export interface MpdStatus {
   /** 当前播放模式 ('sequence' | 'shuffle' | 'single') */
   mode: PlaybackMode
 }
+
+/**
+ * 添加至播放队列的结果
+ */
+export interface AddToQueueResult {
+  /** 操作是否成功 */
+  success: boolean
+  /** 该歌曲是否已经在队列中 (若已在队列则不再重复添加) */
+  alreadyInQueue: boolean
+}

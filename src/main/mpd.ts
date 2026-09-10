@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { app } from 'electron'
 
 import { loadConfig } from './config'
-import type { LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AddToQueueResult, LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
 
 /**
  * 缓存的本地曲库数据，避免每次展开抽屉都重新全量查询
@@ -549,15 +549,53 @@ export async function seekSong(timeSeconds: number): Promise<boolean> {
 }
 
 /**
- * 将指定歌曲追加至 MPD 当前队列
+ * 清理 MPD 队列中的重复歌曲（保证每个 file 路径仅保留首个实例）
  */
-export async function addToQueue(file: string): Promise<boolean> {
+export async function deduplicateQueue(): Promise<void> {
   try {
+    const raw = await sendMpdCommand('playlistinfo')
+    const queue = parseMpdPlaylist(raw)
+    const seen = new Set<string>()
+    const duplicateIds: number[] = []
+
+    for (const song of queue) {
+      if (seen.has(song.file)) {
+        if (typeof song.queueId === 'number' && !Number.isNaN(song.queueId)) {
+          duplicateIds.push(song.queueId)
+        }
+      } else {
+        seen.add(song.file)
+      }
+    }
+
+    // 从后向前删除重复项，确保不破坏前面的索引
+    for (let i = duplicateIds.length - 1; i >= 0; i--) {
+      await sendMpdCommand(`deleteid ${duplicateIds[i]}`)
+    }
+  } catch (error) {
+    console.error('[lpip-player:mpd] 队列去重检查失败:', error)
+  }
+}
+
+/**
+ * 将指定歌曲追加至 MPD 当前队列
+ * 核心约束：播放队列不能有两首同样的歌。若已在队列中，直接返回 alreadyInQueue: true，绝不重复添加。
+ */
+export async function addToQueue(file: string): Promise<AddToQueueResult> {
+  try {
+    // 1. 检查当前队列是否已存在该歌曲 (以文件路径 file 为唯一判定)
+    const queue = await getQueue()
+    const alreadyExists = queue.some((song) => song.file === file)
+    if (alreadyExists) {
+      return { success: true, alreadyInQueue: true }
+    }
+
+    // 2. 不存在时真正向 MPD 发送 add 指令
     await sendMpdCommand(`add "${file}"`)
-    return true
+    return { success: true, alreadyInQueue: false }
   } catch (error) {
     console.error(`[lpip-player:mpd] 添加到队列失败: ${file}`, error)
-    return false
+    return { success: false, alreadyInQueue: false }
   }
 }
 

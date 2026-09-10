@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../main/ipc-channels'
-import type { LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AddToQueueResult, LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
 import type { AppConfig } from '../main/config'
 
 /**
@@ -34,8 +34,8 @@ export interface ElectronAPI {
     getStatus: () => Promise<MpdStatus>
     /** 获取歌曲对应的 LRC 歌词行 */
     getLyrics: (file: string) => Promise<LyricLine[]>
-    /** 追加指定音源文件至队列 */
-    addToQueue: (file: string) => Promise<boolean>
+    /** 追加指定音源文件至队列 (带去重防重复保障) */
+    addToQueue: (file: string) => Promise<AddToQueueResult>
     /** 获取当前播放队列中的全部曲目列表 */
     getQueue: () => Promise<MpdSong[]>
     /** 播放队列中指定位置或 ID 的曲目 */

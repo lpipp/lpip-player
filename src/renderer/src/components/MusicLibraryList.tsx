@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type MouseEvent } from 'react'
+import { useEffect, useState, useMemo, useRef, type MouseEvent } from 'react'
 import type { MpdSong } from '../../../types/music'
 import './MusicLibraryList.css'
 
@@ -98,6 +98,16 @@ export default function MusicLibraryList({
   const [searchQuery, setSearchQuery] = useState('')
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({})
   const [addedMap, setAddedMap] = useState<Record<string, boolean>>({})
+  const [duplicateMap, setDuplicateMap] = useState<Record<string, boolean>>({})
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    }
+  }, [])
 
   // 加载本地曲库
   useEffect(() => {
@@ -149,19 +159,39 @@ export default function MusicLibraryList({
     setImgErrors((prev) => ({ ...prev, [fileId]: true }))
   }
 
-  // 点击添加至播放队列
+  // 点击添加至播放队列 (严格去重约束: 不能有两首同样的歌，已在队列时明确提示)
   const handleAddClick = async (e: MouseEvent, song: MpdSong): Promise<void> => {
     e.stopPropagation()
-    if (window.electronAPI?.mpd) {
-      await window.electronAPI.mpd.addToQueue(song.file)
-    }
-    onAddToQueue?.(song)
+    if (!window.electronAPI?.mpd) return
 
-    // 显示 1.5s 绿色打勾反馈
-    setAddedMap((prev) => ({ ...prev, [song.id]: true }))
-    setTimeout(() => {
-      setAddedMap((prev) => ({ ...prev, [song.id]: false }))
-    }, 1500)
+    const res = await window.electronAPI.mpd.addToQueue(song.file)
+
+    // 若歌曲已在队列中：不重复添加，明确呈现“该歌曲已在队列”
+    if (res.alreadyInQueue) {
+      // 触发当前曲目按钮与徽标微光提示 (1.8s)
+      setDuplicateMap((prev) => ({ ...prev, [song.id]: true }))
+      setTimeout(() => {
+        setDuplicateMap((prev) => ({ ...prev, [song.id]: false }))
+      }, 1800)
+
+      // 触发顶部液态玻璃 Toast 提示 (2s)
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+      setToastMessage('该歌曲已在队列')
+      toastTimerRef.current = setTimeout(() => {
+        setToastMessage(null)
+      }, 2000)
+      return
+    }
+
+    if (res.success) {
+      onAddToQueue?.(song)
+
+      // 首次添加成功：显示 1.5s 翡翠绿打勾反馈
+      setAddedMap((prev) => ({ ...prev, [song.id]: true }))
+      setTimeout(() => {
+        setAddedMap((prev) => ({ ...prev, [song.id]: false }))
+      }, 1500)
+    }
   }
 
   // 点击单曲触发播放
@@ -184,6 +214,20 @@ export default function MusicLibraryList({
 
   return (
     <div className="music-library-container">
+      {/* 轻量液态玻璃 Toast 浮层提示: "该歌曲已在队列" */}
+      {toastMessage && (
+        <div className="music-library-toast" role="status">
+          <span className="toast-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </span>
+          <span className="toast-text">{toastMessage}</span>
+        </div>
+      )}
+
       {/* 搜索与曲库信息微控制栏 */}
       <div className="music-library-toolbar">
         <div className="music-search-box">
@@ -305,25 +349,34 @@ export default function MusicLibraryList({
                     </div>
                   </div>
 
-                  {/* 右侧微圆环加号按键: 加入播放队列 */}
-                  <button
-                    type="button"
-                    className={`music-track-add-btn ${isAdded ? 'added' : ''}`}
-                    onClick={(e) => handleAddClick(e, song)}
-                    title={isAdded ? '已追加至当前队列' : '添加到播放队列'}
-                    aria-label="添加到播放队列"
-                  >
-                    {isAdded ? (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
+                  {/* 右侧微圆环加号按键区: 加入播放队列与去重反馈 */}
+                  <div className="music-track-actions">
+                    {duplicateMap[song.id] && (
+                      <span className="music-track-duplicate-badge">该歌曲已在队列</span>
                     )}
-                  </button>
+                    <button
+                      type="button"
+                      className={`music-track-add-btn ${isAdded ? 'added' : ''} ${duplicateMap[song.id] ? 'duplicate' : ''}`}
+                      onClick={(e) => handleAddClick(e, song)}
+                      title={duplicateMap[song.id] ? '该歌曲已在队列' : isAdded ? '已追加至当前队列' : '添加到播放队列'}
+                      aria-label={duplicateMap[song.id] ? '该歌曲已在队列' : isAdded ? '已追加至当前队列' : '添加到播放队列'}
+                    >
+                      {duplicateMap[song.id] ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : isAdded ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )
             })}
