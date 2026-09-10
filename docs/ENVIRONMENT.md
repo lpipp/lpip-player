@@ -38,14 +38,14 @@
 
 ---
 
-## 2. git 状态（截至 59e5853）
+## 2. git 状态（截至 9442c03）
 
 ```
+9442c03 fix(ui): 消除星盘歌词背景暗角层硬边导致的纵向色差分层
+e8d9927 feat(visualizer): 完成 M2-1 高级制表蓝图纯线条音频频谱律动图层
 59e5853 fix(audio): 彻底根治 48kHz 特殊音频曲目全程背景爆破音与重采样抖动
 91b7c37 fix(audio): 彻底根治切歌与歌词跳转后的短暂杂音与交叠爆音
 41802b8 feat(audio): 新增切歌与歌词跳转淡出淡入平滑过渡及配置开关支持
-05f187a fix(audio): 落地方案 C (自建 WebAudio PCM 流式输出管道，彻底消除 3~4s 响应滞后)
-7e60a56 修复音频卡顿三 bug (纯文本 MPD 客户端 + 保留原始流)
 ```
 
 - 工作区**干净**，无未跟踪文件
@@ -53,7 +53,7 @@
 
 ---
 
-## 3. 源码现状（M1-2 完备）
+## 3. 源码现状（M2-1 完备）
 
 ```
 src/
@@ -67,7 +67,8 @@ src/
 ├─ preload/
 │  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI
 ├─ types/
-│  └─ music.ts                  全局歌曲模型、播放模式、MPD 状态、配置接口定义
+│  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行定义
+│  └─ config.ts                 应用配置模型、频谱律动配置与 JSONC 注释解析器
 └─ renderer/
    ├─ index.html                CSP 策略与 DOM 挂载入口
    └─ src/
@@ -79,8 +80,9 @@ src/
       └─ components/
          ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (.css 动静分离防拉伸抖动)
          ├─ StatusBar.tsx       底部磨砂玻璃状态栏 (.css 动静分离液态流动按键、等宽数字防抖进度条)
-         ├─ LyricsOrbit.tsx     极坐标星盘歌词天文钟 (.css 擒纵阻尼齿轮跳齿、三级游标分划)
+         ├─ LyricsOrbit.tsx     极坐标星盘歌词天文钟 (.css 擒纵阻尼齿轮跳齿、三级游标分划、全视窗暗角渐变)
          ├─ MechanicalGear.tsx  右侧精密机械表机芯 (.css 蓝图矢量纯线条、多级减速齿轮与摆轮游丝)
+         ├─ SpectrumVisualizer.tsx 高级制表蓝图纯线条频谱律动 (.css Canvas 2D 零内存分配/自适应休眠)
          ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css GPU 视窗裁剪 60fps 模糊检索列表)
          └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
 ```
@@ -207,6 +209,12 @@ bash -c 'exec 3<>/dev/tcp/127.0.0.1/6600 && printf "status\nclose\n" >&3 && time
       "duration": 120
     }
   },
+  "visualizer": {
+    "enabled": true,
+    "height": 160,
+    "opacity": 0.85,
+    "style": "blueprint"
+  },
   "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 }
 }
 ```
@@ -217,6 +225,7 @@ bash -c 'exec 3<>/dev/tcp/127.0.0.1/6600 && printf "status\nclose\n" >&3 && time
 - `window.background.mica` 控制云母效果（包含 `style`, `grainOpacity`, `tintOpacity`, `edgeHighlight`, `border` 微调项）
 - `window.sidebar` 控制左侧悬浮长条胶囊伸缩抽屉（包含开关 `enabled`、透明度 `opacity`、移出关闭距离 `closeBuffer`、移出收起延迟 `closeDelay`、动画时长 `animationDuration`、缓动函数 `animationEasing`、展开宽度 `width` 与上下延伸幅度 `verticalExtension`）
 - `audio.fade` 控制切歌与歌词跳转时的平滑淡出淡入过渡（包含总开关 `enabled`、过渡时长 `duration`，支持热更即时生效）
+- `visualizer` 控制音频频谱可视化律动（包含开关 `enabled`、画布高度 `height`、整体不透明度 `opacity` 与渲染风格 `style: 'blueprint' | 'wave' | 'bars'`，支持热重载即时生效，设为 `false` 立即休眠 RAF 循环）
 - **格式特性**：内置零依赖注释解析，完全支持 **JSONC**（允许自由添加 `//` 与 `/* */` 中文注释，`config.example.json` 已提供全中文注释示例）
 - 主题配置（theme）支持 `mode: "dark" | "light"`, `brightness`, `contrast` 微调
 - ⚠️ electron 每次运行会向 `~/.config/lpip-player/` 写 Chromium 缓存（Cache/GPUCache 等 20+ 项），

@@ -35,6 +35,10 @@
 | `window.sidebar.closeDelay` | `300` | 移出安全距离后的收起倒计时时长（ms） |
 | `audio.fade.enabled` | `true` | 切歌与歌词跳转时的平滑淡出淡入总开关（`true` / `false`） |
 | `audio.fade.duration` | `120` | 淡出淡入过渡时长（ms，推荐 `80` ~ `200`，范围 `20` ~ `1000`） |
+| `visualizer.enabled` | `true` | 音频频谱可视化律动总开关（`false` 时彻底停止 RAF 渲染循环并隐藏画布） |
+| `visualizer.height` | `160` | 频谱画布高度（px，范围 `40` ~ `600`） |
+| `visualizer.opacity` | `0.85` | 频谱画布整体不透明度（`0.0` ~ `1.0`） |
+| `visualizer.style` | `'blueprint'` | 频谱渲染风格：`'blueprint'`（高级制表纯线条蓝图工程风+散点微光）/ `'wave'`（正弦工程波形包络）/ `'bars'`（精密刻度柱状频段） |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 纯文本 TCP 控制协议地址（原生 Client 零依赖） |
 | `mpd.streamPort` | `8000` | MPD httpd wave/PCM 音频流端口（WebAudio 零拷贝直接拉流） |
 
@@ -58,7 +62,13 @@
   - [x] **Model B / 方案 C WebAudio PCM 流式管道**：废弃 `<audio>` 黑盒缓冲，采用 `fetch` + `AudioBufferSourceNode` 直送，将 3~4 秒滞后降低至 35ms 极速响应
   - [x] **切歌与歌词跳转平滑淡出淡入**：独立流世代 GainNode 架构，配置文件动态热生效，彻底根除交叠爆音
   - [x] **动态采样率感知与全格式支持**：MPD 原生透传 `*:16:2` + SoX 高阶重采样 + WAV 头动态解析 + 硬件自适应，彻底根治 48kHz 特殊曲目背景爆破音
-- [ ] **M2-1 WebAudio FFT 频谱分析与机芯/水波律动联动**（即将开启）
+- [x] **M2-1 WebAudio FFT 蓝图工程频谱律动图层**：
+  - [x] 原生复用 `pcmPlayer.getAnalyserNode()`，零性能损耗提取 60fps 频域与时域特征
+  - [x] 高级制表纯线条蓝图工程风（`SpectrumVisualizer`，基准标尺分划刻度、十字准星、对数拉伸样条曲线、延时衰减冷青虚线、散点微光粒子）
+  - [x] 严格图层层级（壁纸 < 频谱图层 `bottom: 80px, z-index: 5` < 机械齿轮 < 状态栏，`pointer-events: none` 全透传）
+  - [x] 极致性能与防劣化（零 React State 循环、预分配对象池零 GC 分配、暂停/停止/静音自适应 RAF 休眠）
+  - [x] 完整运行时配置支持与 IPC 热重载（`visualizer.enabled`, `height`, `opacity`, `style`）
+  - [x] 星盘歌词暗角层硬边消除（`inset: 0` 全视窗自然向外平滑消散，根治纵向色差分层）
 - [ ] **M2-2 悬浮胶囊第二按键“播放队列”管理 (`QueueDrawer`)**
 - [ ] **M2-3 主工作区居中液态玻璃面板 (`GlassPanel`) / 页面切换与黑胶大舞台**
 
@@ -78,9 +88,9 @@ pnpm start         # 运行生产构建版
 src/
 ├─ main/           主进程: 窗口生命周期、配置管理、MPD TCP 客户端、特权流协议
 ├─ preload/        contextBridge 安全桥: 暴露最小安全 electronAPI
-├─ types/          共享类型定义: 歌曲模型、MPD 状态、配置模型
+├─ types/          共享类型定义: 歌曲模型、MPD 状态、配置模型 (config.ts)
 └─ renderer/       React 前端:
-   ├─ components/  UI 组件 (胶囊抽屉、磨砂底栏、星盘歌词、机械机芯、曲库列表、视频壁纸)
+   ├─ components/  UI 组件 (胶囊抽屉、磨砂底栏、星盘歌词、机械机芯、频谱律动、曲库列表、视频壁纸)
    ├─ services/    核心驱动 (pcmPlayer: WebAudio PCM 流式播放、流世代淡入淡出、动态采样率)
    ├─ styles/      全局视觉风格与重置样式
    └─ App.tsx      主舞台逻辑与状态驱动中心

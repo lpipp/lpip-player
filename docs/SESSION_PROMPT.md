@@ -26,7 +26,7 @@
   前端拉流按 MPD state=play 判断，勿依赖端口
 - 运行时配置 ~/.config/lpip-player/config.json（支持完整 JSONC 中文注释与热重载）
 
-【当前进度 (M1-2 完备)】
+【当前进度 (M2-1 完备)】
 - 已完成功能与架构：
   1. 窗口沉浸式效果（window.immersive，无边框与系统原生边框自由切换，纯净无前端冗余控件）；
   2. 统一背景效果系统（window.background，支持 mode: "default" | "mica" | "wallpaper"）；
@@ -78,14 +78,21 @@
       - 歌曲元数据卡片：加粗歌曲名、SQ/Hi-Res/HQ 徽标、歌手与专辑副文本；
       - 播放模式切换：3 态循环（列表循环 🔁 / 随机播放 🔀 / 单曲循环 🔂），专属矢量按键；
       - 音量控制系统：动态扬声器图标（静音/低/中高）一键静音/恢复，72px 紧凑液态微光滑轨前端扬声器零延迟即时响应并双向推入 MPD。
+  25. 高级制表纯线条蓝图音频频谱律动图层 (SpectrumVisualizer)：
+      - 位于底部状态栏正上方 (bottom: 80px; width: 100%; height: 160px)，z-index: 5，严格处于壁纸之上、齿轮与底栏之下，声明 pointer-events: none 全透传；
+      - 瑞士高级制表纯线条蓝图工程风 (fill: none + #6ee7b7 薄荷绿微光漫射)，基准标尺分度刻度线、微型十字准星、对数频段拉伸样条曲线、延时衰减冷青虚线、峰值机芯轴承枢轴与动态散点微光粒子；
+      - 极致性能与防劣化保障：零 React State 循环驱动、预分配 TypedArray 与粒子对象池零 GC 内存抖动、播放暂停/停止/持续静音自适应挂起休眠 RAF 循环；
+      - 完整运行时配置支持与热重载：config.json visualizer 配置块 (enabled, height, opacity, style: 'blueprint'|'wave'|'bars')，修改秒级生效。
+  26. 星盘歌词背景暗角层硬边纵向色差分层彻底消除：
+      - 将 .lyrics-orbit-wrapper::before 的 left: 100px 修正为 inset: 0，使柔和径向暗角渐变自视觉中心向视窗四周自然平滑消散 (transparent 85%)，彻底消除了胶囊右侧 28px 处纵向通顶到底的硬边分界线。
 - 源码状态：
   - src/main: index.ts, config.ts, wallpaper.ts, mica.ts, mpd.ts, ipc-channels.ts
   - src/preload: index.ts
-  - src/types: music.ts
-  - src/renderer/src: App.tsx, styles/global.css, services/pcmPlayer.ts, components/SidebarCapsule.tsx & .css, components/WallpaperLayer.tsx & .css, components/StatusBar.tsx & .css, components/MechanicalGear.tsx & .css, components/LyricsOrbit.tsx & .css, components/MusicLibraryList.tsx & .css
+  - src/types: music.ts, config.ts
+  - src/renderer/src: App.tsx, styles/global.css, services/pcmPlayer.ts, components/SidebarCapsule.tsx & .css, components/WallpaperLayer.tsx & .css, components/StatusBar.tsx & .css, components/MechanicalGear.tsx & .css, components/LyricsOrbit.tsx & .css, components/SpectrumVisualizer.tsx & .css, components/MusicLibraryList.tsx & .css
   - 静态/类型检查：pnpm typecheck && pnpm build 通过，零错误。
-- 当前运行状态：Electron 实例在桌面常驻运行中（KDE Wayland），正在播放视频壁纸、MPD :8000 音频流前端扬声器出声、星盘歌词与机械齿轮实时跳齿同步、状态栏全部控制项正常工作。
-- 下一步任务：M2 阶段 —— M2-1 WebAudio FFT 频谱分析与机芯/水波律动共振；M2-2 悬浮胶囊第二按键“播放队列”管理（QueueDrawer）；M2-3 主工作区居中液态玻璃面板（GlassPanel）。
+- 当前运行状态：Electron 实例在桌面常驻运行中（KDE Wayland），正在播放视频壁纸、MPD :8000 音频流前端扬声器出声、星盘歌词与机械齿轮实时跳齿同步、状态栏全部控制项正常工作、频谱律动实时响应。
+- 下一步任务：M2 阶段 —— M2-2 悬浮胶囊第二按键“播放队列”管理（QueueDrawer）；M2-3 主工作区居中液态玻璃面板（GlassPanel）。
 
 【关键音频架构教训与测量铁律】
 1. 音频架构 Model B / 方案 C 铁律:
