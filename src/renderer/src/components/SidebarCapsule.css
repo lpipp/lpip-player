@@ -297,24 +297,26 @@
   -ms-overflow-style: none !important;
 }
 
-/* 曲库与播放队列视图专用: 保持搜索/队列工具栏定格，内部滚动区独立平滑滚动 */
+/* 曲库、播放队列与艺人分类视图专用: 保持搜索/队列工具栏定格，内部滚动区独立平滑滚动 */
 .subpanel-content.subpanel-content-library,
-.subpanel-content.subpanel-content-queue {
+.subpanel-content.subpanel-content-queue,
+.subpanel-content.subpanel-content-artists {
   overflow-y: hidden !important;
   padding: 8px 12px 0;
   gap: 0;
 }
 
-.subpanel-content::-webkit-scrollbar,
-.sidebar-capsule *::-webkit-scrollbar,
-.sidebar-capsule::-webkit-scrollbar {
+/* 仅隐藏未显式使用 liquid-scrollbar 的区域滚动条，保证全局平整无原生粗灰条 */
+.subpanel-content:not(.liquid-scrollbar)::-webkit-scrollbar,
+.sidebar-capsule *:not(.liquid-scrollbar)::-webkit-scrollbar,
+.sidebar-capsule:not(.liquid-scrollbar)::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-.sidebar-capsule,
-.sidebar-capsule * {
+.sidebar-capsule:not(.liquid-scrollbar),
+.sidebar-capsule *:not(.liquid-scrollbar) {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }

@@ -430,8 +430,8 @@ export default function ArtistDrawer({
             </div>
           </div>
 
-          {/* 滚动列表区 */}
-          <div className="artist-drawer-scroll-area">
+          {/* 滚动列表区 (液态玻璃微光滑动条) */}
+          <div className="artist-drawer-scroll-area liquid-scrollbar">
             {loading ? (
               <div className="artist-empty-state">
                 <span>曲库歌手整理中...</span>
@@ -585,8 +585,8 @@ export default function ArtistDrawer({
             </div>
           </header>
 
-          {/* 单曲列表区 */}
-          <div className="artist-drawer-scroll-area">
+          {/* 单曲列表区 (液态玻璃微光滑动条) */}
+          <div className="artist-drawer-scroll-area liquid-scrollbar">
             <div className="artist-song-list">
               {selectedArtist.songs.map((song, idx) => {
                 const isCurrent = isSongActive(song)

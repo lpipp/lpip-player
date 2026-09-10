@@ -463,8 +463,8 @@ export default function QueueDrawer({
         </div>
       </div>
 
-      {/* 队列滚动区 (GPU 视窗裁剪加速，隐藏横纵滚动条) */}
-      <div className="queue-drawer-scroll-area" ref={scrollAreaRef}>
+      {/* 队列滚动区 (GPU 视窗裁剪加速与液态玻璃微光滑动条) */}
+      <div className="queue-drawer-scroll-area liquid-scrollbar" ref={scrollAreaRef}>
         {loading ? (
           <div className="queue-drawer-empty-state">
             <span className="queue-drawer-loading-dot" />

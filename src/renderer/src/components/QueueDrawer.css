@@ -95,22 +95,15 @@
 }
 
 /* ------------------------------------------------------------
-   队列滚动主体: 彻底隐藏滚动条，GPU 硬件加速
+   队列滚动主体: 呈现精致液态玻璃微光滑动条，GPU 硬件加速
    ------------------------------------------------------------ */
 .queue-drawer-scroll-area {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
   padding-bottom: 14px;
-}
-
-.queue-drawer-scroll-area::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  padding-right: 3px;
 }
 
 /* 空状态展示 */

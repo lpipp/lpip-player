@@ -380,8 +380,8 @@ export default function MusicLibraryList({
         </div>
       </div>
 
-      {/* 音源列表主体: 支持 content-visibility 现代 GPU 虚拟视窗裁剪，零卡顿 */}
-      <div className="music-library-scroll-area">
+      {/* 音源列表主体: 支持 content-visibility 现代 GPU 虚拟视窗裁剪与液态玻璃微光滑动条 */}
+      <div className="music-library-scroll-area liquid-scrollbar">
         {loading ? (
           <div className="music-library-empty-state">
             <span className="music-library-loading-dot" />
