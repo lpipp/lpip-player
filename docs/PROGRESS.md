@@ -499,6 +499,7 @@
 - **设置三级全删**: `modulesMeta` 六模块 desc 置空（字段保留防类型涟漪，`hardwareSampleRate/mpdConnected` 状态源保留他用）；L1 卡片与 L2 Hero 的 desc 行删除；7 处行级 `settings-control-desc` 整段删除；`SliderControl/FontPickerControl` 的 `desc?` 签名保留但不再渲染（17 处调用传参暂留，后续可清理）。`liquid-shortcut-desc`（快捷键键值对，非说明小字）与 MPD 状态 label 保留。
 - **胶囊底部三删**: `subpanel-footer`（版本号 + 就绪）整节删除；fallback 分支的 `subpanel-section-hint`（子项配置 + `closeDistance/closeDelay` 读数）删除但保留其下 `subpanel-list`（外观主题仍可用）；`capsule-model-badge`（M-B）删除，`capsule-rail-bottom` 留空占位；`capsule-status-dot` 呼吸点保留。被删 CSS 类名保留不动，零样式重构风险。
 - **测试闭环**: `pnpm typecheck` 通过；单测 11/11；`pnpm build` 通过（53 模块，CSS 157.44kB）；e2e 全绿（含 Step 11 `<12px=0` + Step 12 `13.5→18.5/12→16/13→18` 联动成立且恢复基线 —— 所用 `.settings-control-label/.liquid-slider-value/.settings-group-title` 选择器均在保留集合内）；CDP 实测曲库 436 行样本全为纯歌手、队列 10 行 `sep=0`、艺人 L2 subinfo 仅 SQ、歌单 L2 10 行 `sep=0`、添加面板 436 行严格分隔符零残留（`See-Saw` 系艺人名内连字符，非拼接残留）；`git status` 仅 6 文件改动，feat 已提交 `8afd258`，`config.json` 经比对零漂移。
+- **追加清理 + 原则沉淀**: 设置页 8 处中文标签去英文括号后缀（`(Font Family)/(Body Font)/(Translation Font)/(Control Port)/(PCM Stream Port)/(Model B)`，`星盘歌词排印→歌词排印`，提交 `fce1f17`，typecheck/build/e2e 全绿无回退）；整洁化设计原则整理为 `docs/STYLE.md` §7（七条：只留歌手 / 计数保留 / 无三级小字 / 无英文括号 / 底部无调试 / 只删展示 / 验收纪律），后续抽屉与 M2-3 新页面统一遵循。
 
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
