@@ -1557,6 +1557,23 @@ export default function SettingsDrawer() {
                       }
                     />
                   )}
+
+                  <SliderControl
+                    label="歌词滚轮确认延迟"
+                    desc="滚轮预览后等待单击确认的超时时长"
+                    value={(config.audio.lyricPreview?.timeoutMs ?? 1500) / 1000}
+                    min={0.5}
+                    max={5}
+                    step={0.1}
+                    displayValue={`${((config.audio.lyricPreview?.timeoutMs ?? 1500) / 1000).toFixed(1)}s`}
+                    onChange={(val) =>
+                      updateConfigDebounced({
+                        audio: {
+                          lyricPreview: { timeoutMs: Math.round(val * 1000) }
+                        }
+                      })
+                    }
+                  />
                 </div>
 
                 {/* 硬件音频管道自适应信息徽标 */}

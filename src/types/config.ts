@@ -162,11 +162,21 @@ export interface FadeConfig {
 }
 
 /**
+ * 歌词滚轮预览确认延迟配置
+ */
+export interface LyricPreviewConfig {
+  /** 滚轮预览后等待单击确认的超时时长 (毫秒, 范围 500 ~ 5000, 默认 1500) */
+  timeoutMs: number
+}
+
+/**
  * 音频播放与音效微调配置项
  */
 export interface AudioConfig {
   /** 切歌与歌词跳转淡出淡入配置 */
   fade: FadeConfig
+  /** 歌词滚轮预览确认延迟配置 */
+  lyricPreview: LyricPreviewConfig
 }
 
 /**
@@ -288,8 +298,13 @@ export const DEFAULT_FADE_CONFIG: FadeConfig = {
   duration: 120
 }
 
+export const DEFAULT_LYRIC_PREVIEW_CONFIG: LyricPreviewConfig = {
+  timeoutMs: 1500
+}
+
 export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
-  fade: DEFAULT_FADE_CONFIG
+  fade: DEFAULT_FADE_CONFIG,
+  lyricPreview: DEFAULT_LYRIC_PREVIEW_CONFIG
 }
 
 export const DEFAULT_MPD_CONFIG: MpdConfig = {
@@ -411,6 +426,43 @@ export function stripJsonComments(text: string): string {
   }
 
   return result
+}
+
+/**
+ * 解析并校验歌词滚轮预览确认延迟配置
+ * 兼容毫秒整数/数字字符串; 秒级小数输入 (<10) 按秒换算为毫秒
+ */
+export function parseLyricPreviewConfig(rawPreview: unknown): LyricPreviewConfig {
+  if (typeof rawPreview === 'object' && rawPreview !== null) {
+    const obj = rawPreview as Record<string, unknown>
+    const rawTimeout = obj['timeoutMs'] ?? obj['timeout'] ?? obj['delayMs']
+    let parsed: number = NaN
+    if (typeof rawTimeout === 'number') {
+      parsed = rawTimeout
+    } else if (typeof rawTimeout === 'string') {
+      const num = parseFloat(rawTimeout)
+      if (Number.isFinite(num)) parsed = num
+    }
+    if (Number.isFinite(parsed)) {
+      // 秒级小数 (如 1.5) 按秒换算为毫秒
+      if (parsed > 0 && parsed < 10 && !Number.isInteger(parsed)) parsed = parsed * 1000
+      return { timeoutMs: Math.round(clamp(parsed, 500, 5000)) }
+    }
+  }
+  if (typeof rawPreview === 'number' && Number.isFinite(rawPreview)) {
+    let parsed = rawPreview
+    if (parsed > 0 && parsed < 10 && !Number.isInteger(parsed)) parsed = parsed * 1000
+    return { timeoutMs: Math.round(clamp(parsed, 500, 5000)) }
+  }
+  if (typeof rawPreview === 'string') {
+    const num = parseFloat(rawPreview)
+    if (Number.isFinite(num)) {
+      let parsed = num
+      if (parsed > 0 && parsed < 10 && !Number.isInteger(parsed)) parsed = parsed * 1000
+      return { timeoutMs: Math.round(clamp(parsed, 500, 5000)) }
+    }
+  }
+  return { ...DEFAULT_LYRIC_PREVIEW_CONFIG }
 }
 
 /**

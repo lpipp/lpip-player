@@ -33,6 +33,10 @@ export interface LyricsOrbitProps {
   onSeek?: (timeSeconds: number) => void
   /** 是否启用自动演播/微旋动效 (默认为 true) */
   animated?: boolean
+  /** 是否正在播放 (暂停时滚轮预览常驻不倒计时, 默认 true) */
+  isPlaying?: boolean
+  /** 滚轮预览确认超时时长毫秒 (范围 500 ~ 5000, 默认 1500) */
+  previewTimeoutMs?: number
 }
 
 /**
@@ -236,11 +240,81 @@ export default function LyricsOrbit({
   currentTime,
   onLineChange,
   onSeek,
-  animated = true
+  animated = true,
+  isPlaying = true,
+  previewTimeoutMs = 1500
 }: LyricsOrbitProps) {
   // 当前活跃行索引 (支持非受控与受控双模式)
   const [internalIndex, setInternalIndex] = useState(4) // 默认定格在第4行《Luna domina》
   const activeIndex = controlledIndex !== undefined ? controlledIndex : internalIndex
+
+  // 滚轮预览态: 预览行索引 (null 表示无预览, 显示播放行)
+  // 展示索引: 预览存在时轨道跟随预览行, 预览行让位套用高亮
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const displayIndex = previewIndex ?? activeIndex
+
+  // 预览超时计时器与最新状态引用 (供回调内读取, 避免闭包陈旧)
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const previewStateRef = useRef<{ preview: number | null; playing: boolean; timeoutMs: number }>({
+    preview: null,
+    playing: isPlaying,
+    timeoutMs: previewTimeoutMs
+  })
+  previewStateRef.current.preview = previewIndex
+  previewStateRef.current.playing = isPlaying
+  previewStateRef.current.timeoutMs = previewTimeoutMs
+
+  // 清除预览态与超时计时 (确认跳转/超时回弹/取消事件共用)
+  const clearPreview = useCallback(() => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current)
+      previewTimerRef.current = null
+    }
+    setPreviewIndex(null)
+  }, [])
+
+  // 启动/重置预览超时计时: 仅播放态生效, 暂停态预览常驻
+  // 关键: 超时回调必须走 previewStateRef 读取播放态, 不能闭包捕获旧 isPlaying
+  const armPreviewTimer = useCallback(() => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current)
+      previewTimerRef.current = null
+    }
+    // 暂停态不启动计时, 预览常驻直到单击跳转或取消事件
+    if (!previewStateRef.current.playing) return
+    const timeoutMs = Math.max(500, Math.min(5000, Math.round(previewStateRef.current.timeoutMs) || 1500))
+    previewTimerRef.current = setTimeout(() => {
+      previewTimerRef.current = null
+      // 超时回弹: 清预览转回播放行, 不触发 seek
+      // 仅播放态回弹; 若期间已暂停则保持常驻 (与暂停不倒计时语义一致)
+      if (!previewStateRef.current.playing) return
+      setPreviewIndex(null)
+    }, timeoutMs)
+  }, [])
+
+  // 播放/暂停切换时重整预览态: 切到暂停则停表常驻; 切回播放则按当前配置重启动计时
+  useEffect(() => {
+    if (isPlaying) {
+      if (previewIndex !== null) armPreviewTimer()
+    } else if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current)
+      previewTimerRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying])
+
+  // 组件卸载时清理计时器
+  useEffect(() => {
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
+    }
+  }, [])
+
+  // 切歌时取消预览 (歌词列表引用变化即视为新曲)
+  useEffect(() => {
+    clearPreview()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lyrics])
 
   // 轨道几何参数配置 (左侧齿轮半径增加 100px: rIn 295, rOut 308，对齐右侧 60 齿制表风格)
   const cx = 0 // 星盘圆心 X 坐标定格在左边缘，半圆优雅凸出
@@ -292,20 +366,27 @@ export default function LyricsOrbit({
       }
     }
     if (matchedIdx !== activeIndex) {
+      // 自然切行属于播放位置大变化: 取消滚轮预览, 高亮归还播放行
+      clearPreview()
       if (controlledIndex === undefined) {
         setInternalIndex(matchedIdx)
       }
       onLineChange?.(matchedIdx)
     }
-  }, [currentTime, lyrics, activeIndex, controlledIndex, onLineChange])
+  }, [currentTime, lyrics, activeIndex, controlledIndex, onLineChange, clearPreview])
 
   // 寻道锁定到期时间戳: 手动选行跳转后短暂屏蔽 currentTime 自动跟随, 防止轮询回灌把高亮拉回上一句
   const seekLockUntilRef = useRef(0)
 
-  // 切换歌词行
-  const handleSelectLine = useCallback(
+  // 直接跳转 (单击确认/方向键): 点哪行即跳哪行, 清预览并触发 seek;
+  // 点当前播放行则仅取消预览 (无需求重复 seek)
+  const handleDirectJump = useCallback(
     (index: number) => {
-      if (index === activeIndex) return
+      if (index === activeIndex) {
+        clearPreview()
+        return
+      }
+      clearPreview()
       if (controlledIndex === undefined) {
         setInternalIndex(index)
       }
@@ -316,74 +397,79 @@ export default function LyricsOrbit({
         onSeek?.(lyrics[index].time!)
       }
     },
-    [activeIndex, controlledIndex, onLineChange, lyrics, onSeek]
+    [activeIndex, controlledIndex, onLineChange, lyrics, onSeek, clearPreview]
   )
 
-  // 滚轮交互: 向上滚动上一行，向下滚动下一行 (防抖与边界保护)
+  // 滚轮交互: 只进入预览态 (轨道跟随预览行), 不触发 seek; 每次 tick 重置超时计时
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.stopPropagation()
       if (Math.abs(e.deltaY) < 18) return
-      if (e.deltaY > 0) {
-        if (activeIndex < lyrics.length - 1) {
-          handleSelectLine(activeIndex + 1)
-        }
-      } else {
-        if (activeIndex > 0) {
-          handleSelectLine(activeIndex - 1)
-        }
-      }
+      if (lyrics.length === 0) return
+      const base = previewStateRef.current.preview ?? activeIndex
+      const next = e.deltaY > 0
+        ? Math.min(base + 1, lyrics.length - 1)
+        : Math.max(base - 1, 0)
+      if (next === base) return
+      setPreviewIndex(next)
+      armPreviewTimer()
     },
-    [activeIndex, lyrics.length, handleSelectLine]
+    [activeIndex, lyrics.length, armPreviewTimer]
   )
 
-  // 键盘方向键监听 (上下键切换歌词)
+  // 键盘方向键监听 (保持直跳, 不进预览; 同时清预览与计时)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault()
         if (activeIndex < lyrics.length - 1) {
-          handleSelectLine(activeIndex + 1)
+          handleDirectJump(activeIndex + 1)
+        } else {
+          clearPreview()
         }
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault()
         if (activeIndex > 0) {
-          handleSelectLine(activeIndex - 1)
+          handleDirectJump(activeIndex - 1)
+        } else {
+          clearPreview()
         }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeIndex, lyrics.length, handleSelectLine])
+  }, [activeIndex, lyrics.length, handleDirectJump, clearPreview])
 
-  // 滑动窗口: 仅渲染当前行前后 5 行，彻底杜绝超大歌词集的 DOM 冗余与重叠
+  // 滑动窗口: 以展示索引为中心前后 5 行, 预览时轨道跟随预览行
   const visibleWindow = useMemo(() => {
-    const start = Math.max(0, activeIndex - 5)
-    const end = Math.min(lyrics.length - 1, activeIndex + 5)
+    const start = Math.max(0, displayIndex - 5)
+    const end = Math.min(lyrics.length - 1, displayIndex + 5)
     const items: Array<{ line: LyricLine; index: number; distance: number }> = []
     for (let i = start; i <= end; i++) {
       items.push({
         line: lyrics[i],
         index: i,
-        distance: Math.abs(i - activeIndex)
+        distance: Math.abs(i - displayIndex)
       })
     }
     return items
-  }, [lyrics, activeIndex])
+  }, [lyrics, displayIndex])
 
-  // 当前轨道旋转角度 (以 stepAngle 为单位抵消当前索引，使当前行归位到 0° 水平线)
-  const currentRotation = -activeIndex * stepAngle
+  // 当前轨道旋转角度 (以展示索引归位到 0° 水平线, 预览时跟随预览行)
+  const currentRotation = -displayIndex * stepAngle
 
   // 齿轮步进角: 60 齿高密度精密机芯齿轮，单个齿距为 360° / 60 = 6.0°
   // 方案 1A: 每切一行歌词，齿轮逆时针跳进刚好 2 齿 (-12.0°)，与歌词轨道步长 12.5° 形成近乎完美的等角联动
   const gearStepAngle = 12.0
-  const gearRotation = -activeIndex * gearStepAngle
+  const gearRotation = -displayIndex * gearStepAngle
 
   return (
     <div
       className={`lyrics-orbit-wrapper ${className}`}
       onWheel={handleWheel}
       aria-label="星盘歌词轨道播放区"
+      data-active-index={activeIndex}
+      data-preview-index={previewIndex ?? ''}
     >
       {/* ------------------------------------------------------------
           背景层: 宇宙星盘几何蓝图 SVG (齿轮、同心轨道、刻度、月相与指示器)
@@ -690,11 +776,12 @@ export default function LyricsOrbit({
               key={`line-${line.id}`}
               className={`lyric-node ${isCurrent ? 'is-active' : ''}`}
               data-distance={distance}
+              data-lyric-index={index}
               style={{
                 '--item-angle': `${itemAngle}deg`,
                 '--item-distance': distance
               } as React.CSSProperties}
-              onClick={() => handleSelectLine(index)}
+              onClick={() => handleDirectJump(index)}
               title={`点击跳转至第 ${index + 1} 行歌词`}
             >
               {/* 主歌词行 (大号衬线字体，优雅古典) */}

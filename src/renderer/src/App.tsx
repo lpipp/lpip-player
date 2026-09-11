@@ -42,6 +42,8 @@ export default function App() {
   const [volume, setVolume] = useState(100)
   const [isMuted, setIsMuted] = useState(false)
   const [visualizerConfig, setVisualizerConfig] = useState<VisualizerConfig>(DEFAULT_VISUALIZER_CONFIG)
+  // 歌词滚轮预览确认超时 (毫秒, 默认 1500, 经 audio.lyricPreview 热更新)
+  const [lyricPreviewTimeoutMs, setLyricPreviewTimeoutMs] = useState(1500)
 
   const lastFileRef = useRef<string | null>(null)
   const isSeekingRef = useRef(false)
@@ -120,7 +122,7 @@ export default function App() {
       } catch {}
     }
 
-    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡、频谱律动配置、全局字体排印)
+    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡、频谱律动配置、全局字体排印、歌词预览确认延迟)
     window.electronAPI?.config.get().then((cfg) => {
       if (!isMounted || !cfg) return
       if (cfg.typography) {
@@ -128,6 +130,9 @@ export default function App() {
       }
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
+      }
+      if (typeof cfg.audio?.lyricPreview?.timeoutMs === 'number') {
+        setLyricPreviewTimeoutMs(cfg.audio.lyricPreview.timeoutMs)
       }
       if (cfg.visualizer) {
         setVisualizerConfig(cfg.visualizer)
@@ -144,6 +149,9 @@ export default function App() {
       }
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
+      }
+      if (typeof cfg.audio?.lyricPreview?.timeoutMs === 'number') {
+        setLyricPreviewTimeoutMs(cfg.audio.lyricPreview.timeoutMs)
       }
       if (cfg.visualizer) {
         setVisualizerConfig(cfg.visualizer)
@@ -207,15 +215,24 @@ export default function App() {
     }
   }
 
-  // 进度跳转寻道
+  // 进度跳转寻道 (歌词单击确认/进度条拖动共用; 暂停态确认跳转将自动恢复播放)
   const handleSeek = async (timeSeconds: number): Promise<void> => {
     isSeekingRef.current = true
     setCurrentTime(timeSeconds)
+    const wasPaused = !isPlaying
     if (window.electronAPI?.mpd) {
       const ok = await window.electronAPI.mpd.seek(timeSeconds)
       if (ok) {
         // 方案 C: 寻道时瞬间排空旧缓冲, ~40ms 启动新落点播放
         pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+        // 暂停态下确认跳转: seek 落点稳定后自动恢复播放
+        if (wasPaused) {
+          const resumed = await window.electronAPI.mpd.resume()
+          if (resumed) {
+            pcmPlayer.resume(`${STREAM_URL}/?t=${Date.now()}`)
+            setIsPlaying(true)
+          }
+        }
       }
     }
     setTimeout(() => {
@@ -349,6 +366,8 @@ export default function App() {
         currentTime={currentTime}
         lyrics={effectiveLyrics}
         onSeek={handleSeek}
+        isPlaying={isPlaying}
+        previewTimeoutMs={lyricPreviewTimeoutMs}
       />
 
       {/* 悬浮长条形胶囊伸缩抽屉 (曲库中心与播放队列管理抽屉) */}
