@@ -5,6 +5,7 @@ import QueueDrawer from './QueueDrawer'
 import ArtistDrawer from './ArtistDrawer'
 import PlaylistDrawer from './PlaylistDrawer'
 import SettingsDrawer from './SettingsDrawer'
+import StatisticsDrawer from './StatisticsDrawer'
 import './SidebarCapsule.css'
 
 /**
@@ -74,11 +75,13 @@ function PlaylistIcon() {
   )
 }
 
-function ThemeIcon() {
+function StatsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a10 10 0 0 1 0 20z" />
+      <line x1="3" y1="20" x2="21" y2="20" />
+      <line x1="6" y1="20" x2="6" y2="13" />
+      <line x1="12" y1="20" x2="12" y2="5" />
+      <line x1="18" y1="20" x2="18" y2="9" />
     </svg>
   )
 }
@@ -102,7 +105,8 @@ function CloseIcon() {
 }
 
 /**
- * 6 大占位功能模块与对应子菜单项
+ * 6 大功能模块 (曲库中心 / 播放队列 / 艺人分类 / 歌单 / 统计信息 / 偏好设置)
+ * 统计信息与偏好设置外的前四者均为占位子菜单项, 实际由专属抽屉组件渲染
  */
 const MODULES: NavModule[] = [
   {
@@ -144,14 +148,11 @@ const MODULES: NavModule[] = [
     ]
   },
   {
-    id: 'theme',
-    label: '外观主题',
-    icon: <ThemeIcon />,
+    id: 'stats',
+    label: '统计信息',
+    icon: <StatsIcon />,
     items: [
-      { id: 'thm-mode', title: '材质模式', desc: '深色云母晶体 (Mica Effect)', badge: 'Mica' },
-      { id: 'thm-style', title: '色温微光预设', desc: '翡翠绿与冷紫蓝交织 (Default)' },
-      { id: 'thm-grain', title: '晶体颗粒度', desc: '极细哑光磨砂感 (0.035)' },
-      { id: 'thm-border', title: '外边缘发光轮廓', desc: '沉浸式极细冷光边缘', badge: '开启' }
+      { id: 'stats-rank', title: '播放次数排行', desc: '按累计播放次数从高到低' }
     ]
   },
   {
@@ -217,14 +218,6 @@ export default function SidebarCapsule({
     verticalExtension: 50
   })
 
-  // 同步主进程注入的明暗主题模式与微调参数
-  const [themeInfo, setThemeInfo] = useState({
-    mode: 'dark',
-    brightness: 0,
-    contrast: 1.0,
-    opacity: 0.3
-  })
-
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 从 HTML attributes 同步配置参数
@@ -234,23 +227,12 @@ export default function SidebarCapsule({
       const bufferAttr = docEl.getAttribute('data-sidebar-close-buffer')
       const delayAttr = docEl.getAttribute('data-sidebar-close-delay')
       const extAttr = docEl.getAttribute('data-sidebar-vertical-extension')
-      const themeAttr = docEl.getAttribute('data-theme')
-      const brightnessAttr = docEl.getAttribute('data-theme-brightness')
-      const contrastAttr = docEl.getAttribute('data-theme-contrast')
-      const opacityAttr = docEl.getAttribute('data-sidebar-opacity')
 
       configRef.current = {
         closeDistance: bufferAttr ? Number.parseInt(bufferAttr, 10) || 40 : 40,
         closeDelay: delayAttr ? Number.parseInt(delayAttr, 10) || 300 : 300,
         verticalExtension: extAttr ? Number.parseInt(extAttr, 10) || 50 : 50
       }
-
-      setThemeInfo({
-        mode: themeAttr === 'light' ? 'light' : 'dark',
-        brightness: brightnessAttr ? Number.parseFloat(brightnessAttr) || 0 : 0,
-        contrast: contrastAttr ? Number.parseFloat(contrastAttr) || 1.0 : 1.0,
-        opacity: opacityAttr ? Number.parseFloat(opacityAttr) || 0.3 : 0.3
-      })
     }
 
     syncConfig()
@@ -261,11 +243,7 @@ export default function SidebarCapsule({
       attributeFilter: [
         'data-sidebar-close-buffer',
         'data-sidebar-close-delay',
-        'data-sidebar-vertical-extension',
-        'data-sidebar-opacity',
-        'data-theme',
-        'data-theme-brightness',
-        'data-theme-contrast'
+        'data-sidebar-vertical-extension'
       ]
     })
 
@@ -368,42 +346,8 @@ export default function SidebarCapsule({
     }
   }
 
-  // 组装动态导航模块列表 (将实时主题与微调参数注入外观主题模块)
-  const navModules: NavModule[] = MODULES.map((mod) => {
-    if (mod.id === 'theme') {
-      const isLight = themeInfo.mode === 'light'
-      return {
-        ...mod,
-        items: [
-          {
-            id: 'thm-mode',
-            title: '明暗模式',
-            desc: isLight ? '浅色白玉霜雪模式 (Light Mode)' : '深色黑曜石模式 (Dark Mode)',
-            badge: isLight ? '浅色' : '深色'
-          },
-          {
-            id: 'thm-brightness',
-            title: '明暗度微调',
-            desc: `基准偏移量 (${themeInfo.brightness >= 0 ? '+' : ''}${themeInfo.brightness.toFixed(2)})`,
-            badge: `${themeInfo.brightness >= 0 ? '+' : ''}${themeInfo.brightness.toFixed(2)}`
-          },
-          {
-            id: 'thm-contrast',
-            title: '对比度微调',
-            desc: `明暗对比系数 (${themeInfo.contrast.toFixed(2)})`,
-            badge: `${themeInfo.contrast.toFixed(2)}`
-          },
-          {
-            id: 'thm-glass',
-            title: '胶囊不透明度',
-            desc: `毛玻璃底色通透度 (${themeInfo.opacity.toFixed(2)})`,
-            badge: `${themeInfo.opacity.toFixed(2)}`
-          }
-        ]
-      }
-    }
-    return mod
-  })
+  // 导航模块列表 (统计信息为专属抽屉, 与曲库/队列/艺人/歌单/设置同级, 无动态注入)
+  const navModules: NavModule[] = MODULES
 
   // 获取当前激活的模块及其子菜单
   const activeModule = navModules.find((m) => m.id === activeModuleId) || navModules[0]
@@ -476,9 +420,11 @@ export default function SidebarCapsule({
                   ? 'subpanel-content-artists'
                   : activeModuleId === 'playlists'
                     ? 'subpanel-content-playlists'
-                    : activeModuleId === 'settings'
-                      ? 'subpanel-content-settings'
-                      : ''
+                    : activeModuleId === 'stats'
+                      ? 'subpanel-content-stats'
+                      : activeModuleId === 'settings'
+                        ? 'subpanel-content-settings'
+                        : ''
           }`}
         >
           {activeModuleId === 'library' ? (
@@ -507,24 +453,11 @@ export default function SidebarCapsule({
               onPlaySong={onPlaySong}
               onAddToQueue={onAddToQueue}
             />
+          ) : activeModuleId === 'stats' ? (
+            <StatisticsDrawer />
           ) : activeModuleId === 'settings' ? (
             <SettingsDrawer />
-          ) : (
-            // 整洁化: 子项配置移出提示已隐藏, fallback 模块列表保留
-            <>
-              <ul className="subpanel-list">
-                {activeModule.items.map((item) => (
-                  <li key={item.id} className="subpanel-item">
-                    <div className="subpanel-item-info">
-                      <span className="subpanel-item-title">{item.title}</span>
-                      <span className="subpanel-item-desc">{item.desc}</span>
-                    </div>
-                    {item.badge && <span className="subpanel-item-badge">{item.badge}</span>}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          ) : null}
         </div>
 
         {/* 整洁化: 子菜单底部版本号与就绪提示已隐藏 */}

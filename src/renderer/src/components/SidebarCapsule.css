@@ -307,11 +307,12 @@
   -ms-overflow-style: none !important;
 }
 
-/* 曲库、播放队列、艺人分类、歌单与偏好设置视图专用: 保持搜索/队列工具栏定格，内部滚动区独立平滑滚动 */
+/* 曲库、播放队列、艺人分类、歌单、统计信息与偏好设置视图专用: 保持搜索/队列工具栏定格，内部滚动区独立平滑滚动 */
 .subpanel-content.subpanel-content-library,
 .subpanel-content.subpanel-content-queue,
 .subpanel-content.subpanel-content-artists,
 .subpanel-content.subpanel-content-playlists,
+.subpanel-content.subpanel-content-stats,
 .subpanel-content.subpanel-content-settings {
   overflow-y: hidden !important;
   padding: 8px 12px 0;

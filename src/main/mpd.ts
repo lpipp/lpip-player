@@ -6,7 +6,7 @@ import { join, resolve, sep } from 'node:path'
 import { app } from 'electron'
 
 import { loadConfig } from './config'
-import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode, PlaySessionState, PlayStats, PlayStatsEntry } from '../types/music'
 
 /**
  * 缓存的本地曲库数据，避免每次展开抽屉都重新全量查询
@@ -1455,6 +1455,192 @@ export async function enqueuePlaylist(name: string): Promise<boolean> {
     console.error(`[lpip-player:mpd] 批量将歌单加入队列失败: ${cleanName}`, err)
     return false
   }
+}
+
+/* ============================================================
+   统计信息抽屉 (MPD stickers playCount + stats.playtime)
+   ============================================================ */
+
+/** MPD sticker 键名: 单曲累计播放次数 */
+export const PLAY_COUNT_STICKER_NAME = 'playCount'
+
+/** 播放次数计数阈值下限: 30 秒 (短曲托底, 函数纯化可单测) */
+export const PLAY_COUNT_MIN_MS = 30000
+
+/** 播放次数计数阈值比例: 时长 × 50% */
+export const PLAY_COUNT_HALF_RATIO = 0.5
+
+/**
+ * 计算一首歌的计数阈值 (毫秒): max(30s, duration × 50%)。时长未知或非法时回退 30s 下限
+ */
+export function calcPlayCountThresholdMs(durationSec: number): number {
+  if (!Number.isFinite(durationSec) || durationSec <= 0) {
+    return PLAY_COUNT_MIN_MS
+  }
+  return Math.max(PLAY_COUNT_MIN_MS, durationSec * 1000 * PLAY_COUNT_HALF_RATIO)
+}
+
+/**
+ * 解析 MPD `stats` 输出中的累计播放时长 playtime (秒, 容错回退 0)
+ */
+export function parseMpdPlaytime(raw: string): number {
+  const match = raw.match(/^playtime:\s*(\d+)/im)
+  const sec = match ? Number.parseInt(match[1], 10) : 0
+  return Number.isFinite(sec) && sec >= 0 ? sec : 0
+}
+
+/**
+ * 解析 MPD `sticker find song "" playCount` 输出为 file → playCount 映射
+ * - 仅收录 playCount >= 1 的条目 (从高到低排序由调用方完成)
+ * - 同一 file 重复出现取最后一次; 非法计数 (非数字/负数) 跳过
+ */
+export function parseStickerPlayCounts(raw: string): Map<string, number> {
+  const counts = new Map<string, number>()
+  const lines = raw.split('\n')
+  let currentFile: string | null = null
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('file: ')) {
+      currentFile = trimmed.slice(6).trim() || null
+    } else if (currentFile && trimmed.startsWith('sticker: ')) {
+      const kv = trimmed.slice(9).trim()
+      const eq = kv.indexOf('=')
+      if (eq !== -1 && kv.slice(0, eq).trim() === PLAY_COUNT_STICKER_NAME) {
+        const n = Number.parseInt(kv.slice(eq + 1).trim(), 10)
+        if (Number.isFinite(n) && n >= 1) {
+          counts.set(currentFile, n)
+        } else {
+          counts.delete(currentFile)
+        }
+        currentFile = null
+      }
+    } else if (trimmed === 'OK' || trimmed.startsWith('ACK ')) {
+      currentFile = null
+    }
+  }
+  return counts
+}
+
+/**
+ * 读取一首歌的累计播放次数 (无 sticker 时回退 0; 任一异常回退 0)
+ */
+export async function getPlayCount(file: string): Promise<number> {
+  if (!file) return 0
+  try {
+    const raw = await sendMpdCommand(`sticker get song "${escapeMpdString(file)}" ${PLAY_COUNT_STICKER_NAME}`)
+    const match = raw.match(new RegExp(`${PLAY_COUNT_STICKER_NAME}=(\\d+)`))
+    const n = match ? Number.parseInt(match[1], 10) : 0
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  } catch {
+    // 无 sticker (ACK no such sticker) 或连接异常均回退 0
+    return 0
+  }
+}
+
+/**
+ * 一首歌的播放次数 +1 (read-modify-write: sticker get 后 set; 失败仅记 console 不抛)
+ */
+export async function incrementPlayCount(file: string): Promise<void> {
+  if (!file) return
+  try {
+    const current = await getPlayCount(file)
+    await sendMpdCommand(`sticker set song "${escapeMpdString(file)}" ${PLAY_COUNT_STICKER_NAME} ${current + 1}`)
+  } catch (err) {
+    console.error(`[lpip-player:mpd] 播放次数累加失败: ${file}`, err)
+  }
+}
+
+/**
+ * 获取统计信息抽屉全量数据: stats.playtime + sticker 排行 (降序) + 曲库元数据映射
+ */
+export async function getPlayStats(): Promise<PlayStats> {
+  const empty: PlayStats = { totalPlayTimeSec: 0, totalPlayCount: 0, trackedSongCount: 0, entries: [] }
+  try {
+    const [statsRaw, stickerRaw, library] = await Promise.all([
+      sendMpdCommand('stats'),
+      sendMpdCommand(`sticker find song "" ${PLAY_COUNT_STICKER_NAME}`),
+      getLibrary()
+    ])
+
+    const totalPlayTimeSec = parseMpdPlaytime(statsRaw)
+    const counts = parseStickerPlayCounts(stickerRaw)
+    if (counts.size === 0) {
+      return { ...empty, totalPlayTimeSec }
+    }
+
+    let totalPlayCount = 0
+    const entries: PlayStatsEntry[] = []
+    for (const [file, playCount] of counts) {
+      totalPlayCount += playCount
+      const song = library.find((s) => s.file === file)
+      if (song) {
+        entries.push({
+          file,
+          title: song.title,
+          artist: song.artist,
+          coverUrl: song.coverUrl,
+          duration: song.duration,
+          playCount
+        })
+      } else {
+        // sticker 残留但曲库已无此文件: 文件名回退标题, 不丢计数
+        const baseName = (file.split('/').pop() || file).replace(/\.[^/.]+$/, '')
+        entries.push({
+          file,
+          title: baseName || file,
+          artist: '未知歌手',
+          coverUrl: `app-media://cover/${encodeURIComponent(file)}?tier=thumb`,
+          duration: 0,
+          playCount
+        })
+      }
+    }
+    entries.sort((a, b) => b.playCount - a.playCount)
+    return { totalPlayTimeSec, totalPlayCount, trackedSongCount: entries.length, entries }
+  } catch (err) {
+    console.error('[lpip-player:mpd] 获取播放统计失败:', err)
+    return empty
+  }
+}
+
+/**
+ * 观察播放会话并在跨越阈值时触发 playCount +1 (供 broadcastStatus 每轮调用)
+ *
+ * 语义: file 变更开启新会话; 暂停冻结累计; seek 不清零; stop 清空会话;
+ *        达到 max(30s, 时长×50%) 且未计过则 incrementPlayCount 一次。
+ * nowMs 由调用方传入 (生产取 Date.now, 单测可注入虚拟时间)。
+ *
+ * @returns 更新后的会话状态 (null 表示无活跃会话)
+ */
+export function observePlaySession(
+  prev: PlaySessionState | null,
+  status: Pick<MpdStatus, 'state' | 'currentSong'>,
+  nowMs: number,
+  onCount: (file: string) => void
+): PlaySessionState | null {
+  const song = status.currentSong
+  if (status.state !== 'play' || !song || !song.file) {
+    // 暂停冻结: 保留 file 与 accumulatedMs, 仅冻结时间推进; 停止清空会话
+    if (!prev) return null
+    if (status.state === 'stop') return null
+    return { ...prev, lastTickMs: null }
+  }
+
+  const file = song.file
+  const durationSec = typeof song.duration === 'number' ? song.duration : 0
+  if (!prev || prev.file !== file) {
+    // 新歌开始: 若上一首没来得及达标则直接丢弃 (不计数), 开启新会话
+    return { file, accumulatedMs: 0, counted: false, lastTickMs: nowMs }
+  }
+
+  const lastTick = prev.lastTickMs ?? nowMs
+  const delta = Math.max(0, nowMs - lastTick)
+  const accumulatedMs = prev.accumulatedMs + delta
+  if (!prev.counted && accumulatedMs >= calcPlayCountThresholdMs(durationSec)) {
+    onCount(file)
+    return { file, accumulatedMs, counted: true, lastTickMs: nowMs }
+  }
+  return { file, accumulatedMs, counted: prev.counted, lastTickMs: nowMs }
 }
 
 

@@ -84,6 +84,52 @@ export interface MpdStatus {
 }
 
 /**
+ * 统计信息抽屉单行: 一首歌的播放次数与其曲库元数据
+ */
+export interface PlayStatsEntry {
+  /** MPD 内部相对音频路径 (与 MpdSong.file 对齐) */
+  file: string
+  /** 歌曲名称 (曲库缺失时回退文件名) */
+  title: string
+  /** 歌手 (曲库缺失时回退未知歌手) */
+  artist: string
+  /** 封面请求地址 */
+  coverUrl: string
+  /** 时长 (秒, 曲库缺失时 0) */
+  duration: number
+  /** 累计播放次数 (MPD sticker playCount) */
+  playCount: number
+}
+
+/**
+ * 统计信息抽屉聚合结果: 顶部摘要 + 按 playCount 降序的单曲排行
+ */
+export interface PlayStats {
+  /** 累计播放时长 (秒, MPD stats.playtime 权威值) */
+  totalPlayTimeSec: number
+  /** 全部 stickers 的 playCount 总和 */
+  totalPlayCount: number
+  /** 已统计曲目数 (entries.length) */
+  trackedSongCount: number
+  /** 按 playCount 降序的排行 (仅含 playCount >= 1 的单曲) */
+  entries: PlayStatsEntry[]
+}
+
+/**
+ * 连续播放会话追踪状态 (mpd.ts observePlaySession 状态机载体, 单测可注入 nowMs)
+ */
+export interface PlaySessionState {
+  /** 正在累计的歌曲 file */
+  file: string
+  /** 已累计播放时长 (毫秒, 仅 play 态推进) */
+  accumulatedMs: number
+  /** 是否已在本次会话触发计数 */
+  counted: boolean
+  /** 上一次推进时间戳 (毫秒); 暂停/停止时置 null 表示冻结 */
+  lastTickMs: number | null
+}
+
+/**
  * 添加至播放队列的结果
  */
 export interface AddToQueueResult {

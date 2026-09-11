@@ -8,7 +8,7 @@ export { loadConfig, saveConfig, getDefaultConfigPath }
 export type { AppConfig, DeepPartial }
 import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
 import { IPC_CHANNELS } from './ipc-channels'
-import type { PlaybackMode } from '../types/music'
+import type { PlaybackMode, PlaySessionState } from '../types/music'
 import {
   addToPlaylist,
   addToQueue,
@@ -21,9 +21,12 @@ import {
   getOrExtractAlbumCover,
   getPlaylists,
   getPlaylistSongs,
+  getPlayStats,
   getQueue,
   getSongLyrics,
   getStatus,
+  incrementPlayCount,
+  observePlaySession,
   moveQueueItem,
   nextSong,
   pausePlayback,
@@ -354,11 +357,18 @@ app.whenReady().then(() => {
     })
   })
 
+  // 统计信息抽屉: 连续播放会话追踪 (跨越阈值 max(30s, 时长×50%) 即 playCount +1, 单曲循环不重复计数)
+  let playSession: PlaySessionState | null = null
+
   const broadcastStatus = async (): Promise<void> => {
     try {
       const windows = BrowserWindow.getAllWindows()
       if (windows.length > 0 && !windows[0].isDestroyed()) {
         const status = await getStatus()
+        playSession = observePlaySession(playSession, status, Date.now(), (file) => {
+          // fire-and-forget: sticker get/set 两轮往返挂后台, 不阻塞 500ms 广播节拍
+          void incrementPlayCount(file)
+        })
         windows[0].webContents.send(IPC_CHANNELS.MPD_STATUS_CHANGED, status)
       }
     } catch {
@@ -469,6 +479,10 @@ app.whenReady().then(() => {
     const res = await setPlaybackMode(mode)
     broadcastStatus()
     return res
+  })
+
+  ipcMain.handle(IPC_CHANNELS.MPD_GET_PLAY_STATS, async () => {
+    return getPlayStats()
   })
 
   // 歌单相关 IPC 处理程序

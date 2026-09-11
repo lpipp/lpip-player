@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../main/ipc-channels'
-import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
+import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode, PlayStats } from '../types/music'
 import type { AppConfig, DeepPartial } from '../types/config'
 
 /**
@@ -66,6 +66,8 @@ export interface ElectronAPI {
     enqueuePlaylist: (name: string) => Promise<boolean>
     /** 监听 MPD 播放器状态实时变更 */
     onStatusChange: (callback: (status: MpdStatus) => void) => () => void
+    /** 获取统计信息抽屉数据 (累计播放时长 + playCount 降序排行) */
+    getPlayStats: () => Promise<PlayStats>
   }
   config: {
     /** 获取当前应用全局运行时配置 */
@@ -124,7 +126,8 @@ const api: ElectronAPI = {
       return (): void => {
         ipcRenderer.removeListener(IPC_CHANNELS.MPD_STATUS_CHANGED, handler)
       }
-    }
+    },
+    getPlayStats: () => ipcRenderer.invoke(IPC_CHANNELS.MPD_GET_PLAY_STATS)
   },
   config: {
     get: () => ipcRenderer.invoke(IPC_CHANNELS.CONFIG_GET),

@@ -41,6 +41,8 @@ export const IPC_CHANNELS = {
   MPD_SET_VOLUME: 'mpd:set-volume',
   /** 设置 MPD 播放模式 ('sequence' | 'shuffle' | 'single') */
   MPD_SET_MODE: 'mpd:set-mode',
+  /** 获取统计信息抽屉数据 (累计播放时长 + 按 playCount 降序的单曲排行) */
+  MPD_GET_PLAY_STATS: 'mpd:get-play-stats',
   /** 获取所有已保存歌单列表 */
   MPD_GET_PLAYLISTS: 'mpd:get-playlists',
   /** 获取指定歌单的单曲列表 */
