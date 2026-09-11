@@ -38,7 +38,7 @@
   6. 持久化与测试闭环: POSIX 原子持久化至 config.json，单元测试 (10/10) 与 E2E (11/11) 严格通过，pnpm typecheck 0 报错。
 - [已完备] M2-2 悬浮胶囊第六按键"偏好设置 (SettingsDrawer)"双级钻取画册流与配置原子持久化热重载全套闭环:
   1. 悬浮胶囊第 6 项专属展开 460px 偏好设置抽屉，纯原生 React + CSS 封装零第三方重型 UI 库依赖；
-  2. 层级 1 分类总览层: 5 大模块画册卡片（外观与窗口、音频与过渡、蓝图频谱、MPD 服务、关于播放器），矢量纯线条图标、加粗标题、动态参数摘要与钻取箭头；
+  2. 层级 1 分类总览层: 6 大模块画册卡片（外观与窗口、音频与过渡、蓝图频谱、MPD 服务、字体与字形、关于播放器），矢量纯线条图标、加粗标题、动态参数摘要与钻取箭头；
   3. 层级 2 设置详情层: 极简返回（‹ 全部设置）、Hero 头部微画卷、精细化控件流；支持 Esc / Backspace 优先返回一级总览；
   4. 精细控件全覆盖: ToggleSwitch 原生开关、SliderControl（tabular-nums 等宽数字防抖滑块）、SegmentedControl（WAI-ARIA 键盘无障碍单选）；
   5. 配置持久化与热重载: saveConfig 深度合并 + schema 校验钳位 + .bak 自动备份 + POSIX 临时文件原子 renameSync 替换；CONFIG_UPDATE 与 CONFIG_CHANGED 秒级即时热更；防抖累加 + 卸载紧急冲刷（flush on unmount）防丢配置；沉浸式无边框模式 (window.immersive) 切换即时无缝重构窗口 (recreateWindow) 并支持顶部 28px 隐形拖拽热区；

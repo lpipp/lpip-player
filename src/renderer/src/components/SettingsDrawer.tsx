@@ -471,6 +471,7 @@ export default function SettingsDrawer() {
   const [lyricsTransFontInput, setLyricsTransFontInput] = useState(DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
 
   const isMountedRef = useRef(true)
+  const isTestingMpdRef = useRef(false) // 并发守卫使用 ref 而非 state，防止 useCallback 身份变化触发挂载 effect 重跑
   const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
   configRef.current = config
   const pendingUpdateRef = useRef<Record<string, unknown>>({})
@@ -595,8 +596,10 @@ export default function SettingsDrawer() {
   }, [updateConfigImmediate])
 
   // 测试 MPD 服务端连接 (带并发防护)
+  // 使用 ref 做并发守卫而非 state，避免 isTestingMpd 状态变更导致 callback 身份变化、触发 effect 重跑与 pendingUpdateRef 紧急冲刷
   const testMpdConnection = useCallback(async (): Promise<void> => {
-    if (isTestingMpd) return
+    if (isTestingMpdRef.current) return
+    isTestingMpdRef.current = true
     setIsTestingMpd(true)
     try {
       if (window.electronAPI?.mpd) {
@@ -610,9 +613,12 @@ export default function SettingsDrawer() {
     } catch {
       if (isMountedRef.current) setMpdConnected(false)
     } finally {
-      if (isMountedRef.current) setIsTestingMpd(false)
+      if (isMountedRef.current) {
+        setIsTestingMpd(false)
+        isTestingMpdRef.current = false
+      }
     }
-  }, [isTestingMpd])
+  }, [])
 
   // 挂载时拉取全量运行时配置并订阅热更新
   useEffect(() => {
@@ -671,6 +677,7 @@ export default function SettingsDrawer() {
 
       return () => {
         isMountedRef.current = false
+        isTestingMpdRef.current = false
         unsub()
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current)
@@ -698,6 +705,7 @@ export default function SettingsDrawer() {
     testMpdConnection()
     return () => {
       isMountedRef.current = false
+      isTestingMpdRef.current = false
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null

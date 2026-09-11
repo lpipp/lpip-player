@@ -49,7 +49,7 @@ export const LYRICS_BODY_FONT_PRESETS: FontPreset[] = [
   },
   {
     label: '文艺楷体',
-    value: "'Kaiti SC', 'STKaiti', 'FZKai-Z03', serif"
+    value: "'Kaiti SC', 'STKaiti', 'FZKai-Z03', 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', serif"
   },
   {
     label: '现代黑体',
@@ -57,7 +57,7 @@ export const LYRICS_BODY_FONT_PRESETS: FontPreset[] = [
   },
   {
     label: '手写意趣',
-    value: "'Caveat', 'Kaiti SC', 'STKaiti', cursive"
+    value: "'Caveat', 'Kaiti SC', 'STKaiti', 'Noto Serif CJK SC', 'Noto Serif SC', serif"
   }
 ]
 

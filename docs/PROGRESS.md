@@ -367,7 +367,7 @@
 - **功能定位与排版哲学**:
   - 将悬浮胶囊第 6 项（`SettingsIcon`）接管并渲染专属的**偏好设置 (SettingsDrawer)** 抽屉，适配 460px 展开宽度（内容区域 404px，卡片宽度定格 380px）；
   - 采用类似歌单与艺人的**双级钻取画册流 (Two-Tier Drill-Down)** 架构：
-    - **层级 1（分类总览层）**: 展示 5 大设置卡片画册，每张卡片搭载纯线条矢量分类图标、加粗分类标题、副文本描述或当前关键状态摘要（如“经典黑曜石 · 沉浸式无边框”、“淡入淡出 120ms · 44.1 kHz 自适应直通”、“蓝图工程风 · 高度 160px”、“127.0.0.1:6600 · 已连接”等），右侧配有钻取指示箭头 `›`；
+    - **层级 1（分类总览层）**: 展示 6 大设置卡片画册，每张卡片搭载纯线条矢量分类图标、加粗分类标题、副文本描述或当前关键状态摘要（如“经典黑曜石 · 沉浸式无边框”、“淡入淡出 120ms · 44.1 kHz 自适应直通”、“蓝图工程风 · 高度 160px”、“127.0.0.1:6600 · 已连接”等），右侧配有钻取指示箭头 `›`；
     - **层级 2（设置详情层）**: 顶部微画卷 Hero 卡片，包含极简返回按键（`‹ 全部设置`）以及该分类的标题与状态描述；下方呈现精细化控件流；支持键盘 Escape / Backspace 优先回退至一级总览层。
 - **5 大设置分类与精细化交互控件**:
   1. **外观与窗口**:
@@ -408,6 +408,9 @@
   - `pnpm typecheck` 0 错误，`pnpm build` 成功。
 
 ### 2.17 偏好设置增加字体与字形设置模块与全文本字阶热联动 (`SettingsDrawer Typography`) - M2-2 完成
+
+> **旧版兼容提示**：配置文件中的 `font` 字段已被自动识别为 `typography` 的别名（`parseTypographyConfig` 接受 `parsed.font`），旧版配置无需修改即可继续生效；建议迁移至标准 `typography` 字段以保持一致。
+
 - **功能定位与排版哲学**:
   - 在偏好设置抽屉中引入专属的**字体与字形 (Typography)** 模块，解决用户在不同高分屏、阅读距离与个人审美偏好下对界面可读性的诉求；
   - 继承既有的**双级钻取画册流 (Two-Tier Drill-Down)** 视觉范式：
@@ -422,8 +425,8 @@
      - 控件：推荐候选胶囊（系统等宽 ui-monospace、现代无衬线 system-ui、精密工程 DIN Alternate）+ 自由文本输入框 + 基准字号滑块（9px ~ 16px，步长 1px，默认 11px）。
   3. **星盘歌词排印 (Lyrics Typography)**:
      - 划分为双轨独立子项：
-       - **歌词正文 (Body)**: 推荐候选胶囊（史诗衬线 Playfair Display、文艺楷体 Kaiti SC、现代黑体 Inter、手写意趣 Caveat）+ 自由文本输入框 + 字号滑块（14px ~ 28px，步长 1px，默认 18px）；
-       - **歌词翻译 (Translation)**: 推荐候选胶囊（默认黑体、文艺楷体、极简黑体、优雅衬线）+ 自由文本输入框 + 字号滑块（10px ~ 18px，步长 1px，默认 12px）。
+       - **歌词正文 (Body)**: 推荐候选胶囊（史诗衬线 Playfair Display、文艺楷体 Kaiti SC、现代黑体 Inter、手写意趣 Caveat）+ 自由文本输入框 + 字号滑块（14px ~ 36px，步长 1px，默认 18px）；
+       - **歌词翻译 (Translation)**: 推荐候选胶囊（默认黑体、文艺楷体、极简黑体、优雅衬线）+ 自由文本输入框 + 字号滑块（10px ~ 22px，步长 1px，默认 12px）。
   4. **配置重置与维护**:
      - 提供独立卡片与操作引导，一键将所有字形与字号秒级恢复至出厂推荐标准。
 - **全局动态 CSS 变量系统与毫秒级热重载**:
@@ -431,9 +434,9 @@
   - 动态向 `:root` 注入标准 CSS 变量：
     - `--font-family-ui`, `--font-size-ui`
     - `--font-family-hint`, `--font-size-hint`
-    - `--font-family-lyrics`, `--font-size-lyrics`
-    - `--font-family-lyrics-trans`, `--font-size-lyrics-trans`
-  - 各组件样式表（`global.css`、`StatusBar.css`、`LyricsOrbit.css`、`MusicLibraryList.css`、`QueueDrawer.css`、`SidebarCapsule.css`、`SettingsDrawer.css`）全面挂接上述 CSS 变量，修改配置毫秒级全界面同步热响应，完全免刷新、免重启。
+    - `--font-family-lyrics-body`, `--font-size-lyrics-body`（同时设短别名 `--font-family-lyrics` / `--font-size-lyrics`）
+    - `--font-family-lyrics-translation`, `--font-size-lyrics-translation`
+  - 各组件样式表（`global.css`、`StatusBar.css`、`LyricsOrbit.css`、`MusicLibraryList.css`、`QueueDrawer.css`、`SidebarCapsule.css`）已全面挂接上述 CSS 变量；`SettingsDrawer.css` 目前仅用 `--font-family-hint`，其余组件陆续接入中，修改配置毫秒级全界面同步热响应，完全免刷新、免重启。
 - **安全加固与动静分离铁律**:
   - **CSS 注入防护**: 实现 `sanitizeFontFamily` 严格清洗输入，剔除分号、反斜杠、大括号等危险字符，自动规整引号并兜底回退系统安全字体族；
   - **数值边界钳位**: 所有字号在主进程与渲染层双重经历 `clamp()` 边界钳位与 `Number.isFinite()` 校验，阻断 NaN / 负数等异常值；

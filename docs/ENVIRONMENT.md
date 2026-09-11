@@ -234,7 +234,15 @@ bash -c 'exec 3<>/dev/tcp/127.0.0.1/6600 && printf "status\nclose\n" >&3 && time
     "opacity": 0.85,
     "style": "blueprint"
   },
-  "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 }
+  "mpd": { "host": "127.0.0.1", "port": 6600, "streamPort": 8000 },
+  "typography": {
+    "ui": { "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, \"PingFang SC\", \"Microsoft YaHei\", sans-serif", "fontSize": 13 },
+    "hint": { "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"JetBrains Mono\", monospace", "fontSize": 11 },
+    "lyrics": {
+      "body": { "fontFamily": "'Playfair Display', 'DejaVu Serif', 'Liberation Serif', 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif", "fontSize": 18 },
+      "translation": { "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif", "fontSize": 12 }
+    }
+  }
 }
 ```
 
@@ -245,6 +253,7 @@ bash -c 'exec 3<>/dev/tcp/127.0.0.1/6600 && printf "status\nclose\n" >&3 && time
 - `window.sidebar` 控制左侧悬浮长条胶囊伸缩抽屉（包含开关 `enabled`、透明度 `opacity`、移出关闭距离 `closeBuffer`、移出收起延迟 `closeDelay`、动画时长 `animationDuration`、缓动函数 `animationEasing`、展开宽度 `width` 与上下延伸幅度 `verticalExtension`）
 - `audio.fade` 控制切歌与歌词跳转时的平滑淡出淡入过渡（包含总开关 `enabled`、过渡时长 `duration`，支持热更即时生效）
 - `visualizer` 控制音频频谱可视化律动（包含开关 `enabled`、画布高度 `height`、整体不透明度 `opacity` 与渲染风格 `style: 'blueprint' | 'wave' | 'bars'`，支持热重载即时生效，设为 `false` 立即休眠 RAF 循环）
+- `typography` 控制全局文字排印与字体系统（含 UI 界面、提示文本、歌词正文、歌词翻译四类字形与字号，通过 CSS 变量毫秒级热更；旧版配置可使用 `font` 字段作为 `typography` 别名，已向下兼容但建议迁移至 `typography`）
 - **格式特性**：内置零依赖注释解析，完全支持 **JSONC**（允许自由添加 `//` 与 `/* */` 中文注释，`config.example.json` 已提供全中文注释示例）
 - 主题配置（theme）支持 `mode: "dark" | "light"`, `brightness`, `contrast` 微调
 - ⚠️ electron 每次运行会向 `~/.config/lpip-player/` 写 Chromium 缓存（Cache/GPUCache 等 20+ 项），

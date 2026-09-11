@@ -41,6 +41,15 @@
 | `visualizer.style` | `'blueprint'` | 频谱渲染风格：`'blueprint'`（高级制表纯线条蓝图工程风+散点微光）/ `'wave'`（正弦工程波形包络）/ `'bars'`（精密刻度柱状频段） |
 | `mpd.host` / `mpd.port` | `127.0.0.1` / `6600` | MPD 纯文本 TCP 控制协议地址（原生 Client 零依赖） |
 | `mpd.streamPort` | `8000` | MPD httpd wave/PCM 音频流端口（WebAudio 零拷贝直接拉流） |
+| `typography.ui.fontFamily` | `system-ui, ...` | UI 界面通用字体族（主工作区、抽屉导航、曲库列表等） |
+| `typography.ui.fontSize` | `13` | UI 界面基准字号（px，范围 11~20，默认 13） |
+| `typography.hint.fontFamily` | `ui-monospace, ...` | 提示与辅助文本字体族（等宽时间指示器、音质徽标等） |
+| `typography.hint.fontSize` | `11` | 提示文本基准字号（px，范围 9~16，默认 11） |
+| `typography.lyrics.body.fontFamily` | `'Playfair Display', ...` | 歌词正文字体族（史诗衬线或现代黑体） |
+| `typography.lyrics.body.fontSize` | `18` | 歌词正文基准字号（px，范围 14~36，默认 18） |
+| `typography.lyrics.translation.fontFamily` | `-apple-system, ...` | 歌词翻译字体族（清晰易读的黑体栈） |
+| `typography.lyrics.translation.fontSize` | `12` | 歌词翻译基准字号（px，范围 10~22，默认 12） |
+| `typography.fontFamily` / `typography.fontSize` | — | 旧版别名 `font` 字段已被接受但建议迁移至 `typography` |
 
 > 详细配置项与注释范例见 `config.example.json` 与 `docs/PROGRESS.md`。
 > MPD 自身的配置见 `~/.config/mpd/mpd.conf`。
