@@ -38,11 +38,14 @@
 
 ---
 
-## 2. git 状态（截至 f7d81b8）
+## 2. git 状态（截至 ee53e14）
 
 ```
+ee53e14 docs: 更新 无边框沉浸式模式切换与拖拽热区 项目全量文档
 f7d81b8 fix(window): 修复无边框沉浸式模式设置切换未即时生效缺陷并增加顶部拖拽热区
+9d5b5d3 docs: 更新 M2-2 偏好设置 项目全量文档
 25b7d54 feat(settings): 完成悬浮胶囊第六按键偏好设置抽屉与双级钻取画册流全套闭环
+93925d4 docs: 更新 悬浮胶囊歌单抽屉(PlaylistDrawer) 项目全量文档
 5689d7a feat(playlist): 完成悬浮胶囊第四按键歌单抽屉与双级钻取画册流全套闭环
 9c3c501 refactor(artist): 删除切换排序方式按键并统一采用A-Z排序
 719c5c8 feat(ui): 为曲库中心、播放队列与艺人分类添加统一液态玻璃微光滑动条
@@ -52,9 +55,6 @@ ad00c9f feat(sidebar): 将悬浮胶囊展开状态向右侧扩大100px至460px
 9914be0 feat(queue): 曲库队列按键重构为二态开关(+添加/-移出)并支持双向实时同步
 c4adfc1 fix(queue): 播放队列防重复添加并增加该歌曲已在队列提示
 10a422a fix(queue): 修复键盘移除/收藏冒泡切歌缺陷、空队列时长00:01异常及冗余标题与IPC重连
-af4ac5f fix(queue): 彻底消除清空后点播全量目录灌入缺陷，修复清空后底栏状态残留并增加拖拽释放切歌保护
-9ad04da fix(queue): 优化外部音源点播原子化 playid 绑定并禁用封面图片原生幽灵拖拽
-8ecd293 feat(queue): 完成 M2-2 悬浮胶囊播放队列抽屉与完整交互控制闭环
 ```
 
 - 工作区**干净**，无未跟踪文件
@@ -67,7 +67,7 @@ af4ac5f fix(queue): 彻底消除清空后点播全量目录灌入缺陷，修复
 ```
 src/
 ├─ main/
-│  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222, 启动自动去重, 歌单与配置持久化 IPC handler 注册)
+│  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222, 启动自动去重, 歌单与配置持久化 IPC handler 注册, recreateWindow 沉浸式窗口热重构)
 │  ├─ config.ts                 XDG 统一配置中心 (~/.config/lpip-player/config.json, 支持 JSONC、saveConfig 原子持久化与热重载)
 │  ├─ mpd.ts                    纯文本原生 TCP 6600 MPD 客户端 (零第三方库，状态轮询、防重追加、安全移除、歌单全套指令、协议注入防护)
 │  ├─ wallpaper.ts              app-media:// 安全协议流式直驱本地动静态壁纸
@@ -82,8 +82,8 @@ src/
    ├─ index.html                CSP 策略与 DOM 挂载入口
    └─ src/
       ├─ main.tsx               React 19 根挂载
-      ├─ App.tsx                全局主视图控制器、快捷键调度与状态桥接中心
-      ├─ styles/global.css      全套 CSS 变量体系、reset 与深色黑曜石主题
+      ├─ App.tsx                全局主视图控制器、快捷键调度与状态桥接中心 (含 .window-drag-bar 顶部 28px 沉浸式拖拽热区)
+      ├─ styles/global.css      全套 CSS 变量体系、reset 与深色黑曜石主题、.window-drag-bar 拖拽样式与无边框微调
       ├─ services/
       │  └─ pcmPlayer.ts        Model B / 方案 C WebAudio PCM 流式管道 (自适应硬件采样率/流世代淡入淡出/防抖调度)
       └─ components/

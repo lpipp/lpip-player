@@ -2,18 +2,18 @@
 
 > 更新时间: 2026-09-11
 > 当前阶段: M2-2 (悬浮胶囊偏好设置抽屉完备，5大模块双级钻取画册流+IPC原子持久化与即时热重载闭环，460px 宽阔视窗，零报错稳定常驻)
-> 最新进展: 悬浮胶囊第六按键重构为偏好设置 (SettingsDrawer)，双级钻取画册流排版（分类总览层 + 设置详情层），5大模块精细化控件（外观与窗口/音频与过渡/蓝图频谱/MPD服务/关于播放器），IPC原子持久化与秒级热重载闭环，详见 §2.16
+> 最新进展: 悬浮胶囊第六按键重构为偏好设置 (SettingsDrawer)，双级钻取画册流排版（分类总览层 + 设置详情层），5大模块精细化控件，IPC原子持久化与秒级热重载闭环；彻底修复沉浸式无边框模式 (window.immersive) 瞬时平滑重建 (recreateWindow) 与顶部 28px 隐形拖拽热区，详见 §2.16 与 §4.17
 
 ---
 
 ## 1. 架构与环境核心快照
 
-- **架构方案**: Model B（MPD 仅负责本地音频解码并推流至 `:8000` httpd，Electron 前端通过 `<audio>` 播放并预留 WebAudio AnalyserNode 频谱分析；播放控制走 MPD 6600 纯文本 TCP 协议，手写原生 Client）。
-- **流编码 (2026-09-09 变更)**: httpd `encoder` 已由 `vorbis` 320k 改为 **`wave`（未压缩 PCM，44100:16:2，约 1.41 Mbps / 176 KB/s）**，备份见 `~/.config/mpd/mpd.conf.bak`。原因见 §4.8：同样字节数的服务端队列，PCM 只装 vorbis 约 1/4.4 的时长，是音频卡顿归零的关键因素之一；附带收益是不再对 FLAC 源做二次有损压缩，全程无损。localhost 传输对该码率毫无压力。
+- **架构方案**: Model B / 方案 C（MPD 仅负责本地音频解码并推流至 `:8000` httpd；Electron 前端通过 fetch + WebAudio 原生 PCM 管道直送 (pcmPlayer.ts) 驱动扬声器与 AnalyserNode 频谱分析，彻底废除 `<audio>` 标签；播放控制走 MPD 6600 纯文本 TCP 协议，手写原生 Client）。
+- **流编码 (2026-09-09/10 升级)**: httpd `encoder` 已由 `vorbis` 320k 改为 **`wave`（未压缩 PCM，*:16:2 原生自适应采样率透传，约 1.41~1.54 Mbps）**，MPD 配置 `resampler { plugin "soxr" quality "very high" }`，备份见 `~/.config/mpd/mpd.conf.modelB.bak`。原因见 §4.8 与 §4.12。
 - **运行平台**: Arch Linux (Linux 6.x) + KDE Plasma 6 (Wayland) + AMD GPU。
 - **技术栈**: Electron 44.2.0 + React 19.2.8 + TypeScript 7.0.2 + electron-vite 5.0.0 + Vite 7.3.6。
 - **用户配置文件**: `~/.config/lpip-player/config.json`（支持全量 JSONC 单行/块级中文注释）。
-- **当前常驻运行**: Electron 实例在桌面上持续运行中（PID 43684），实时响应配置、动态壁纸与控制交互。
+- **当前常驻运行**: Electron 实例在桌面上持续运行中（主进程 PID 11240，GPU 进程 PID 11276），实时响应配置、动态壁纸与控制交互。
 
 ---
 
@@ -395,14 +395,16 @@
   - 纯原生 React + CSS 封装 `ToggleSwitch`、`SliderControl`（等宽数字 `tabular-nums` 防抖）、`SegmentedControl`（WAI-ARIA 键盘无障碍方向键切换）；
   - 宿主容器锁定整像素绝对网格，`::before`/`::after` 承载背景微光与微缩放，位移 $\Delta X = \Delta Y = 0\text{px}$ 零抖动；
   - 滚动容器全量挂载 `.liquid-scrollbar` 液态玻璃滑动条（5px 极细药丸圆角，hover/drag 薄荷翡翠微发光微扩至 6px）。
-- **配置原子持久化与实时热重载**:
+- **配置原子持久化、实时热重载与沉浸式窗口瞬时重构**:
   - 主进程 `src/main/config.ts` 提供 `saveConfig`，执行深度合并 (`deepMerge`)、各模块 schema 校验与数值钳位，写入前创建 `.bak` 备份，通过 POSIX 随机临时文件写入后 `renameSync` 原子替换，杜绝文件损坏；
   - 主进程提供 `CONFIG_UPDATE` IPC 处理器，更新后立即调用 `applyConfigToWindow` 并向渲染层广播 `CONFIG_CHANGED`；
+  - 针对操作系统底层 frame 不可变限制，实现 `recreateWindow` 无缝平滑重建窗口，使“沉浸式无边框模式”开关变更即刻生效，并自动激活顶部 28px 隐形拖拽热区 (`.window-drag-bar`)；
   - 渲染层使用本地即时状态响应（60fps 零延迟视觉）+ 60ms 防抖累加写入，并在组件卸载时强制冲刷（flush on unmount），杜绝滑块调整后快速关闭抽屉导致配置丢失。
 - **实测数据 (CDP 硬件抓轨)**:
   - 胶囊第 6 项展开宽度: `460px` ✅，导轨: `56px` ✅ 零抖动；
   - `.settings-drawer-wrapper` 挂载就绪，`.liquid-scrollbar` 覆盖全滚动区域；
   - 5 大分类卡片准确展示，钻取与返回流畅无阻；
+  - 沉浸式开关双向切换实测无缝重建窗口（bounds / 全屏 / 最大化状态完整保留，耗时 ~50ms，零闪退）；
   - `pnpm typecheck` 0 错误，`pnpm build` 成功。
 
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
