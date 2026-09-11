@@ -322,11 +322,16 @@ app.whenReady().then(() => {
   protocol.handle('app-media', async (request) => {
     const url = request.url
 
-    // 场景 1: 音频内嵌封面提取与本地缓存服务 (app-media://cover/...)
+    // 场景 1: 音频内嵌封面提取与本地缓存服务 (app-media://cover/<file>?tier=thumb|full)
     if (url.startsWith('app-media://cover/')) {
       const rawRel = url.slice('app-media://cover/'.length)
-      const relPath = decodeURIComponent(rawRel)
-      const coverPath = await getOrExtractAlbumCover(relPath)
+      const qIndex = rawRel.indexOf('?')
+      const encodedPath = qIndex === -1 ? rawRel : rawRel.slice(0, qIndex)
+      const query = qIndex === -1 ? '' : rawRel.slice(qIndex + 1)
+      const relPath = decodeURIComponent(encodedPath)
+      // 缺省按 thumb 处理; tier=full 保留原图访问路径 (留给大舞台高清场景)
+      const tier = query.includes('tier=full') ? 'full' : 'thumb'
+      const coverPath = await getOrExtractAlbumCover(relPath, tier)
       if (coverPath && existsSync(coverPath)) {
         return net.fetch(pathToFileURL(coverPath).toString(), {
           headers: request.headers

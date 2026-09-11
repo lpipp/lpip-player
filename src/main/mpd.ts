@@ -154,7 +154,7 @@ export function parseMpdLibrary(raw: string): MpdSong[] {
         duration: 0,
         format: '',
         quality: 'STD',
-        coverUrl: `app-media://cover/${encodeURIComponent(file)}`
+        coverUrl: `app-media://cover/${encodeURIComponent(file)}?tier=thumb`
       }
     } else if (cur) {
       const idx = line.indexOf(': ')
@@ -222,7 +222,7 @@ function finalizeSong(item: Partial<MpdSong>): MpdSong {
     duration: item.duration || 0,
     format,
     quality,
-    coverUrl: item.coverUrl || `app-media://cover/${encodeURIComponent(file)}`,
+    coverUrl: item.coverUrl || `app-media://cover/${encodeURIComponent(file)}?tier=thumb`,
     date: item.date,
     track: item.track,
     pos: item.pos,
@@ -253,7 +253,7 @@ export function parseMpdPlaylist(raw: string): MpdSong[] {
         duration: 0,
         format: '',
         quality: 'STD',
-        coverUrl: `app-media://cover/${encodeURIComponent(file)}`
+        coverUrl: `app-media://cover/${encodeURIComponent(file)}?tier=thumb`
       }
     } else if (cur) {
       const idx = line.indexOf(': ')
@@ -863,6 +863,46 @@ export function getSongLyrics(relPath: string): LyricLine[] {
 }
 
 /**
+ * 封面缩略图目标边长 (像素)。画册流/曲库网格统一走缩略图，原图档留给大舞台。
+ */
+const THUMB_SIZE = 512
+
+/**
+ * 从音频文件剥离内嵌封面的并发上限。仅限制「读 FLAC + spawn ffmpeg」这一昂贵步骤，
+ * 避免视口内数十张未缓存封面同时提取造成主进程 CPU/IO 尖峰。缓存命中与原图补压缩略图不排队。
+ */
+const MAX_CONCURRENT_EXTRACT = 2
+
+let activeExtractCount = 0
+const pendingExtracts: Array<() => void> = []
+
+/**
+ * 手写 promise 并发队列 (零依赖)。并发达到上限时新任务排队，某个任务完成后依次唤醒下一个。
+ */
+function runExtract<T>(task: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const start = async (): Promise<void> => {
+      activeExtractCount++
+      try {
+        resolve(await task())
+      } catch (err) {
+        reject(err)
+      } finally {
+        activeExtractCount--
+        const next = pendingExtracts.shift()
+        if (next) next()
+      }
+    }
+
+    if (activeExtractCount < MAX_CONCURRENT_EXTRACT) {
+      void start()
+    } else {
+      pendingExtracts.push(() => void start())
+    }
+  })
+}
+
+/**
  * 获取封面图片的本地缓存目录
  */
 function getCoverCacheDir(): string {
@@ -874,36 +914,11 @@ function getCoverCacheDir(): string {
 }
 
 /**
- * 提取或从缓存读取歌曲的内嵌专辑封面
+ * 用 ffmpeg 零拷贝从音频文件剥离内嵌封面 (不转码，直接复制内嵌图片字节流)
+ * @returns 是否成功产出非空封面文件
  */
-export function getOrExtractAlbumCover(relPath: string): Promise<string | null> {
+function extractCoverFromAudio(audioPath: string, coverPath: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const musicDir = join(app.getPath('home'), 'Music')
-    const audioPath = join(musicDir, relPath)
-
-    if (!existsSync(audioPath)) {
-      resolve(null)
-      return
-    }
-
-    const cacheDir = getCoverCacheDir()
-    const hash = createHash('sha1').update(relPath).digest('hex')
-    const coverPath = join(cacheDir, `${hash}.jpg`)
-    const noCoverPath = join(cacheDir, `${hash}.nocover`)
-
-    // 命中图片缓存
-    if (existsSync(coverPath)) {
-      resolve(coverPath)
-      return
-    }
-
-    // 已经验证过无内嵌封面
-    if (existsSync(noCoverPath)) {
-      resolve(null)
-      return
-    }
-
-    // 调用 ffmpeg 快速零拷贝剥离内嵌图片 (耗时仅数十毫秒)
     execFile(
       'ffmpeg',
       ['-y', '-i', audioPath, '-an', '-vcodec', 'copy', '-f', 'image2', coverPath],
@@ -912,29 +927,126 @@ export function getOrExtractAlbumCover(relPath: string): Promise<string | null> 
           if (existsSync(coverPath)) {
             unlinkSync(coverPath)
           }
-          try {
-            writeFileSync(noCoverPath, '')
-          } catch {
-            // 忽略写入错误
-          }
-          resolve(null)
+          resolve(false)
           return
         }
 
         try {
-          const stat = statSync(coverPath)
-          if (stat.size > 0) {
-            resolve(coverPath)
+          if (statSync(coverPath).size > 0) {
+            resolve(true)
           } else {
             unlinkSync(coverPath)
-            writeFileSync(noCoverPath, '')
-            resolve(null)
+            resolve(false)
           }
         } catch {
-          resolve(null)
+          resolve(false)
         }
       }
     )
+  })
+}
+
+/**
+ * 从已提取的原图补生成 512px JPEG 缩略图 (重编码为真 JPEG，顺带归一化 png 等异常内嵌流)
+ * @returns 是否成功产出非空缩略图文件
+ */
+function generateThumbFromCover(coverPath: string, thumbPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile(
+      'ffmpeg',
+      [
+        '-y',
+        '-i',
+        coverPath,
+        '-vf',
+        `scale=${THUMB_SIZE}:${THUMB_SIZE}:force_original_aspect_ratio=decrease`,
+        '-q:v',
+        '4',
+        thumbPath
+      ],
+      (err) => {
+        if (err || !existsSync(thumbPath)) {
+          if (existsSync(thumbPath)) {
+            unlinkSync(thumbPath)
+          }
+          resolve(false)
+          return
+        }
+
+        try {
+          if (statSync(thumbPath).size > 0) {
+            resolve(true)
+          } else {
+            unlinkSync(thumbPath)
+            resolve(false)
+          }
+        } catch {
+          resolve(false)
+        }
+      }
+    )
+  })
+}
+
+/**
+ * 提取或从缓存读取歌曲的内嵌专辑封面 (双档缓存)
+ *
+ * - `tier = 'thumb'` (默认): 返回 512px JPEG 缩略图，供画册流/曲库/队列/艺人/歌单等网格展示
+ * - `tier = 'full'`: 返回零拷贝剥离的内嵌原图，留给大舞台等高清场景
+ *
+ * 双档命名: `<hash>.jpg` = 原图, `<hash>.thumb.jpg` = 缩略图, `<hash>.nocover` = 无内嵌封面标记。
+ * 缩略图缺失但原图已缓存时 (存量老缓存迁移)，直接从原图补压缩略图，不重读音频文件。
+ * 仅「从音频文件提取原图」这一昂贵步骤进入并发队列，其余路径直接执行。
+ */
+export function getOrExtractAlbumCover(relPath: string, tier: 'thumb' | 'full' = 'thumb'): Promise<string | null> {
+  const musicDir = join(app.getPath('home'), 'Music')
+  const audioPath = join(musicDir, relPath)
+
+  if (!existsSync(audioPath)) {
+    return Promise.resolve(null)
+  }
+
+  const cacheDir = getCoverCacheDir()
+  const hash = createHash('sha1').update(relPath).digest('hex')
+  const coverPath = join(cacheDir, `${hash}.jpg`)
+  const thumbPath = join(cacheDir, `${hash}.thumb.jpg`)
+  const noCoverPath = join(cacheDir, `${hash}.nocover`)
+  const wantThumb = tier === 'thumb'
+
+  // 已经验证过无内嵌封面
+  if (existsSync(noCoverPath)) {
+    return Promise.resolve(null)
+  }
+
+  // 缩略图命中 (网格场景的主路径)
+  if (wantThumb && existsSync(thumbPath)) {
+    return Promise.resolve(thumbPath)
+  }
+
+  // 原图已缓存: full 直接命中; thumb 走存量老缓存迁移路径，从原图补压缩略图
+  if (existsSync(coverPath)) {
+    if (!wantThumb) {
+      return Promise.resolve(coverPath)
+    }
+    return generateThumbFromCover(coverPath, thumbPath).then((ok) => (ok ? thumbPath : coverPath))
+  }
+
+  // 需要从音频文件提取原图 (昂贵步骤 → 并发队列)，成功后按需生成缩略图
+  return runExtract(() => extractCoverFromAudio(audioPath, coverPath)).then(async (ok) => {
+    if (!ok) {
+      try {
+        writeFileSync(noCoverPath, '')
+      } catch {
+        // 忽略写入错误
+      }
+      return null
+    }
+
+    if (wantThumb) {
+      const thumbOk = await generateThumbFromCover(coverPath, thumbPath)
+      return thumbOk ? thumbPath : coverPath
+    }
+    return coverPath
   })
 }
 
@@ -1135,7 +1247,7 @@ export async function getPlaylistSongs(name: string): Promise<MpdSong[]> {
           duration: 0,
           format: '',
           quality: 'STD',
-          coverUrl: `app-media://cover/${encodeURIComponent(file)}`
+          coverUrl: `app-media://cover/${encodeURIComponent(file)}?tier=thumb`
         } as MpdSong
       })
     }
