@@ -60,7 +60,8 @@
   border: none;
   outline: none;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   line-height: 1;
   padding: 0;
   min-width: 0;
@@ -102,7 +103,8 @@
   gap: 4px;
   padding: 4px 9px;
   border-radius: 7px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -125,7 +127,8 @@
 }
 
 .playlist-count-badge {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   color: rgba(110, 231, 183, 0.85);
   background: rgba(110, 231, 183, 0.1);
@@ -166,7 +169,8 @@
   border: 1px solid rgba(110, 231, 183, 0.4);
   border-radius: 6px;
   padding: 5px 8px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: #ffffff;
   outline: none;
   min-width: 0;
@@ -181,7 +185,8 @@
   background: rgba(110, 231, 183, 0.2);
   border: 1px solid rgba(110, 231, 183, 0.45);
   color: #6ee7b7;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   border-radius: 6px;
   padding: 5px 10px;
@@ -199,7 +204,8 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   border-radius: 6px;
   padding: 5px 8px;
   cursor: pointer;
@@ -213,7 +219,8 @@
 }
 
 .playlist-create-error {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: #f87171;
   white-space: nowrap;
 }
@@ -335,7 +342,8 @@
 }
 
 .playlist-name {
-  font-size: 14px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
@@ -350,7 +358,8 @@
 }
 
 .playlist-subtext {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.42);
   white-space: nowrap;
   overflow: hidden;
@@ -370,7 +379,8 @@
   border: 1px solid rgba(110, 231, 183, 0.45);
   border-radius: 4px;
   padding: 3px 6px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: #ffffff;
   outline: none;
 }
@@ -411,7 +421,8 @@
 }
 
 .playlist-delete-hint {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: #fca5a5;
   white-space: nowrap;
 }
@@ -420,7 +431,8 @@
   background: #ef4444;
   border: none;
   color: #ffffff;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 600;
   border-radius: 4px;
   padding: 2px 6px;
@@ -432,7 +444,8 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   cursor: pointer;
   outline: none;
   padding: 2px;
@@ -556,7 +569,8 @@
   border: none;
   outline: none;
   color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 6px;
@@ -597,7 +611,8 @@
 }
 
 .playlist-detail-name {
-  font-size: 16px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 3px);
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
@@ -608,7 +623,8 @@
 }
 
 .playlist-detail-stats {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.45);
 }
 
@@ -627,7 +643,8 @@
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -697,7 +714,8 @@
   background: transparent;
   border: none;
   outline: none;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: #ffffff;
 }
 
@@ -747,7 +765,8 @@
 }
 
 .playlist-add-item-title {
-  font-size: 12px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: var(--font-size-ui, 13px);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
@@ -756,7 +775,8 @@
 }
 
 .playlist-add-item-artist {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
@@ -769,7 +789,8 @@
   gap: 4px;
   padding: 3px 8px;
   border-radius: 5px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   cursor: pointer;
   outline: none;
   background: rgba(110, 231, 183, 0.12);
@@ -844,7 +865,8 @@
   position: relative;
   z-index: 2;
   width: 20px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.3);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -890,7 +912,8 @@
 }
 
 .playlist-song-title {
-  font-size: 13px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: var(--font-size-ui, 13px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
@@ -906,7 +929,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
@@ -920,7 +944,8 @@
 
 /* 音质徽标 */
 .playlist-badge-sq {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -933,7 +958,8 @@
 }
 
 .playlist-badge-hires {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -946,7 +972,8 @@
 }
 
 .playlist-badge-hq {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -959,7 +986,8 @@
 }
 
 .playlist-badge-std {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 600;
   padding: 1px 4px;
   border-radius: 3px;
@@ -975,7 +1003,8 @@
 .playlist-song-duration {
   position: relative;
   z-index: 2;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.35);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
@@ -1073,14 +1102,16 @@
   justify-content: center;
   padding: 50px 20px;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   text-align: center;
   gap: 10px;
 }
 
 .playlist-empty-state.mini {
   padding: 20px 10px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
 }
 
 .playlist-empty-create-btn {
@@ -1092,7 +1123,8 @@
   background: rgba(110, 231, 183, 0.12);
   border: 1px solid rgba(110, 231, 183, 0.35);
   color: #6ee7b7;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   cursor: pointer;
   outline: none;

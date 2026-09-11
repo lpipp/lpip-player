@@ -59,7 +59,8 @@
   border: none;
   outline: none;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   line-height: 1;
   padding: 0;
   min-width: 0;
@@ -78,7 +79,8 @@
 }
 
 .artist-count-badge {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   color: rgba(110, 231, 183, 0.85);
   background: rgba(110, 231, 183, 0.1);
@@ -202,7 +204,8 @@
 }
 
 .artist-name {
-  font-size: 14.5px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
@@ -217,7 +220,8 @@
 }
 
 .artist-subtext {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.42);
   white-space: nowrap;
   overflow: hidden;
@@ -301,7 +305,8 @@
   border: none;
   outline: none;
   color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 6px;
@@ -342,7 +347,8 @@
 }
 
 .artist-detail-name {
-  font-size: 16px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 3px);
   font-weight: 700;
   color: #ffffff;
   white-space: nowrap;
@@ -352,7 +358,8 @@
 }
 
 .artist-detail-stats {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.45);
 }
 
@@ -371,7 +378,8 @@
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -457,7 +465,8 @@
   position: relative;
   z-index: 2;
   width: 20px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.3);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -503,7 +512,8 @@
 }
 
 .artist-song-title {
-  font-size: 13px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: var(--font-size-ui, 13px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
@@ -519,7 +529,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
@@ -533,7 +544,8 @@
 
 /* 音质徽标 */
 .artist-badge-sq {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -546,7 +558,8 @@
 }
 
 .artist-badge-hires {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -559,7 +572,8 @@
 }
 
 .artist-badge-hq {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -575,7 +589,8 @@
 .artist-song-duration {
   position: relative;
   z-index: 2;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.35);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
@@ -634,7 +649,8 @@
   justify-content: center;
   padding: 60px 20px;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   text-align: center;
   gap: 8px;
 }

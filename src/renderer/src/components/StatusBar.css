@@ -356,7 +356,7 @@
 /* 时间标签: 等宽数字渲染，固定宽度防止秒数跳变引起轻微颤动 */
 .status-bar-time {
   font-family: var(--font-family-hint);
-  font-size: calc(var(--font-size-hint, 11px) + 1px);
+  font-size: calc(var(--font-size-hint, 12px) + 1px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
@@ -509,7 +509,7 @@
 
 .status-bar-quality-badge {
   font-family: var(--font-family-hint);
-  font-size: calc(var(--font-size-hint, 11px) - 1.5px);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 4px;
@@ -544,7 +544,7 @@
 
 .status-bar-meta-artist {
   font-family: var(--font-family-hint);
-  font-size: var(--font-size-hint, 11px);
+  font-size: var(--font-size-hint, 12px);
   color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
   white-space: nowrap;
   overflow: hidden;

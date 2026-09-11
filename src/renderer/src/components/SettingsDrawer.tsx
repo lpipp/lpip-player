@@ -1356,9 +1356,9 @@ export default function SettingsDrawer() {
 
                   <SliderControl
                     label="界面基准字号"
-                    desc="全局界面与列表主文本字阶 (11 ~ 20px)"
+                    desc="全局界面与列表主文本字阶 (12 ~ 20px)"
                     value={config.typography?.ui?.fontSize ?? 13}
-                    min={11}
+                    min={12}
                     max={20}
                     step={1}
                     displayValue={`${config.typography?.ui?.fontSize ?? 13}px`}
@@ -1488,9 +1488,9 @@ export default function SettingsDrawer() {
 
                   <SliderControl
                     label="歌词翻译字号"
-                    desc="次级翻译歌词基准尺寸 (10 ~ 22px)"
+                    desc="次级翻译歌词基准尺寸 (12 ~ 22px)"
                     value={config.typography?.lyrics?.translation?.fontSize ?? 12}
-                    min={10}
+                    min={12}
                     max={22}
                     step={1}
                     displayValue={`${config.typography?.lyrics?.translation?.fontSize ?? 12}px`}

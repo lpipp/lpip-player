@@ -347,6 +347,14 @@ async function main() {
 
   await verifyMin12Floor(cdp);
 
+  await verifySettingsLinkage(cdp);
+
+  // 联动验证后复位，保持用户配置干净
+  await cdp.eval(`(() => {
+    document.querySelector('.settings-reset-btn')?.click();
+  })()`);
+  await new Promise(r => setTimeout(r, 700));
+
   cdp.close();
   console.log('=== All E2E Tests Completed Successfully ===');
 }
@@ -378,6 +386,79 @@ async function verifyMin12Floor(cdp) {
     return { badCount: bad.length, bad };
   })()`);
   console.log('Min-12 floor scan:', result);
+  assert.equal(result.badCount, 0);
+}
+
+// Step 12: 设置↔界面联动 (分层映射: ui/hint 滑条驱动全部文字同步缩放)
+// 验收: ui 13→18 时正文/标题行 computed 同步放大; hint 12→16 时徽标/副行同步放大;
+// 回到 ui 13/hint 12 后全部文字恢复基线; 全程 <12px=0
+async function verifySettingsLinkage(cdp) {
+  console.log('=== Step 12: Settings-to-UI Linkage (Layered Mapping) ===');
+  const result = await cdp.eval(`(async () => {
+    const sliders = Array.from(document.querySelectorAll('input[type="range"]'));
+    const uiSlider = sliders[0];
+    const hintSlider = sliders[1];
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    const fire = (el, v) => {
+      set.call(el, String(v));
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const cs = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? parseFloat(getComputedStyle(el).fontSize) : NaN;
+    };
+    // 基线快照 (ui=13/hint=12): 设置页自身 ui 层标签 + hint 层滑条数值 + 分组标题
+    const base = {
+      settingsLabel: cs('.settings-control-label'),
+      hintValue: cs('.liquid-slider-value'),
+      groupTitle: cs('.settings-group-title')
+    };
+    // 放大: ui 18 / hint 16
+    fire(uiSlider, 18);
+    fire(hintSlider, 16);
+    await new Promise(r => setTimeout(r, 600));
+    const grown = {
+      settingsLabel: cs('.settings-control-label'),
+      hintValue: cs('.liquid-slider-value'),
+      groupTitle: cs('.settings-group-title'),
+      uiVar: document.documentElement.style.getPropertyValue('--font-size-ui'),
+      hintVar: document.documentElement.style.getPropertyValue('--font-size-hint')
+    };
+    // 恢复基线
+    fire(uiSlider, 13);
+    fire(hintSlider, 12);
+    await new Promise(r => setTimeout(r, 600));
+    const restored = {
+      settingsLabel: cs('.settings-control-label'),
+      hintValue: cs('.liquid-slider-value'),
+      groupTitle: cs('.settings-group-title')
+    };
+    // 全量 <12px 扫描
+    const walker = document.createTreeWalker(document.querySelector('aside.sidebar-capsule') || document.body, NodeFilter.SHOW_ELEMENT);
+    const bad = [];
+    let el = walker.nextNode();
+    while (el) {
+      const hasText = Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+      if (hasText) {
+        const st = getComputedStyle(el);
+        if (st.visibility !== 'hidden' && st.display !== 'none') {
+          const px = parseFloat(st.fontSize);
+          if (Number.isFinite(px) && px < 12 - 1e-6) { bad.push(el.className?.toString?.().slice(0, 50) + ' = ' + st.fontSize); if (bad.length >= 10) break; }
+        }
+      }
+      el = walker.nextNode();
+    }
+    return { base, grown, restored, badCount: bad.length, bad };
+  })()`);
+  console.log('Linkage result:', result);
+  assert.equal(result.grown.uiVar, '18px');
+  assert.equal(result.grown.hintVar, '16px');
+  assert.ok(result.grown.settingsLabel > result.base.settingsLabel, '设置页自身 ui 标签应随 ui 滑条放大');
+  assert.ok(result.grown.hintValue > result.base.hintValue, '设置页滑条数值(hint 层)应随 hint 滑条放大');
+  assert.ok(result.grown.groupTitle >= result.base.groupTitle, '设置页分组标题应随 ui 滑条联动');
+  assert.equal(result.restored.settingsLabel, result.base.settingsLabel);
+  assert.equal(result.restored.hintValue, result.base.hintValue);
   assert.equal(result.badCount, 0);
 }
 

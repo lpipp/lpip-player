@@ -91,7 +91,7 @@ export function applyTypographyToDOM(typography?: TypographyConfig | null): void
 
   const uiFont = sanitizeFontFamily(t.ui?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily)
   const rawUiSize = typeof t.ui?.fontSize === 'number' && Number.isFinite(t.ui.fontSize) ? t.ui.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.ui.fontSize
-  const uiSize = Math.round(clamp(rawUiSize, 11, 20))
+  const uiSize = Math.round(clamp(rawUiSize, 12, 20))
 
   const hintFont = sanitizeFontFamily(t.hint?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
   const rawHintSize = typeof t.hint?.fontSize === 'number' && Number.isFinite(t.hint.fontSize) ? t.hint.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.hint.fontSize
@@ -103,7 +103,7 @@ export function applyTypographyToDOM(typography?: TypographyConfig | null): void
 
   const lyricsTransFont = sanitizeFontFamily(t.lyrics?.translation?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
   const rawLyricsTransSize = typeof t.lyrics?.translation?.fontSize === 'number' && Number.isFinite(t.lyrics.translation.fontSize) ? t.lyrics.translation.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontSize
-  const lyricsTransSize = Math.round(clamp(rawLyricsTransSize, 10, 22))
+  const lyricsTransSize = Math.round(clamp(rawLyricsTransSize, 12, 22))
 
   s.setProperty('--font-family-ui', uiFont)
   s.setProperty('--font-size-ui', `${uiSize}px`)

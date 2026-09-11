@@ -38,8 +38,8 @@ assert.equal(parseTypographyConfig({ hint: { fontSize: 50 } }).hint.fontSize, 16
 // Lyrics Body: 14 ~ 36
 assert.equal(parseTypographyConfig({ lyrics: { body: { fontSize: 10 } } }).lyrics.body.fontSize, 14);
 assert.equal(parseTypographyConfig({ lyrics: { body: { fontSize: 100 } } }).lyrics.body.fontSize, 36);
-// Lyrics Translation: 10 ~ 22
-assert.equal(parseTypographyConfig({ lyrics: { translation: { fontSize: 5 } } }).lyrics.translation.fontSize, 10);
+// Lyrics Translation: 12 ~ 22 (全局 12px 托底, 低 PPI 可读性铁律)
+assert.equal(parseTypographyConfig({ lyrics: { translation: { fontSize: 5 } } }).lyrics.translation.fontSize, 12);
 assert.equal(parseTypographyConfig({ lyrics: { translation: { fontSize: 40 } } }).lyrics.translation.fontSize, 22);
 console.log('✓ 3. Boundary clamping passed');
 

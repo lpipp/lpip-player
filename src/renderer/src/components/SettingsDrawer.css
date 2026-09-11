@@ -56,14 +56,16 @@
 }
 
 .settings-toolbar-title {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.3px;
 }
 
 .settings-toolbar-badge {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   color: rgba(110, 231, 183, 0.85);
   background: rgba(110, 231, 183, 0.1);
@@ -183,7 +185,8 @@
 }
 
 .settings-card-title {
-  font-size: 13.5px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.94);
   letter-spacing: 0.3px;
@@ -191,7 +194,8 @@
 }
 
 .settings-card-desc {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   overflow: hidden;
@@ -254,7 +258,8 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.85);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   padding: 4px 9px;
   border-radius: 6px;
@@ -304,14 +309,16 @@
 }
 
 .settings-hero-title {
-  font-size: 14px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.95);
   letter-spacing: 0.4px;
 }
 
 .settings-hero-desc {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.45);
   font-variant-numeric: tabular-nums;
 }
@@ -342,7 +349,8 @@
 }
 
 .settings-group-title {
-  font-size: 12px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: var(--font-size-ui, 13px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.88);
   letter-spacing: 0.3px;
@@ -350,7 +358,8 @@
 }
 
 .settings-group-badge {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   color: rgba(110, 231, 183, 0.8);
   background: rgba(110, 231, 183, 0.08);
@@ -377,13 +386,15 @@
 }
 
 .settings-control-label {
-  font-size: 12.5px;
+  font-family: var(--font-family-ui, system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .settings-control-desc {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.45);
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
@@ -456,7 +467,8 @@
 }
 
 .liquid-slider-value {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 600;
   color: #6ee7b7;
   background: rgba(110, 231, 183, 0.1);
@@ -527,7 +539,8 @@
   border: 1px solid transparent;
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   padding: 5px 6px;
   cursor: pointer;
@@ -564,7 +577,8 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 7px;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   padding: 6px 9px;
   outline: none;
   font-variant-numeric: tabular-nums;
@@ -590,7 +604,8 @@
   gap: 5px;
   padding: 6px 12px;
   border-radius: 7px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -647,7 +662,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   padding: 3px 0;
   border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
 }
@@ -685,12 +701,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
 }
 
 .liquid-kbd {
   font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
-  font-size: 12px;
+  font-size: var(--font-size-hint, 12px);
   font-weight: 600;
   color: #6ee7b7;
   background: rgba(110, 231, 183, 0.1);
@@ -710,7 +727,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   padding: 2px 7px;
   border-radius: 6px;
@@ -773,7 +791,8 @@
 }
 
 .settings-error-text {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: #fca5a5;
   font-weight: 500;
   line-height: 1.3;
@@ -808,7 +827,8 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.75);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   padding: 4px 9px;
   border-radius: 6px;
@@ -849,7 +869,8 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   padding: 3px 8px;
   cursor: pointer;
@@ -900,7 +921,8 @@
 }
 
 .liquid-font-preview-tag {
-  font-size: 12px;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.35);
   text-transform: uppercase;
   letter-spacing: 0.5px;

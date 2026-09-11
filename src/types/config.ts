@@ -640,7 +640,7 @@ export function parseTypographyConfig(rawTypography: unknown): TypographyConfig 
       hint: parseFontItemConfig(targetObj['hint'], DEFAULT_TYPOGRAPHY_CONFIG.hint, 12, 16),
       lyrics: {
         body: parseFontItemConfig(bodyObj, defaultBody, 14, 36),
-        translation: parseFontItemConfig(transObj, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation, 10, 22)
+        translation: parseFontItemConfig(transObj, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation, 12, 22)
       }
     }
   }
