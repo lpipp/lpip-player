@@ -278,6 +278,14 @@ async function main() {
   assert.equal(parsedDiskReset.typography?.hint?.fontSize, 11);
 
   console.log('=== Step 10: Multi-Control Hint & Lyrics Empty Blur & Escape Verification ===');
+  // Ensure sidebar is expanded (Step 8 Escape may have collapsed it)
+  await cdp.eval(`(() => {
+    const aside = document.querySelector('aside.sidebar-capsule');
+    const btns = Array.from(document.querySelectorAll('.capsule-icon-btn'));
+    if (aside && !aside.classList.contains('expanded') && btns[5]) btns[5].click();
+  })()`);
+  await new Promise(r => setTimeout(r, 400));
+
   // 10a: Hint input empty blur
   const hintBlurResult = await cdp.eval(`(async () => {
     const inputs = Array.from(document.querySelectorAll('.liquid-text-input'));
