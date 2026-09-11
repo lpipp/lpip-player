@@ -38,10 +38,10 @@
 
 ---
 
-## 2. git 状态（截至 5a1c548）
+## 2. git 状态（截至 8afd258）
 
 ```
-5a1c548 perf(cover): 封面提取生成 512px 缩略图双档缓存并限制提取并发
+8afd258 feat(ui): 整洁化隐藏专辑名与冗余说明文字
 f53d23f docs: 更新 音频与性能深度体检 项目全量文档
 a6d5fe1 docs: 更新 字体输入基线修复与 git 快照 项目全量文档
 7641beb fix(settings): 字体输入基准字形改用 useEffect 同步 ref，修复渲染期写 ref 在外部 prop 变更后 Escape 回退失效

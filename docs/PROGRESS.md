@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-11
-> 当前阶段: M2-2 (全界面文字受控分层映射联动设置落地，设置页自身同步缩放；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
-> 最新进展: 九组件 89 处硬编码字号全量变量化（HINT/TITLE/MODAL/HERO/ICON 五层语义映射，拖 ui/hint 滑条整组联动，设置页自身同步缩放），全局 12px 托底收口（translation/ui 钳位与滑条 min、badge 负偏移、global.css/example 基线）；单测 11/11 + e2e 新增 Step 12 联动验收全绿（提交 0e43511），详见 §2.21 与 §4.24
+> 当前阶段: M2-2 (UI 整洁化隐藏专辑名与冗余说明已落地；全界面文字受控分层映射联动设置已落地；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
+> 最新进展: 五处单曲行仅保留歌手（去专辑名/分隔符/兜底，悬停同步去专辑），设置页三级描述全删（模块卡/Hero/行级小字），胶囊底部版本号·移出提示·M-B 全删呼吸点保留；字阶链路未动，单测 11/11 + e2e 全绿 + CDP 五处行盒实测（提交 8afd258），详见 §2.22 与 §4.25
 
 ---
 
@@ -491,6 +491,15 @@
 - **12px 托底收口**: translation 解析/DOM 钳位/滑条 min `10→12`，ui DOM 钳位 `11→12`，badge 负偏移归零（StatusBar `-1.5px`、Capsule `-0.5px`，Capsule 以 `+0px` 形式保留声明可溯），`global.css` hint 默认 `11→12`，`config.example.json` hint `11→12`（此前托底会话遗留）。
 - **测试闭环**: 单测 Test 3 翻译钳位期望 `10→12`；e2e 新增 **Step 12 联动验收**（ui 13→18 / hint 12→16 时设置页自身三处 computed 同步放大且可恢复基线，全程 `<12px=0`）；typecheck/build 全绿；CDP 9222 实测 Step 12 `13.5→18.5 / 12→16 / 13→18` 联动成立、恢复基线一致，Step 11 托底扫描仍为 0。
 
+### 2.22 UI 整洁化隐藏专辑名与冗余说明 (`UI Declutter`) - 2026-09-11 完成
+
+> **结论先行：界面更干净，字阶链路零触碰。** 五处单曲行副文本仅保留歌手（曲库 436 行 / 队列 10 行 / 艺人 L2 / 歌单 L2 10 行 / 添加面板 436 行，严格分隔符 ` - `/` · ` 零残留）；设置页三级描述全删（模块卡 desc + Hero desc + 行级 control-desc，`cardDesc=0/heroDesc=0/ctrlDesc=0`，label 9 + 滑条 4 保留）；胶囊底部版本号 footer + 移出提示 + M-B 全删，呼吸点保留；单测 11/11 + e2e 全绿 + Step 11/12 零回退。
+
+- **五处去专辑同步**: MusicLibraryList（副文本 + title 悬停去 `- 专辑`）/ QueueDrawer（同上，`· 专辑`）/ ArtistDrawer（删 `.artist-song-album` 行，subinfo 仅剩 SQ 徽标）/ PlaylistDrawer L2（`歌手 · 专辑`→仅歌手）+ 添加面板（同上）；搜索过滤 `s.album`、封面 `alt` 兜底、艺人分组 `albums` 统计与 L1 `N 首·N 张专辑`、Hero 计数、`点击播放: 标题 - 歌手` 悬停全部保留 —— 只动展示拼接，不动数据与计数。
+- **设置三级全删**: `modulesMeta` 六模块 desc 置空（字段保留防类型涟漪，`hardwareSampleRate/mpdConnected` 状态源保留他用）；L1 卡片与 L2 Hero 的 desc 行删除；7 处行级 `settings-control-desc` 整段删除；`SliderControl/FontPickerControl` 的 `desc?` 签名保留但不再渲染（17 处调用传参暂留，后续可清理）。`liquid-shortcut-desc`（快捷键键值对，非说明小字）与 MPD 状态 label 保留。
+- **胶囊底部三删**: `subpanel-footer`（版本号 + 就绪）整节删除；fallback 分支的 `subpanel-section-hint`（子项配置 + `closeDistance/closeDelay` 读数）删除但保留其下 `subpanel-list`（外观主题仍可用）；`capsule-model-badge`（M-B）删除，`capsule-rail-bottom` 留空占位；`capsule-status-dot` 呼吸点保留。被删 CSS 类名保留不动，零样式重构风险。
+- **测试闭环**: `pnpm typecheck` 通过；单测 11/11；`pnpm build` 通过（53 模块，CSS 157.44kB）；e2e 全绿（含 Step 11 `<12px=0` + Step 12 `13.5→18.5/12→16/13→18` 联动成立且恢复基线 —— 所用 `.settings-control-label/.liquid-slider-value/.settings-group-title` 选择器均在保留集合内）；CDP 实测曲库 436 行样本全为纯歌手、队列 10 行 `sep=0`、艺人 L2 subinfo 仅 SQ、歌单 L2 10 行 `sep=0`、添加面板 436 行严格分隔符零残留（`See-Saw` 系艺人名内连字符，非拼接残留）；`git status` 仅 6 文件改动，feat 已提交 `8afd258`，`config.json` 经比对零漂移。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -896,3 +905,12 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 1. **按语义分层，不按原像素值分层**: 同是 12px，徽标/副行归 HINT（跟 hint 走），按钮/输入框归 HINT（跟 hint 走），卡片名/分组标题归 TITLE/MODAL（跟 ui 走）。原值只决定它是小字还是标题，不决定它跟哪个滑条。
 2. **硬编码清零必须含 font-family 与简写/内联**: 光改 `font-size` 不够，同块缺 `font-family` 必须补 var 族；另须 grep `font:` 简写与 TSX 内联 `fontSize/fontFamily`（本次仅 SVG 装饰数字，不管）。否则字号联动了字形仍不受控。
 3. **联动必须由设置页自身实测自证**: Step 12 直接拖动设置页内两根滑条，断言设置页自身三处 computed 同步放大且可恢复基线 —— 设置页自己就是联动的第一证人，不依赖跨抽屉展开状态。
+
+### 4.25 整洁化删减四纪律：只删展示 × 计数保留 × 签名兼容 × 先断言行数 (2026-09-11)
+
+UI 整洁化（去专辑名 + 删三级描述 + 删底部提示）中沉淀的施工纪律：
+
+1. **只删展示拼接，不动数据与计数**: `歌手 - 专辑` 三元分支整段去掉，但搜索过滤 `s.album`、封面 `alt` 兜底、艺人分组 `albums` 统计、`N 首·N 张专辑` 文案全部保留 —— 专辑数据仍在内存，只是不渲染。`See-Saw` 这类艺人名内连字符不得误判为拼接残留，验收分隔符必须用严格模式 ` - `/` · `（带前后空格）。
+2. **计数徽标与专辑名严格区分**: L1/Hero/工具栏的 `N 位/N 组/共 N 首/N 张专辑/时长` 属计数非专辑名，全部保留；本次 `albumSpans=0` + 严格分隔符零残留即达标，不追求文本字符级零 `专辑`（计数文案含“专辑”二字是正确的）。
+3. **删渲染留签名**: `SettingsModuleMeta.desc` 字段与 `SliderControl/FontPickerControl` 的 `desc?` prop 只删渲染分支、保留类型签名，调用处 17 处传参暂留 —— 零类型涟漪，typecheck 一次通过；后续清理传参另开小会话，不在本轮扩大改动面。`desc` 置空后若 `noUnusedLocals` 报未使用变量（如 `hardwareSampleRate/mpdConnected`），先查他用再删，本次两者均有他用（kHz 直通读数/状态徽标），保留。
+4. **探针先断言行数再谈结论（§4.23 纪律复用）**: 本轮复现两例 —— 按钮索引错位（btn1 实为队列非曲库，首轮误报 `rowCount=0`）与抽屉态未就绪（歌单 L2 需先点歌单卡，添加面板需先点“添加单曲”，直接扫 `pl=0` 是空集合误报）。教训：先打印按钮映射/行数基线（曲库 436/队列 10/艺人 L1 238/歌单 L2 10/添加面板 436），对齐后再谈 `sep=0` 结论。另：`queue-track-grip`（absolute 覆盖序号）与 `capsule-rail <> capsule-subpanel`（动静分离裁剪宿主）系已知预期重叠，非回归。
