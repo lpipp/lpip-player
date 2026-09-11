@@ -38,9 +38,10 @@
 
 ---
 
-## 2. git 状态（截至 5689d7a）
+## 2. git 状态（截至 25b7d54）
 
 ```
+25b7d54 feat(settings): 完成悬浮胶囊第六按键偏好设置抽屉与双级钻取画册流全套闭环
 5689d7a feat(playlist): 完成悬浮胶囊第四按键歌单抽屉与双级钻取画册流全套闭环
 9c3c501 refactor(artist): 删除切换排序方式按键并统一采用A-Z排序
 719c5c8 feat(ui): 为曲库中心、播放队列与艺人分类添加统一液态玻璃微光滑动条
@@ -60,22 +61,22 @@ af4ac5f fix(queue): 彻底消除清空后点播全量目录灌入缺陷，修复
 
 ---
 
-## 3. 源码现状（M2-2 歌单完备）
+## 3. 源码现状（M2-2 抽屉体系完备）
 
 ```
 src/
 ├─ main/
-│  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222, 启动自动去重, 歌单 IPC handler 注册)
-│  ├─ config.ts                 XDG 统一配置中心 (~/.config/lpip-player/config.json, 支持 JSONC 中文注释与热重载)
+│  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222, 启动自动去重, 歌单与配置持久化 IPC handler 注册)
+│  ├─ config.ts                 XDG 统一配置中心 (~/.config/lpip-player/config.json, 支持 JSONC、saveConfig 原子持久化与热重载)
 │  ├─ mpd.ts                    纯文本原生 TCP 6600 MPD 客户端 (零第三方库，状态轮询、防重追加、安全移除、歌单全套指令、协议注入防护)
 │  ├─ wallpaper.ts              app-media:// 安全协议流式直驱本地动静态壁纸
 │  ├─ mica.ts                   云母背景材质图层计算
-│  └─ ipc-channels.ts           统一 IPC 通道常量集中管理 (含队列增删移清全套信道 + 歌单 9 条专属信道)
+│  └─ ipc-channels.ts           统一 IPC 通道常量集中管理 (含队列信道、歌单 9 条专属信道与 CONFIG_UPDATE)
 ├─ preload/
-│  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI (含队列操作 API + 歌单操作 API)
+│  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI (含队列操作 API、歌单操作 API 与 config.update)
 ├─ types/
 │  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行、队列返回结果与 MpdPlaylist 定义
-│  └─ config.ts                 应用配置模型、频谱律动配置与 JSONC 注释解析器
+│  └─ config.ts                 应用配置模型、频谱律动配置、JSONC 注释解析器与 DeepPartial 定义
 └─ renderer/
    ├─ index.html                CSP 策略与 DOM 挂载入口
    └─ src/
@@ -94,6 +95,7 @@ src/
          ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/单曲移除/一键清空/定位正在播放)
          ├─ ArtistDrawer.tsx    悬浮抽屉艺人分类 (.css 双级钻取画册流/圆形微棱头像/作品统计/单曲二态开关)
          ├─ PlaylistDrawer.tsx  悬浮抽屉歌单管理 (.css 双级钻取画册流/歌单创建重命名删除/单曲增删/二态开关/MPD歌单协议闭环)
+         ├─ SettingsDrawer.tsx  悬浮抽屉偏好设置 (.css 双级钻取画册流/5大模块精细控件/液态玻璃开关滑块分段单选/配置原子持久化热重载)
          └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
 ```
 

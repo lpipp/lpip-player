@@ -24,6 +24,13 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] M2-2 悬浮胶囊第六按键"偏好设置 (SettingsDrawer)"双级钻取画册流与配置原子持久化热重载全套闭环:
+  1. 悬浮胶囊第 6 项专属展开 460px 偏好设置抽屉，纯原生 React + CSS 封装零第三方重型 UI 库依赖；
+  2. 层级 1 分类总览层: 5 大模块画册卡片（外观与窗口、音频与过渡、蓝图频谱、MPD 服务、关于播放器），矢量纯线条图标、加粗标题、动态参数摘要与钻取箭头；
+  3. 层级 2 设置详情层: 极简返回（‹ 全部设置）、Hero 头部微画卷、精细化控件流；支持 Esc / Backspace 优先返回一级总览；
+  4. 精细控件全覆盖: ToggleSwitch 原生开关、SliderControl（tabular-nums 等宽数字防抖滑块）、SegmentedControl（WAI-ARIA 键盘无障碍单选）；
+  5. 配置持久化与热重载: saveConfig 深度合并 + schema 校验钳位 + .bak 自动备份 + POSIX 临时文件原子 renameSync 替换；CONFIG_UPDATE 与 CONFIG_CHANGED 秒级即时热更；防抖累加 + 卸载紧急冲刷（flush on unmount）防丢配置；
+  6. 液态玻璃微光滑动条 (.liquid-scrollbar) 与动静分离铁律（宿主 ΔX = ΔY = 0px 零抖动）全覆盖。
 - [已完备] M2-2 悬浮胶囊第四按键"歌单 (PlaylistDrawer)"双级钻取画册流与 MPD 歌单协议全套闭环:
   1. 纯线条制表风矢量歌单图标 (PlaylistIcon)，胶囊第 4 项无缝展开 460px 专属歌单抽屉；
   2. 层级 1 歌单总览层: 模糊检索/新建歌单/卡片画册 (封面预览/歌单名/曲目数/时长/一键播放/重命名/删除确认)；
