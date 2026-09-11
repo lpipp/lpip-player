@@ -369,7 +369,7 @@
   - 采用类似歌单与艺人的**双级钻取画册流 (Two-Tier Drill-Down)** 架构：
     - **层级 1（分类总览层）**: 展示 6 大设置卡片画册，每张卡片搭载纯线条矢量分类图标、加粗分类标题、副文本描述或当前关键状态摘要（如“经典黑曜石 · 沉浸式无边框”、“淡入淡出 120ms · 44.1 kHz 自适应直通”、“蓝图工程风 · 高度 160px”、“127.0.0.1:6600 · 已连接”等），右侧配有钻取指示箭头 `›`；
     - **层级 2（设置详情层）**: 顶部微画卷 Hero 卡片，包含极简返回按键（`‹ 全部设置`）以及该分类的标题与状态描述；下方呈现精细化控件流；支持键盘 Escape / Backspace 优先回退至一级总览层。
-- **5 大设置分类与精细化交互控件**:
+- **6 大设置分类与精细化交互控件**:
   1. **外观与窗口**:
      - 沉浸式无边框开关（`window.immersive`: 原生 ToggleSwitch 开/关）；
      - 窗口背景渲染模式单选（`window.background.mode`: 经典黑曜石 / 深色云母 / 自定义壁纸）；
@@ -787,6 +787,12 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
      1. **启用现代 CSS `overflow: clip`**: 将 `.sidebar-capsule` 升级为 `overflow: hidden; overflow: clip;`。在 CSS Overflow Level 3 规范中，`clip` 严格禁止创建任何滚动容器，浏览器底层的 `scrollLeft` 被彻底锁定为 0，杜绝任何焦点引起的横向视口偏移；
      2. **收起态 `visibility: hidden` 隔离**: 为收起态 `.sidebar-capsule.collapsed .capsule-subpanel` 赋予 `visibility: hidden` 并配合 `320ms` 退出过渡延时，确保抽屉收起后彻底从键盘 Tab 链与 DOM 获焦树中摘除，防止隐藏状态下误聚焦；
      3. **React 状态保护守卫**: 在 `SidebarCapsule` 中添加 `onScroll` 强制归零拦截器，并在 `!isExpanded` 时主动检查并执行 `activeElement.blur()`，确保子面板焦点在抽屉关闭时平滑释放。实测导轨物理位置严格锁定在 `x = 17px`，图标居中定格 `x = 25.5px`，彻底杜绝位移隐患。
+
+### 4.20 受控输入框基准值 ref 的渲染期写入违反并发渲染纪律 (2026-09-11)
+
+1. **症状**: 字体输入框 (`FontPickerControl`) 的 Escape 回退基准 `initialFontRef` 原先在渲染期直接赋值 `currentFont`；当外部 prop 在空闲态被变更（如测试脚本直接调用 `onInputChange`、一键重置默认）后，渲染期赋值会冲掉编辑中的基准值，导致后续按下 Escape 时没有正确的 baseline 可回退；
+2. **根因**: React 渲染期写入 ref 属于副作用（与并发渲染模式相悖），无法感知“用户是否正在编辑”这一动态状态；
+3. **解决方案**: 改用 `useEffect([currentFont])` 在空闲态（`!isEditingRef.current`）同步基准，编辑会话的 baseline 由 `onFocus` 建立，渲染期不再写 ref；`pnpm typecheck` 0 报错、单测 10/10 通过（提交 `7641beb`）。
 
 ---
 

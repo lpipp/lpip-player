@@ -38,9 +38,13 @@
 
 ---
 
-## 2. git 状态（截至 f9ccf9d）
+## 2. git 状态（截至 7641beb）
 
 ```
+7641beb fix(settings): 字体输入基准字形改用 useEffect 同步 ref，修复渲染期写 ref 在外部 prop 变更后 Escape 回退失效
+4cc3d1e test: fix e2e Step 10 sidebar collapse after Step 8 Escape navigation
+2a2f849 fix+docs: MPD 连接测试 callback 并发守卫改用 ref 避免 effect 重跑冲刷；补全文档 typography 字段与 Linux 字体回退链
+f3405cb docs: 更新 胶囊按键横向位移修复 项目全量文档
 f9ccf9d fix(sidebar): 修复子元素获焦引发容器横向滚动导致胶囊按键被移出视窗缺陷
 04e4c00 docs: 更新 偏好设置字体与字形设置 项目全量文档
 5075cfc feat(settings): 偏好设置增加字体设置卡片并支持三类文本字形字号全局热联动

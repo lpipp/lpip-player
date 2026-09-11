@@ -24,6 +24,7 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已修复] 偏好设置字体输入框基准字形同步修复: FontPickerControl 的 Escape 回退基准由「渲染期写 ref」改为「useEffect 空闲态同步」，避免外部 prop 变更（如测试直调 onInputChange/一键重置）冲掉编辑中的 baseline 导致 Esc 回退失效；typecheck 0 报错、单测 10/10 通过（提交 7641beb）。
 - [已修复] 悬浮胶囊收起态按键消失缺陷彻底根治:
   1. 根因剖析: 原 .sidebar-capsule 声明为 overflow: hidden，包含 460px 子面板，子面板内元素（如字体输入框）获焦时触发 Chromium 默认机制，将父容器 scrollLeft 自动滚至 374px，导致 offset 0 的左侧导轨 (.capsule-rail) 被推至视窗外 x = -357px，形成按键消失假象；
   2. 现代 CSS overflow: clip: 升级为 overflow: clip，严格禁止任何获焦或 JS 驱动的横向滚动视口偏移；
