@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-11
-> 当前阶段: M2-2 (UI 整洁化隐藏专辑名与冗余说明已落地；全界面文字受控分层映射联动设置已落地；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
-> 最新进展: 五处单曲行仅保留歌手（去专辑名/分隔符/兜底，悬停同步去专辑），设置页三级描述全删（模块卡/Hero/行级小字），胶囊底部版本号·移出提示·M-B 全删呼吸点保留；字阶链路未动，单测 11/11 + e2e 全绿 + CDP 五处行盒实测（提交 8afd258），详见 §2.22 与 §4.25
+> 当前阶段: M2-2 (歌词滚轮预览+单击确认跳转已落地；UI 整洁化隐藏专辑名与冗余说明已落地；全界面文字受控分层映射联动设置已落地；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
+> 最新进展: 歌词滚轮只预览+单击确认跳转（默认 1.5s 可配置，暂停态预览常驻、确认跳转自动恢复播放），audio.lyricPreview.timeoutMs 落盘，单测 11/11 + 双 e2e 全绿 + config.json 零漂移（提交 39a1842），详见 §2.23 与 §4.26
 
 ---
 
@@ -501,6 +501,15 @@
 - **测试闭环**: `pnpm typecheck` 通过；单测 11/11；`pnpm build` 通过（53 模块，CSS 157.44kB）；e2e 全绿（含 Step 11 `<12px=0` + Step 12 `13.5→18.5/12→16/13→18` 联动成立且恢复基线 —— 所用 `.settings-control-label/.liquid-slider-value/.settings-group-title` 选择器均在保留集合内）；CDP 实测曲库 436 行样本全为纯歌手、队列 10 行 `sep=0`、艺人 L2 subinfo 仅 SQ、歌单 L2 10 行 `sep=0`、添加面板 436 行严格分隔符零残留（`See-Saw` 系艺人名内连字符，非拼接残留）；`git status` 仅 6 文件改动，feat 已提交 `8afd258`，`config.json` 经比对零漂移。
 - **追加清理 + 原则沉淀**: 设置页 8 处中文标签去英文括号后缀（`(Font Family)/(Body Font)/(Translation Font)/(Control Port)/(PCM Stream Port)/(Model B)`，`星盘歌词排印→歌词排印`，提交 `fce1f17`，typecheck/build/e2e 全绿无回退）；整洁化设计原则整理为 `docs/STYLE.md` §7（七条：只留歌手 / 计数保留 / 无三级小字 / 无英文括号 / 底部无调试 / 只删展示 / 验收纪律），后续抽屉与 M2-3 新页面统一遵循。
 
+### 2.23 歌词滚轮预览+单击确认跳转 (`Lyric Wheel Preview`) - 2026-09-11 完成
+
+> **结论先行：滚轮只看不跳，单击才跳；暂停常驻，跳完自动播。** 滚轮滚动歌词只进入预览态（轨道/齿轮/窗口/`is-active` 全跟随预览行，零新色零新类），播放态默认 1.5s 超时回弹、暂停态常驻；左键单击任意行直接跳转（`seekLock 1.2s` 仅确认跳转），点播放行仅取消预览；方向键/PageUpDown 保持直跳清预览；`audio.lyricPreview.timeoutMs`（500~5000ms，默认 1500）落盘可配，设置音频模块滑条 0.5~5s step 0.1 显示 `x.x s`；暂停态确认跳转 seek 成功后自动 resume 恢复播放。
+
+- **配置链**: `LyricPreviewConfig{timeoutMs}` + `DEFAULT 1500` + `parseLyricPreviewConfig`（别名 `timeout/timeoutMs/delayMs`，数字串与秒级小数兼容，钳位 500~5000，缺省回退 1500）同时落在 `src/types/config.ts` 与 `src/main/config.ts`（主进程独立解析器，不经 renderer）；`config.example.json` 同步注释；用户 `config.json` 零漂移（缺省走回退，不写盘污染）。
+- **预览态机**: `previewIndex/displayIndex` + `previewTimerRef`（每次 tick 重置计时）+ `previewStateRef`（回调内读最新 playing/timeout，防闭包陈旧）；切歌（lyrics 引用变）/自然切行（currentTime 推进）/卸载清预览；`data-lyric-index/data-active-index/data-preview-index` 诊断属性供 e2e 断言。
+- **测试闭环**: `pnpm typecheck` 通过；单测 11/11；`pnpm build` 通过（53 模块，JS 890.12kB，CSS 157.44kB 未动）；新增 `test-lyric-preview-e2e.mjs` 7 步全绿（默认 1500/滑条规格/可信滚轮步进+1 且零 seek/播放态超时回弹或暂停态常驻/单击收起/方向键清预览/暂停常驻）；`test-typography-e2e.mjs` 全绿无回退（含 Step 12 联动）；feat 已提交 `39a1842`，`config.json` 经比对零漂移（验证中落盘的 `lyricPreview` 已剔除恢复）。
+- **踩坑三则**: (1) React 合成 `onWheel` 只收可信事件，合成 `WheelEvent` dispatch 到 React 根监听不到 —— e2e 必须用 CDP `Input.dispatchMouseEvent mouseWheel`；(2) dev 主进程是常驻进程，改 `src/main` 后出盘 `out/main/index.js` 不自动更新，需重启 `pnpm dev`（`touch` 无效）；(3) e2e 中途会污染用户 `config.json`（滑条/配置更新落盘），断言前后必须用 `/tmp/lpip-config-bak.json` 比对，漂移要剔除恢复 —— 详见 §4.26。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -915,3 +924,11 @@ UI 整洁化（去专辑名 + 删三级描述 + 删底部提示）中沉淀的�
 2. **计数徽标与专辑名严格区分**: L1/Hero/工具栏的 `N 位/N 组/共 N 首/N 张专辑/时长` 属计数非专辑名，全部保留；本次 `albumSpans=0` + 严格分隔符零残留即达标，不追求文本字符级零 `专辑`（计数文案含“专辑”二字是正确的）。
 3. **删渲染留签名**: `SettingsModuleMeta.desc` 字段与 `SliderControl/FontPickerControl` 的 `desc?` prop 只删渲染分支、保留类型签名，调用处 17 处传参暂留 —— 零类型涟漪，typecheck 一次通过；后续清理传参另开小会话，不在本轮扩大改动面。`desc` 置空后若 `noUnusedLocals` 报未使用变量（如 `hardwareSampleRate/mpdConnected`），先查他用再删，本次两者均有他用（kHz 直通读数/状态徽标），保留。
 4. **探针先断言行数再谈结论（§4.23 纪律复用）**: 本轮复现两例 —— 按钮索引错位（btn1 实为队列非曲库，首轮误报 `rowCount=0`）与抽屉态未就绪（歌单 L2 需先点歌单卡，添加面板需先点“添加单曲”，直接扫 `pl=0` 是空集合误报）。教训：先打印按钮映射/行数基线（曲库 436/队列 10/艺人 L1 238/歌单 L2 10/添加面板 436），对齐后再谈 `sep=0` 结论。另：`queue-track-grip`（absolute 覆盖序号）与 `capsule-rail <> capsule-subpanel`（动静分离裁剪宿主）系已知预期重叠，非回归。
+
+### 4.26 滚轮预览 e2e 三纪律：可信事件 × 常驻主进程 × 配置零漂移 (2026-09-11)
+
+歌词滚轮预览+单击确认跳转中沉淀的验证纪律：
+
+1. **React 合成 onWheel 只收可信事件，合成 dispatch 测不出**: `wrap.dispatchEvent(new WheelEvent(...))` 能触发原生 `addEventListener('wheel')` 探针，但到不了 React `onWheel`（isTrusted 门控）—— 合成事件断言 `moved=false` 是探针假阴性，不是功能回归。e2e 滚轮必须用 CDP `Input.dispatchMouseEvent {type:'mouseWheel'}` 可信滚轮；断言行索引用 `data-lyric-index` 真实下标，不用窗口内序号（滑动窗口起止随展示索引漂移）。
+2. **dev 主进程常驻，改 src/main 后必须重启**: `touch src/main/config.ts` 不会刷新 `out/main/index.js`（electron-vite dev 的主进程包是启动时构建）；`config.get()` 持续返回旧解析结果时，先查出盘时间戳，重启 `pnpm dev` 解决。另注意重启后旧 Electron 可能因 9222 占用残留（`bind() failed/ Cannot start http server`），需按 PID 逐个杀旧进程再起新实例。
+3. **e2e 会污染用户 config.json，断言前后必须比对恢复**: 设置滑条拖动/`config.update` 落盘都会把新键（如 `audio.lyricPreview`）写进 `~/.config/lpip-player/config.json`。开测前 `cp` 到 `/tmp/lpip-config-bak.json`，全绿后 diff，漂移键剔除恢复并复验 `CONFIG-UNCHANGED` 再提交 —— 缺省回退（1500）语义下，不写盘即是最干净的默认。
