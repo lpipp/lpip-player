@@ -38,9 +38,12 @@
 
 ---
 
-## 2. git 状态（截至 7641beb）
+## 2. git 状态（截至 5a1c548）
 
 ```
+5a1c548 perf(cover): 封面提取生成 512px 缩略图双档缓存并限制提取并发
+f53d23f docs: 更新 音频与性能深度体检 项目全量文档
+a6d5fe1 docs: 更新 字体输入基线修复与 git 快照 项目全量文档
 7641beb fix(settings): 字体输入基准字形改用 useEffect 同步 ref，修复渲染期写 ref 在外部 prop 变更后 Escape 回退失效
 4cc3d1e test: fix e2e Step 10 sidebar collapse after Step 8 Escape navigation
 2a2f849 fix+docs: MPD 连接测试 callback 并发守卫改用 ref 避免 effect 重跑冲刷；补全文档 typography 字段与 Linux 字体回退链

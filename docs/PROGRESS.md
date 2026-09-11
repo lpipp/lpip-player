@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-11
-> 当前阶段: M2-2 (偏好设置字体与字形设置完备，UI/提示/歌词三类文字字形与字号独立定制，全局CSS变量毫秒级热更+POSIX原子持久化闭环，零报错稳定常驻)
-> 最新进展: 偏好设置 (SettingsDrawer) 扩展第 6 大模块“字体与字形 (Typography)”，双级钻取画册流排版（一级总览卡片 + 二级详情精细控件流），支持 UI 字体、提示文本、星盘歌词（正文与翻译双轨）字形与字号自主配置，预置推荐候选胶囊、自由文本输入（支持防注入清洗与空内容失焦回退）、等宽数字防抖滑块（tabular-nums）与一键重置默认；全局 CSS 变量毫秒级热重载，详见 §2.17 与 §4.18
+> 当前阶段: M2-2 (封面预压缩双档缓存与提取并发上限落地，曲库/队列/艺人/歌单封面统一走 512px 缩略图，原图档留待 M2-3 黑胶大舞台)
+> 最新进展: 封面链路新增 512px JPEG 缩略图双档缓存（`<hash>.jpg` 原图 + `<hash>.thumb.jpg` 缩略图），renderer 零改动（协议层 `?tier` 缺省即 thumb），从音频剥离原图的提取并发上限 2 手写 promise 队列；CDP 实测 30 张并发迁移缩略图 475ms/主进程 CPU 6.8% 无尖峰、分档 thumb/full 各自 200、console 零报错，详见 §2.19 与 §4.22
 
 ---
 
@@ -13,7 +13,7 @@
 - **运行平台**: Arch Linux (Linux 6.x) + KDE Plasma 6 (Wayland) + AMD GPU。
 - **技术栈**: Electron 44.2.0 + React 19.2.8 + TypeScript 7.0.2 + electron-vite 5.0.0 + Vite 7.3.6。
 - **用户配置文件**: `~/.config/lpip-player/config.json`（支持全量 JSONC 单行/块级中文注释）。
-- **当前常驻运行**: Electron 实例在桌面上持续运行中（主进程 PID 11240，GPU 进程 PID 11276），实时响应配置、动态壁纸与控制交互。
+- **当前常驻运行**: Electron 实例在桌面上持续运行中（主进程 PID 59313），实时响应配置、动态壁纸与控制交互。
 
 ---
 
@@ -463,6 +463,17 @@
 - **全进程树 CPU 实测（8 进程：main + 3 zygote + gpu + renderer + net-utility + audio-utility）**：播放中 **2.8%** / 暂停 **1.0%**（Δ1.8%），其中 renderer 播放中约 2.2%（频谱 RAF + PCM 调度）、暂停后主进程近乎归零。此前初测的 12.2%/5.0% 为探针自身 CDP 高频轮询污染所致（详见 §4.21），非应用缺陷。
 - **调试通道备忘**：`window.__mpdSong` / `__mpdDuration` 全局不存在属预期 —— 切歌识别应走 `__pcmPlayer.currentStreamUrl` 变化或 MPD `currentsong`，初测的 600ms 切歌延迟为探针固定 sleep 值而非真实延迟。
 
+### 2.19 封面预压缩双档缓存与提取并发上限 (`Cover Dual-Tier Cache & Extraction Concurrency Limit`) - 2026-09-11 完成
+
+> **结论先行：封面滚动卡顿两处根因一次消除。** 画册流/曲库网格不再解码整张内嵌原图，统一走 512px JPEG 缩略图；从音频剥离原图的 ffmpeg 提取并发上限 2，杜绝视口内 N 张未缓存封面同时 spawn 的主进程 CPU/IO 尖峰。renderer 零改动，原图档留给 M2-3 黑胶大舞台。
+
+- **双档缓存命名**: `<hash>.jpg` = 零拷贝剥离的内嵌原图（存量老缓存原样复用，零作废）；`<hash>.thumb.jpg` = 512px JPEG 缩略图；`<hash>.nocover` = 无内嵌封面标记（逻辑不变）。
+- **缩略图生成**: 提取原图成功后紧接 `ffmpeg -i <orig> -vf scale=512:512:force_original_aspect_ratio=decrease -q:v 4 <thumb>`，顺带把 png 等异常内嵌流归一化为真 JPEG；缩略图缺失但原图已缓存时（存量老缓存迁移路径）直接从原图补压缩略图，**不重读音频文件**。
+- **分档 URL 与 renderer 零改动**: coverUrl 生成统一 `?tier=thumb`（mpd.ts 4 处生成点）；协议层按 `tier` 参数解析对应缓存文件，`tier=full` 保留原图访问路径（M2-3 大舞台直接可用），**缺省参数按 thumb 处理** → 6 个组件的 `<img>` 与 ArtistDrawer/PlaylistDrawer 直连 URL 自动受益，renderer 零改动。
+- **提取并发上限**: 手写 promise 队列（~20 行零依赖），仅包裹「从音频文件提取原图」昂贵步骤（读 FLAC + spawn ffmpeg）；缓存命中、原图补压缩略图等廉价路径不排队；并发上限 2 硬编码常量（`MAX_CONCURRENT_EXTRACT`），未进 config。
+- **边界与失败模式**: 无内嵌封面 `.nocover` 短路不变、404 行为不变；缩略图生成失败降级回退 serve 原图（不 404）；原图提取失败沿用 unlink + nocover 逻辑；请求期间文件被清由协议层 `existsSync` 检查覆盖。
+- **实测（CDP 9222 探针）**: 30 张并发迁移缩略图全生成（10~54KB，中位 ~37KB）、总耗时 475ms、主进程 CPU 6.8% 无尖峰；分档 thumb/full/缺省各自 200；冷提取（删缓存重取）原图 + 缩略图双档再生 119ms；console 零报错。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -816,6 +827,14 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 1. **`pgrep -f` 自匹配**: 在 shell 探针里用 `pgrep -f "pattern | head -1"` 这类带管道的匹配串时，`pgrep -f` 会匹配到包裹命令自身的 `/bin/sh -c` 进程（模式串本身出现在其 cmdline 中），采到空壳进程得出 0% CPU 假象。根治：不用 `pgrep -f` 匹配应用，改扫 `/proc/*/exe` readlink 匹配真实二进制路径；
 2. **Chromium setproctitle 改写 argv**: Electron 主进程的 `/proc/<pid>/cmdline` 中 NUL 分隔符被改写为空格，读出单串 `"electron ."`（argv 数组长度为 1），按 `split('\0')` 数参数个数的判定永远失效。根治：`replace(/\0/g, ' ')` 空格归一化后，用「无 `--type=` 参数」判定主进程（zygote/gpu/renderer/utility 全都带 `--type=`）；
 3. **探针自身流量污染 CPU 基线**: 初测「播放 12.2% / 暂停 5.0%」实为探针 CDP `Runtime.evaluate` 200ms 高频轮询 + 串口日志自身开销；改为纯 `/proc/<pid>/stat` utime/stime 差分（无 CDP 参与采样窗）后，真值仅播放 2.8% / 暂停 1.0%。教训：**测量探针必须与被测数据通路隔离，CPU/延迟类基线必须在无探针轮询的静默窗内采样**；另 Node 24 原生 `WebSocket`（`addEventListener`，无 `.once()`）可零依赖直连 CDP，无需 ws 库。
+
+### 4.22 封面双档缓存 renderer 零改动与「廉价路径」实测校正 (2026-09-11)
+
+封面预压缩双档缓存落地中沉淀的三点经验：
+
+1. **分档开关下沉到协议层实现 renderer 零改动**: renderer 里 ArtistDrawer/PlaylistDrawer 有 6 处直接构造 `app-media://cover/<file>`（不带 tier），最初以为要逐个组件补参数；改为协议层 `tier` 缺省即 thumb 后，所有既有 `<img>` 与 mpd.ts 生成的 coverUrl 一次性自动受益，覆盖面更大、改动面更小、不会漏。
+2. **「原图补压缩略图是廉价路径」需实测校正**: 方案假设缩略图生成「廉价」，但对 5906×5906/1.8MB 的原图，缩略图实为完整解码 + 重编码（~100ms+），远超零拷贝剥离的「数十 ms」。实测 30 张并发迁移总耗时仅 475ms、主进程 CPU 6.8% 无尖峰 —— 因迁移仅首轮发生一次（此后命中 `.thumb.jpg` 缓存），且 ffmpeg 单图重编码足够快。若未来出现超大原图批量首迁 CPU 尖峰，可将缩略图生成也纳入并发队列（当前按方案约定不排队）。
+3. **ffmpeg 单帧输出 stderr 告警非失败**: `-vf scale=...` 单图输出会向 stderr 打印 "does not contain an image sequence pattern"，但 exit 0 且文件正确写出；`execFile` 回调 `err` 仅由非零退出码触发，勿因 stderr 告警误判为提取失败。
 
 ---
 

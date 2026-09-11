@@ -24,6 +24,12 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 封面预压缩双档缓存与提取并发上限 (2026-09-11):
+  封面链路一次提取产出双档缓存 —— <hash>.jpg 原图 + <hash>.thumb.jpg 512px JPEG 缩略图（存量老缓存零作废，
+  缺缩略图时从原图补压缩不重读音频文件）；coverUrl 统一 ?tier=thumb，协议层 tier 缺省即 thumb → renderer 零改动；
+  「从音频剥离原图」昂贵步骤手写 promise 队列并发上限 2（零依赖），缓存命中/补缩略图等廉价路径不排队；
+  tier=full 保留原图访问路径留给 M2-3 黑胶大舞台；CDP 实测 30 张并发迁移缩略图 475ms/主进程 CPU 6.8% 无尖峰、
+  分档 thumb/full/缺省各自 200、console 零报错、冷提取删缓存双档再生 119ms（提交 5a1c548）。
 - [已体检] 音频与性能深度体检全绿，零缺陷: leadMs 均值 88.0ms/σ5.3 (铁律 70~110ms)、activeSources=5、console 零报错、seek ~300ms、采样率 48k/44.1k 随曲目正常自适应；全进程树 CPU 播放 2.8%/暂停 1.0%。疑似异常均为探针自身坑（详见 PROGRESS §4.21: pgrep -f 自匹配、Chromium setproctitle 改写 argv、探针 CDP 轮询污染 CPU 基线），应用侧无代码变更。
 - [已修复] 偏好设置字体输入框基准字形同步修复: FontPickerControl 的 Escape 回退基准由「渲染期写 ref」改为「useEffect 空闲态同步」，避免外部 prop 变更（如测试直调 onInputChange/一键重置）冲掉编辑中的 baseline 导致 Esc 回退失效；typecheck 0 报错、单测 10/10 通过（提交 7641beb）。
 - [已修复] 悬浮胶囊收起态按键消失缺陷彻底根治:
