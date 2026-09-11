@@ -106,7 +106,7 @@
     - 双级解耦增益淡出淡入过渡系统 (FadeConfig, 配置文件热重载)
     - 动态采样率感知与全格式自适应 (MPD *:16:2 透传 + SoX 专业重采样 + 48kHz 背景爆破音根除)
 [x] M2-1 WebAudio FFT 频谱分析与蓝图工程律动图层 (SpectrumVisualizer: 零分配 Canvas 2D/RAF 自适应休眠 + 纯线条散点微光 + 动态配置热更)
-[x] M2-2 悬浮胶囊抽屉体系完备: 展开宽度460px、曲库管理 (MusicLibraryList)、播放队列 (QueueDrawer)、艺人分类画册流 (ArtistDrawer)、歌单管理 (PlaylistDrawer) 与偏好设置 (SettingsDrawer, 含外观/音频/频谱/MPD/关于/字体与字形全闭环)；UI 整洁化已落地（五处单曲行仅歌手 + 设置三级描述全删 + 胶囊底部提示全删呼吸点保留，8afd258）
+[x] M2-2 悬浮胶囊抽屉体系完备: 展开宽度460px、曲库管理 (MusicLibraryList)、播放队列 (QueueDrawer)、艺人分类画册流 (ArtistDrawer)、歌单管理 (PlaylistDrawer)、统计信息 (StatisticsDrawer: 摘要卡 + playCount 降序排行，MPD sticker 计数 + stats.playtime 累计时长，c7cbd35) 与偏好设置 (SettingsDrawer, 含外观/音频/频谱/MPD/关于/字体与字形全闭环)；UI 整洁化已落地（五处单曲行仅歌手 + 设置三级描述全删 + 胶囊底部提示全删呼吸点保留，8afd258）
 [ ] M2-3 主工作区居中液态玻璃面板 (GlassPanel) / 页面切换与黑胶大舞台
 ```
 

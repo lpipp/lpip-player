@@ -24,6 +24,10 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 悬浮胶囊第五按键统计信息抽屉 (2026-09-11):
+  第 5 键由占位外观主题重构为统计信息（StatsIcon 三柱条形图）；单级展示：摘要卡（累计播放时长/总播放次数/已统计曲目）+ playCount 降序排行（38px 圆角封面 + 标题>歌手 + 右侧 N 次徽标 + 前三翡翠高亮 + 空态暂无播放记录）；
+  MPD sticker playCount 为真源（stats.playtime 累计时长），主进程 broadcastStatus 500ms 轮询 observePlaySession 状态机计数（max(30s, 时长×50%)，暂停冻结/seek 不清/stop 清空/单循环不重复计）；
+  应用零本地统计状态，阈值常量硬编码，config.json 零漂移；单测 4 组 + 新 e2e 6 步全绿 + typography 双链路全绿（提交 c7cbd35）。
 - [已完备] 歌词滚轮预览+单击确认跳转 (2026-09-11):
   滚轮只进预览不 seek（轨道/齿轮/窗口/is-active 全跟随预览行，零新色零新类复用高亮让位），播放态默认 1.5s 超时回弹、暂停态常驻；
   单击任意行直接跳转（seekLock 1.2s 仅确认跳转），暂停态确认跳转自动 resume 恢复播放；方向键/PageUpDown 保持直跳；

@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-11
-> 当前阶段: M2-2 (歌词滚轮预览+单击确认跳转已落地；UI 整洁化隐藏专辑名与冗余说明已落地；全界面文字受控分层映射联动设置已落地；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
-> 最新进展: 歌词滚轮只预览+单击确认跳转（默认 1.5s 可配置，暂停态预览常驻、确认跳转自动恢复播放），audio.lyricPreview.timeoutMs 落盘，单测 11/11 + 双 e2e 全绿 + config.json 零漂移（提交 39a1842），详见 §2.23 与 §4.26
+> 当前阶段: M2-2 (统计信息抽屉已落地；歌词滚轮预览+单击确认跳转已落地；UI 整洁化隐藏专辑名与冗余说明已落地；全界面文字受控分层映射联动设置已落地；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
+> 最新进展: 悬浮胶囊第五按键重构为统计信息抽屉（MPD sticker playCount 降序排行 + stats.playtime 累计播放时长，主进程阈值计数，会话单曲循环不重复计），单测 4 组 + 新 e2e 6 步全绿 + typography 双链路全绿 + config.json 零漂移（提交 c7cbd35），详见 §2.24 与 §4.27
 
 ---
 
@@ -501,6 +501,14 @@
 - **测试闭环**: `pnpm typecheck` 通过；单测 11/11；`pnpm build` 通过（53 模块，CSS 157.44kB）；e2e 全绿（含 Step 11 `<12px=0` + Step 12 `13.5→18.5/12→16/13→18` 联动成立且恢复基线 —— 所用 `.settings-control-label/.liquid-slider-value/.settings-group-title` 选择器均在保留集合内）；CDP 实测曲库 436 行样本全为纯歌手、队列 10 行 `sep=0`、艺人 L2 subinfo 仅 SQ、歌单 L2 10 行 `sep=0`、添加面板 436 行严格分隔符零残留（`See-Saw` 系艺人名内连字符，非拼接残留）；`git status` 仅 6 文件改动，feat 已提交 `8afd258`，`config.json` 经比对零漂移。
 - **追加清理 + 原则沉淀**: 设置页 8 处中文标签去英文括号后缀（`(Font Family)/(Body Font)/(Translation Font)/(Control Port)/(PCM Stream Port)/(Model B)`，`星盘歌词排印→歌词排印`，提交 `fce1f17`，typecheck/build/e2e 全绿无回退）；整洁化设计原则整理为 `docs/STYLE.md` §7（七条：只留歌手 / 计数保留 / 无三级小字 / 无英文括号 / 底部无调试 / 只删展示 / 验收纪律），后续抽屉与 M2-3 新页面统一遵循。
 
+### 2.24 悬浮胶囊第五按键重构为统计信息抽屉 (`StatisticsDrawer`) - 2026-09-11 完成
+
+> **结论先行：第五键变统计，次数降序排，累计时长取 MPD 权威值。** 悬浮胶囊第 5 按键由占位外观主题重构为统计信息（`StatsIcon` 三柱条形图，`统计信息`）；抽屉单级展示：顶部摘要卡（累计播放时长 / 总播放次数 / 已统计曲目）+ 降序排行（38px 圆角封面 + 标题>歌手 + 右侧 `N 次` 徽标 + 前三 `#6ee7b7` 高亮 + 空态 `暂无播放记录`）；计数由主进程 `broadcastStatus` 500ms 轮询 `observePlaySession` 状态机驱动（`max(30s, 时长×50%)` 连续 wall-clock，暂停冻结/seek 不清/stop 清空/单曲循环不重复计，达标 `sticker set playCount+1` fire-and-forget）；排行数据源 `stats.playtime` + `sticker find song "" playCount` + 曲库元数据映射（残留 sticker 文件名回退 + `未知歌手`）；应用零本地统计状态，阈值常量硬编码（`PLAY_COUNT_MIN_MS=30000` / `PLAY_COUNT_HALF_RATIO=0.5`），`config.json` 零漂移。
+
+- **通信链**: `MPD_GET_PLAY_STATS: 'mpd:get-play-stats'`（ipc-channels）→ `main/index.ts` handler + 轮询钩子 → `preload` `mpd.getPlayStats()` → `StatisticsDrawer` 挂载拉取 + `onStatusChange` 切歌重拉（序列锁防乱序）；类型 `PlayStats/PlayStatsEntry/PlaySessionState` 落 `types/music.ts`；`getPlayStats/getPlayCount/incrementPlayCount/observePlaySession` + 纯函数 `calcPlayCountThresholdMs/parseMpdPlaytime/parseStickerPlayCounts` 落 `main/mpd.ts`。
+- **UI 接线**: `SidebarCapsule` 删 `theme` 模块/`ThemeIcon`/主题注入（设置页已覆盖）+ `subpanel-content-stats` 入滚动组；整洁化延续：副文本只留歌手、计数保留徽标、`tabular-nums`、`.liquid-scrollbar`、`::before` 动静分离、12px 托底；暗知识：MPD `sticker set` 要求 file 必须在曲库内（幽灵 file 报 `No such song`），残留回退分支 e2e 不覆盖仅代码兜底。
+- **测试闭环**: `pnpm typecheck` 通过；`pnpm build` 通过（55 模块，JS 894.29kB，CSS 163.87kB）；新增 `test-playstats-unit.mjs` 4 组全绿（阈值/playtime/sticker 解析/状态机暂停冻结·seek 不清·停清空·单循环单计）；新增 `test-playstats-e2e.mjs` 6 步全绿（sticker 预置 A=7/B=3/C=5 → 摘要 `1 小时 55 分/15/3` → 降序 7>5>3 → top-3 高亮 → 空态 → 零残留）+ `test-typography-e2e.mjs` 全绿无回退；feat 已提交 `c7cbd35`，`config.json` 经比对零漂移。
+
 ### 2.23 歌词滚轮预览+单击确认跳转 (`Lyric Wheel Preview`) - 2026-09-11 完成
 
 > **结论先行：滚轮只看不跳，单击才跳；暂停常驻，跳完自动播。** 滚轮滚动歌词只进入预览态（轨道/齿轮/窗口/`is-active` 全跟随预览行，零新色零新类），播放态默认 1.5s 超时回弹、暂停态常驻；左键单击任意行直接跳转（`seekLock 1.2s` 仅确认跳转），点播放行仅取消预览；方向键/PageUpDown 保持直跳清预览；`audio.lyricPreview.timeoutMs`（500~5000ms，默认 1500）落盘可配，设置音频模块滑条 0.5~5s step 0.1 显示 `x.x s`；暂停态确认跳转 seek 成功后自动 resume 恢复播放。
@@ -885,6 +893,7 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
   - 第 2 项: 播放队列 (`QueueDrawer`)，原生拖拽重排、单曲移除、一键清空、跳动均衡条、定位；
   - 第 3 项: 艺人分类 (`ArtistDrawer`)，双级钻取微画册流、圆形微棱头像、作品统计、二态开关；
   - 第 4 项: 歌单管理 (`PlaylistDrawer`)，双级钻取画册流、MPD 原生歌单协议全链路、创建/重命名/删除/添加/移出/播放/入队；
+  - 第 5 项: 统计信息 (`StatisticsDrawer`)，单级展示（摘要卡 + playCount 降序排行），MPD sticker 计数 + stats.playtime 累计时长，主进程阈值状态机计数；
   - 第 6 项: 偏好设置 (`SettingsDrawer`)，双级钻取画册流、6大模块精细控件（包含外观/音频/频谱/MPD/关于，以及最新完备的“字体与字形”排印系统，支持 UI/提示/歌词正文/歌词翻译独立定制、CSS变量毫秒级热更与原子持久化）；
   - 全场景覆盖液态玻璃微光滑动条 (`.liquid-scrollbar`)。
 - **M2-3 阶段: 主工作区居中液态玻璃面板 (`GlassPanel`) / 页面切换与黑胶大舞台 [待开启]**:
@@ -924,6 +933,14 @@ UI 整洁化（去专辑名 + 删三级描述 + 删底部提示）中沉淀的�
 2. **计数徽标与专辑名严格区分**: L1/Hero/工具栏的 `N 位/N 组/共 N 首/N 张专辑/时长` 属计数非专辑名，全部保留；本次 `albumSpans=0` + 严格分隔符零残留即达标，不追求文本字符级零 `专辑`（计数文案含“专辑”二字是正确的）。
 3. **删渲染留签名**: `SettingsModuleMeta.desc` 字段与 `SliderControl/FontPickerControl` 的 `desc?` prop 只删渲染分支、保留类型签名，调用处 17 处传参暂留 —— 零类型涟漪，typecheck 一次通过；后续清理传参另开小会话，不在本轮扩大改动面。`desc` 置空后若 `noUnusedLocals` 报未使用变量（如 `hardwareSampleRate/mpdConnected`），先查他用再删，本次两者均有他用（kHz 直通读数/状态徽标），保留。
 4. **探针先断言行数再谈结论（§4.23 纪律复用）**: 本轮复现两例 —— 按钮索引错位（btn1 实为队列非曲库，首轮误报 `rowCount=0`）与抽屉态未就绪（歌单 L2 需先点歌单卡，添加面板需先点“添加单曲”，直接扫 `pl=0` 是空集合误报）。教训：先打印按钮映射/行数基线（曲库 436/队列 10/艺人 L1 238/歌单 L2 10/添加面板 436），对齐后再谈 `sep=0` 结论。另：`queue-track-grip`（absolute 覆盖序号）与 `capsule-rail <> capsule-subpanel`（动静分离裁剪宿主）系已知预期重叠，非回归。
+
+### 4.27 统计抽屉三纪律：库内 sticker × 纯函数转译单测 × 常驻主进程 (2026-09-11)
+
+统计信息抽屉（MPD sticker 计数 + 主进程状态机）中沉淀的验证纪律：
+
+1. **sticker set 只认库内 file，幽灵回退分支 e2e 不覆盖**: `sticker set song "__ghost__/x.flac"` 报 `ACK No such song`（set 要求 file 在库内），而 `find` 输出天然只含库内 file —— 残留回退（文件名 + `未知歌手`）是防脏数据兜底，e2e 用三首真歌（A=7/B=3/C=5 → 摘要 15/3 → 降序 7>5>3）覆盖主链路即可，不硬造库外 sticker。另：e2e 必须删三条测试 sticker 恢复零残留（`find` 尾 `OK` 即干净）。
+2. **mpd.ts 纯函数单测走 esbuild 转译 + 双 stub**: `mpd.ts` 顶 `import { app } from 'electron'` 与无扩展名 `./config` 无法被原生 node ESM 直载；`scripts/build-playstats-test-stub.mjs` 将两处替换为桩（单测函数均为纯逻辑零运行时依赖）后 esbuild 转译落盘 `/tmp`，`test-playstats-unit.mjs` 导入产物。勿用 TS 7 Go 版 `typescript.transpileModule`（新拆包 `unstable/sync` 无转译导出）。
+3. **改 src/main 必须重启 dev，e2e 前备份 config**: 本轮复现 §4.26 两纪律 —— 常驻主进程不随 `touch` 更新（改 `mpd.ts/index.ts` 后杀旧 PID 重起 `pnpm dev`，当心 9222 残留）；统计功能虽零配置键，仍按惯例开测前 `cp config.json /tmp`、全绿后 diff 零漂移再提交。
 
 ### 4.26 滚轮预览 e2e 三纪律：可信事件 × 常驻主进程 × 配置零漂移 (2026-09-11)
 

@@ -38,9 +38,12 @@
 
 ---
 
-## 2. git 状态（截至 8afd258）
+## 2. git 状态（截至 c7cbd35）
 
 ```
+c7cbd35 feat(stats): 悬浮胶囊第五按键重构为统计信息抽屉, MPD sticker playCount 排行+累计播放时长
+3977194 docs: 歌词滚轮预览交付文档同步 (PROGRESS §2.23+§4.26, SESSION_PROMPT 置顶)
+39a1842 feat(lyrics): 滚轮预览+单击确认跳转, 确认延迟可配置默认1.5s
 8afd258 feat(ui): 整洁化隐藏专辑名与冗余说明文字
 f53d23f docs: 更新 音频与性能深度体检 项目全量文档
 a6d5fe1 docs: 更新 字体输入基线修复与 git 快照 项目全量文档
@@ -80,14 +83,14 @@ src/
 ├─ main/
 │  ├─ index.ts                  窗口生命周期与启动配置 (remote-debugging-port 9222, 启动自动去重, 歌单与配置持久化 IPC handler 注册, recreateWindow 沉浸式窗口热重构)
 │  ├─ config.ts                 XDG 统一配置中心 (~/.config/lpip-player/config.json, 支持 JSONC、saveConfig 原子持久化与热重载)
-│  ├─ mpd.ts                    纯文本原生 TCP 6600 MPD 客户端 (零第三方库，状态轮询、防重追加、安全移除、歌单全套指令、协议注入防护)
+│  ├─ mpd.ts                    纯文本原生 TCP 6600 MPD 客户端 (零第三方库，状态轮询、防重追加、安全移除、歌单全套指令、协议注入防护、统计 sticker playCount 计数/排行 + observePlaySession 阈值状态机)
 │  ├─ wallpaper.ts              app-media:// 安全协议流式直驱本地动静态壁纸
 │  ├─ mica.ts                   云母背景材质图层计算
-│  └─ ipc-channels.ts           统一 IPC 通道常量集中管理 (含队列信道、歌单 9 条专属信道与 CONFIG_UPDATE)
+│  └─ ipc-channels.ts           统一 IPC 通道常量集中管理 (含队列信道、歌单 9 条专属信道、MPD_GET_PLAY_STATS 统计信道与 CONFIG_UPDATE)
 ├─ preload/
-│  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI (含队列操作 API、歌单操作 API 与 config.update)
+│  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI (含队列操作 API、歌单操作 API、mpd.getPlayStats 统计 API 与 config.update)
 ├─ types/
-│  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行、队列返回结果与 MpdPlaylist 定义
+│  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行、队列返回结果、MpdPlaylist 与统计模型 (PlayStats/PlayStatsEntry/PlaySessionState) 定义
 │  └─ config.ts                 应用配置模型、字体排印配置 (TypographyConfig) 与防注入清洗、频谱律动配置、JSONC 注释解析器与 DeepPartial 定义
 └─ renderer/
    ├─ index.html                CSP 策略与 DOM 挂载入口
@@ -100,7 +103,8 @@ src/
       ├─ services/
       │  └─ pcmPlayer.ts        Model B / 方案 C WebAudio PCM 流式管道 (自适应硬件采样率/流世代淡入淡出/防抖调度)
       └─ components/
-         ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (多抽屉切换，导轨锁定 56px 零抖动)
+         ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (多抽屉切换，导轨锁定 56px 零抖动；第 5 键统计信息 + StatsIcon，占位主题已移除)
+         ├─ StatisticsDrawer.tsx 悬浮抽屉统计信息 (单级展示：摘要卡累计时长/总次数/曲目数 + playCount 降序排行 + 空态，前三翡翠高亮)
          ├─ StatusBar.tsx       底部磨砂玻璃状态栏 (.css 动静分离液态流动按键、等宽数字防抖进度条)
          ├─ LyricsOrbit.tsx     极坐标星盘歌词天文钟 (.css 擒纵阻尼齿轮跳齿、三级游标分划、全视窗暗角渐变)
          ├─ MechanicalGear.tsx  右侧精密机械表机芯 (.css 蓝图矢量纯线条、多级减速齿轮与摆轮游丝)
