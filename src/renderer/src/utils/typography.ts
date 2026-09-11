@@ -95,7 +95,7 @@ export function applyTypographyToDOM(typography?: TypographyConfig | null): void
 
   const hintFont = sanitizeFontFamily(t.hint?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
   const rawHintSize = typeof t.hint?.fontSize === 'number' && Number.isFinite(t.hint.fontSize) ? t.hint.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.hint.fontSize
-  const hintSize = Math.round(clamp(rawHintSize, 9, 16))
+  const hintSize = Math.round(clamp(rawHintSize, 12, 16))
 
   const lyricsBodyFont = sanitizeFontFamily(t.lyrics?.body?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily)
   const rawLyricsBodySize = typeof t.lyrics?.body?.fontSize === 'number' && Number.isFinite(t.lyrics.body.fontSize) ? t.lyrics.body.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontSize

@@ -313,7 +313,7 @@ export const DEFAULT_TYPOGRAPHY_CONFIG: TypographyConfig = {
   },
   hint: {
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace',
-    fontSize: 11
+    fontSize: 12
   },
   lyrics: {
     body: {
@@ -636,8 +636,8 @@ export function parseTypographyConfig(rawTypography: unknown): TypographyConfig 
         : undefined
 
     return {
-      ui: parseFontItemConfig(targetObj['ui'], DEFAULT_TYPOGRAPHY_CONFIG.ui, 11, 20),
-      hint: parseFontItemConfig(targetObj['hint'], DEFAULT_TYPOGRAPHY_CONFIG.hint, 9, 16),
+      ui: parseFontItemConfig(targetObj['ui'], DEFAULT_TYPOGRAPHY_CONFIG.ui, 12, 20),
+      hint: parseFontItemConfig(targetObj['hint'], DEFAULT_TYPOGRAPHY_CONFIG.hint, 12, 16),
       lyrics: {
         body: parseFontItemConfig(bodyObj, defaultBody, 14, 36),
         translation: parseFontItemConfig(transObj, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation, 10, 22)

@@ -78,7 +78,7 @@
 }
 
 .artist-count-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: rgba(110, 231, 183, 0.85);
   background: rgba(110, 231, 183, 0.1);
@@ -197,7 +197,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
+  /* 字阶托底 12px: 双行间距收至 2px，为 12px 副行让位 */
+  gap: 2px;
 }
 
 .artist-name {
@@ -216,7 +217,7 @@
 }
 
 .artist-subtext {
-  font-size: 11.5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.42);
   white-space: nowrap;
   overflow: hidden;
@@ -300,7 +301,7 @@
   border: none;
   outline: none;
   color: rgba(255, 255, 255, 0.55);
-  font-size: 11.5px;
+  font-size: 12px;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 6px;
@@ -351,7 +352,7 @@
 }
 
 .artist-detail-stats {
-  font-size: 11.5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.45);
 }
 
@@ -370,7 +371,7 @@
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -417,7 +418,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 54px;
+  /* 字阶托底 12px: 标题 13px + 副行徽标 12px 两行约 40px，加内边距 56px 防双行夹挤 */
+  height: 56px;
   padding: 0 10px;
   border-radius: 10px;
   cursor: pointer;
@@ -455,7 +457,7 @@
   position: relative;
   z-index: 2;
   width: 20px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.3);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -496,7 +498,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  /* 字阶托底 12px: 标题与副行间距由 2px 收至 1px，为徽标增高让位 */
+  gap: 1px;
 }
 
 .artist-song-title {
@@ -516,7 +519,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
@@ -530,7 +533,7 @@
 
 /* 音质徽标 */
 .artist-badge-sq {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -543,7 +546,7 @@
 }
 
 .artist-badge-hires {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -556,7 +559,7 @@
 }
 
 .artist-badge-hq {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -572,7 +575,7 @@
 .artist-song-duration {
   position: relative;
   z-index: 2;
-  font-size: 11.5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.35);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;

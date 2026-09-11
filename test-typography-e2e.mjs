@@ -266,7 +266,7 @@ async function main() {
   assert.equal(resetResult.clicked, true);
   assert.match(resetResult.uiFontVar, /system-ui/);
   assert.equal(resetResult.uiSizeVar, '13px');
-  assert.equal(resetResult.hintSizeVar, '11px');
+  assert.equal(resetResult.hintSizeVar, '12px');
   assert.equal(resetResult.lyricsBodySizeVar, '18px');
   assert.equal(resetResult.lyricsSizeVar, '18px');
 
@@ -275,7 +275,7 @@ async function main() {
   console.log('Persisted UI config after reset:', parsedDiskReset.typography?.ui);
   assert.match(parsedDiskReset.typography?.ui?.fontFamily, /system-ui/);
   assert.equal(parsedDiskReset.typography?.ui?.fontSize, 13);
-  assert.equal(parsedDiskReset.typography?.hint?.fontSize, 11);
+  assert.equal(parsedDiskReset.typography?.hint?.fontSize, 12);
 
   console.log('=== Step 10: Multi-Control Hint & Lyrics Empty Blur & Escape Verification ===');
   // Ensure sidebar is expanded (Step 8 Escape may have collapsed it)
@@ -345,8 +345,40 @@ async function main() {
   })()`);
   await new Promise(r => setTimeout(r, 400));
 
+  await verifyMin12Floor(cdp);
+
   cdp.close();
   console.log('=== All E2E Tests Completed Successfully ===');
+}
+
+// Step 11: 全局最小 12px 托底 (低 PPI 可读性铁律)
+// 扫描悬浮面板六组件 computed font-size，任一文本节点渲染值不得 < 12px
+async function verifyMin12Floor(cdp) {
+  console.log('=== Step 11: Global 12px Minimum Floor (Low-PPI Legibility) ===');
+  const result = await cdp.eval(`(() => {
+    const scope = document.querySelector('aside.sidebar-capsule') || document.body;
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
+    const bad = [];
+    let el = walker.nextNode();
+    while (el) {
+      const cs = getComputedStyle(el);
+      // 仅检查真实文本节点宿主：有直接文本子节点且非隐藏元素
+      const hasText = Array.from(el.childNodes).some(
+        n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0
+      );
+      if (hasText && cs.visibility !== 'hidden' && cs.display !== 'none') {
+        const px = parseFloat(cs.fontSize);
+        if (Number.isFinite(px) && px < 12 - 1e-6) {
+          bad.push(el.className?.toString?.().slice(0, 60) + ' = ' + cs.fontSize);
+          if (bad.length >= 10) break;
+        }
+      }
+      el = walker.nextNode();
+    }
+    return { badCount: bad.length, bad };
+  })()`);
+  console.log('Min-12 floor scan:', result);
+  assert.equal(result.badCount, 0);
 }
 
 main().catch((err) => {

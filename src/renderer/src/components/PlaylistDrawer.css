@@ -102,7 +102,7 @@
   gap: 4px;
   padding: 4px 9px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -125,7 +125,7 @@
 }
 
 .playlist-count-badge {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: rgba(110, 231, 183, 0.85);
   background: rgba(110, 231, 183, 0.1);
@@ -166,7 +166,7 @@
   border: 1px solid rgba(110, 231, 183, 0.4);
   border-radius: 6px;
   padding: 5px 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: #ffffff;
   outline: none;
   min-width: 0;
@@ -181,7 +181,7 @@
   background: rgba(110, 231, 183, 0.2);
   border: 1px solid rgba(110, 231, 183, 0.45);
   color: #6ee7b7;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   border-radius: 6px;
   padding: 5px 10px;
@@ -199,7 +199,7 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
+  font-size: 12px;
   border-radius: 6px;
   padding: 5px 8px;
   cursor: pointer;
@@ -213,7 +213,7 @@
 }
 
 .playlist-create-error {
-  font-size: 10px;
+  font-size: 12px;
   color: #f87171;
   white-space: nowrap;
 }
@@ -330,7 +330,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
+  /* 字阶托底 12px: 双行间距收至 2px，为 12px 副行让位 */
+  gap: 2px;
 }
 
 .playlist-name {
@@ -349,7 +350,7 @@
 }
 
 .playlist-subtext {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.42);
   white-space: nowrap;
   overflow: hidden;
@@ -410,7 +411,7 @@
 }
 
 .playlist-delete-hint {
-  font-size: 10.5px;
+  font-size: 12px;
   color: #fca5a5;
   white-space: nowrap;
 }
@@ -419,7 +420,7 @@
   background: #ef4444;
   border: none;
   color: #ffffff;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   border-radius: 4px;
   padding: 2px 6px;
@@ -431,7 +432,7 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 10.5px;
+  font-size: 12px;
   cursor: pointer;
   outline: none;
   padding: 2px;
@@ -555,7 +556,7 @@
   border: none;
   outline: none;
   color: rgba(255, 255, 255, 0.55);
-  font-size: 11.5px;
+  font-size: 12px;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 6px;
@@ -607,7 +608,7 @@
 }
 
 .playlist-detail-stats {
-  font-size: 11.5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.45);
 }
 
@@ -626,7 +627,7 @@
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -696,7 +697,7 @@
   background: transparent;
   border: none;
   outline: none;
-  font-size: 11.5px;
+  font-size: 12px;
   color: #ffffff;
 }
 
@@ -740,7 +741,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  /* 字阶托底 12px: 双行 12px 间距收至 1px */
+  gap: 1px;
   margin-right: 8px;
 }
 
@@ -754,7 +756,7 @@
 }
 
 .playlist-add-item-artist {
-  font-size: 10.5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
@@ -767,7 +769,7 @@
   gap: 4px;
   padding: 3px 8px;
   border-radius: 5px;
-  font-size: 10.5px;
+  font-size: 12px;
   cursor: pointer;
   outline: none;
   background: rgba(110, 231, 183, 0.12);
@@ -801,7 +803,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 54px;
+  /* 字阶托底 12px: 与 ArtistDrawer 同步增高 2px 防双行夹挤 */
+  height: 56px;
   padding: 0 10px;
   border-radius: 10px;
   cursor: pointer;
@@ -810,7 +813,7 @@
   border: none;
   box-sizing: border-box;
   content-visibility: auto;
-  contain-intrinsic-size: 0 54px;
+  contain-intrinsic-size: 0 56px;
 }
 
 .playlist-song-item::before {
@@ -841,7 +844,7 @@
   position: relative;
   z-index: 2;
   width: 20px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.3);
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -882,7 +885,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  /* 字阶托底 12px: 与 ArtistDrawer 同步收至 1px */
+  gap: 1px;
 }
 
 .playlist-song-title {
@@ -902,7 +906,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
   white-space: nowrap;
   overflow: hidden;
@@ -916,7 +920,7 @@
 
 /* 音质徽标 */
 .playlist-badge-sq {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -929,7 +933,7 @@
 }
 
 .playlist-badge-hires {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -942,7 +946,7 @@
 }
 
 .playlist-badge-hq {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 3px;
@@ -955,7 +959,7 @@
 }
 
 .playlist-badge-std {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   padding: 1px 4px;
   border-radius: 3px;
@@ -971,7 +975,7 @@
 .playlist-song-duration {
   position: relative;
   z-index: 2;
-  font-size: 11.5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.35);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
@@ -1076,7 +1080,7 @@
 
 .playlist-empty-state.mini {
   padding: 20px 10px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .playlist-empty-create-btn {
@@ -1088,7 +1092,7 @@
   background: rgba(110, 231, 183, 0.12);
   border: 1px solid rgba(110, 231, 183, 0.35);
   color: #6ee7b7;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   outline: none;

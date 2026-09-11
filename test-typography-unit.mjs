@@ -28,12 +28,12 @@ assert.deepEqual(parsedPartial.lyrics, DEFAULT_TYPOGRAPHY_CONFIG.lyrics);
 console.log('✓ 2. Partial updates with default fallback passed');
 
 // Test 3: Boundary clamping
-// UI: 11 ~ 20
-assert.equal(parseTypographyConfig({ ui: { fontSize: 5 } }).ui.fontSize, 11);
+// UI: 12 ~ 20 (最小 12px 低 PPI 可读性托底)
+assert.equal(parseTypographyConfig({ ui: { fontSize: 5 } }).ui.fontSize, 12);
 assert.equal(parseTypographyConfig({ ui: { fontSize: 100 } }).ui.fontSize, 20);
 assert.equal(parseTypographyConfig({ ui: { fontSize: 15.6 } }).ui.fontSize, 16);
-// Hint: 9 ~ 16
-assert.equal(parseTypographyConfig({ hint: { fontSize: 2 } }).hint.fontSize, 9);
+// Hint: 12 ~ 16 (最小 12px 低 PPI 可读性托底)
+assert.equal(parseTypographyConfig({ hint: { fontSize: 2 } }).hint.fontSize, 12);
 assert.equal(parseTypographyConfig({ hint: { fontSize: 50 } }).hint.fontSize, 16);
 // Lyrics Body: 14 ~ 36
 assert.equal(parseTypographyConfig({ lyrics: { body: { fontSize: 10 } } }).lyrics.body.fontSize, 14);
@@ -74,10 +74,17 @@ assert.equal(parsedFlatString.lyrics.body.fontSize, 28);
 console.log('✓ 5. Legacy flat lyrics backward compatibility passed');
 
 // Test 6: String numbers and CSS units parsing
-assert.equal(parseFontItemConfig({ fontSize: "16" }, DEFAULT_TYPOGRAPHY_CONFIG.ui, 11, 20).fontSize, 16);
-assert.equal(parseFontItemConfig({ fontSize: "16px" }, DEFAULT_TYPOGRAPHY_CONFIG.ui, 11, 20).fontSize, 16);
-assert.equal(parseFontItemConfig({ fontSize: "invalid" }, DEFAULT_TYPOGRAPHY_CONFIG.ui, 11, 20).fontSize, 13);
+assert.equal(parseFontItemConfig({ fontSize: "16" }, DEFAULT_TYPOGRAPHY_CONFIG.ui, 12, 20).fontSize, 16);
+assert.equal(parseFontItemConfig({ fontSize: "16px" }, DEFAULT_TYPOGRAPHY_CONFIG.ui, 12, 20).fontSize, 16);
+assert.equal(parseFontItemConfig({ fontSize: "invalid" }, DEFAULT_TYPOGRAPHY_CONFIG.ui, 12, 20).fontSize, 13);
 console.log('✓ 6. String numbers and units handling passed');
+
+// Test 11: 全局最小 12px 托底 (低 PPI 可读性铁律)
+// UI / Hint 均不得解析出小于 12 的字号
+assert.equal(parseTypographyConfig({ ui: { fontSize: 11 } }).ui.fontSize, 12);
+assert.equal(parseTypographyConfig({ hint: { fontSize: 11 } }).hint.fontSize, 12);
+assert.equal(parseTypographyConfig({ hint: { fontSize: 9 } }).hint.fontSize, 12);
+console.log('✓ 11. Global 12px minimum floor passed');
 
 // Test 7: Sanitization of trailing semicolons, unclosed quotes, !important, comments, backslashes, CSS declaration prefixes, and trailing commas
 const injectionConfig = {
@@ -157,4 +164,4 @@ assert.equal(parsedFontAlias.ui.fontFamily, 'JetBrains Mono');
 assert.equal(parsedFontAlias.lyrics.body.fontSize, 22);
 console.log('✓ 10. Deep partial font alias parsing passed');
 
-console.log('=== All 10 Unit Tests Passed Successfully ===');
+console.log('=== All 11 Unit Tests Passed Successfully ===');

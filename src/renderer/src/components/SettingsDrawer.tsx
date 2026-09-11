@@ -865,7 +865,7 @@ export default function SettingsDrawer() {
     {
       id: 'typography',
       title: '字体与字形',
-      desc: `UI ${config.typography?.ui?.fontSize ?? 13}px · 提示 ${config.typography?.hint?.fontSize ?? 11}px · 歌词 ${config.typography?.lyrics?.body?.fontSize ?? 18}px / ${config.typography?.lyrics?.translation?.fontSize ?? 12}px`,
+      desc: `UI ${config.typography?.ui?.fontSize ?? 13}px · 提示 ${config.typography?.hint?.fontSize ?? 12}px · 歌词 ${config.typography?.lyrics?.body?.fontSize ?? 18}px / ${config.typography?.lyrics?.translation?.fontSize ?? 12}px`,
       icon: <TypographyIcon />
     },
     {
@@ -1394,17 +1394,17 @@ export default function SettingsDrawer() {
                       }, 100)
                     }}
                     previewText="03:45 / 04:12 · 192kHz 24-bit · FLAC Hi-Res · 歌手名 - 专辑"
-                    previewStyle={{ fontSize: `${config.typography?.hint?.fontSize ?? 11}px` }}
+                    previewStyle={{ fontSize: `${config.typography?.hint?.fontSize ?? 12}px` }}
                   />
 
                   <SliderControl
                     label="辅助提示字号"
-                    desc="时间标签与音质徽标等较小字阶 (9 ~ 16px)"
-                    value={config.typography?.hint?.fontSize ?? 11}
-                    min={9}
+                    desc="时间标签与音质徽标等较小字阶 (12 ~ 16px)"
+                    value={config.typography?.hint?.fontSize ?? 12}
+                    min={12}
                     max={16}
                     step={1}
-                    displayValue={`${config.typography?.hint?.fontSize ?? 11}px`}
+                    displayValue={`${config.typography?.hint?.fontSize ?? 12}px`}
                     onChange={(val) =>
                       updateConfigDebounced({
                         typography: {

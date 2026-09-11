@@ -95,7 +95,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 2px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .music-library-count {
@@ -112,7 +112,7 @@
   outline: none;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   color: #6ee7b7;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -185,7 +185,8 @@
   gap: 10px;
   box-sizing: border-box;
   width: 100%;
-  padding: 7px 10px;
+  /* 字阶托底 12px: 行高由单行 14.5px 标题 + 12px 副行组成，内边距收紧 1px 防溢出 */
+  padding: 6px 10px;
   border-radius: 10px;
   cursor: pointer;
   background: transparent;
@@ -193,7 +194,7 @@
   outline: none;
   /* 启用现代浏览器 GPU 视窗裁剪，大幅优化 400+ 首长列表渲染性能 */
   content-visibility: auto;
-  contain-intrinsic-size: 0 58px;
+  contain-intrinsic-size: 0 60px;
 }
 
 /* 动静分离外壳: 承载背景色、边框、投影与 1.015 缩放 */
@@ -331,10 +332,10 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-family-hint);
-  font-size: calc(var(--font-size-hint, 11px) - 2px);
+  font-size: var(--font-size-hint, 12px);
   font-weight: 700;
   line-height: 1;
-  height: 13px;
+  height: 16px;
   padding: 0 3px;
   border-radius: 3px;
   letter-spacing: 0.4px;
@@ -373,7 +374,7 @@
 /* 歌手与专辑副标题 */
 .music-track-artist-album {
   font-family: var(--font-family-hint);
-  font-size: var(--font-size-hint, 11px);
+  font-size: var(--font-size-hint, 12px);
   color: rgba(255, 255, 255, 0.52);
   white-space: nowrap;
   overflow: hidden;
