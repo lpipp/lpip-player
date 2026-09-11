@@ -38,9 +38,12 @@
 
 ---
 
-## 2. git 状态（截至 ee53e14）
+## 2. git 状态（截至 c777b7c）
 
 ```
+c777b7c docs: 更新 偏好设置字体与字形设置 项目全量文档
+5075cfc feat(settings): 偏好设置增加字体设置卡片并支持三类文本字形字号全局热联动
+9d71c08 docs: 更新 偏好设置与无边框热重构 项目全量文档
 ee53e14 docs: 更新 无边框沉浸式模式切换与拖拽热区 项目全量文档
 f7d81b8 fix(window): 修复无边框沉浸式模式设置切换未即时生效缺陷并增加顶部拖拽热区
 9d5b5d3 docs: 更新 M2-2 偏好设置 项目全量文档
@@ -77,13 +80,15 @@ src/
 │  └─ index.ts                  contextBridge 暴露安全的 window.electronAPI (含队列操作 API、歌单操作 API 与 config.update)
 ├─ types/
 │  ├─ music.ts                  全局歌曲模型、播放模式、MPD 状态、歌词行、队列返回结果与 MpdPlaylist 定义
-│  └─ config.ts                 应用配置模型、频谱律动配置、JSONC 注释解析器与 DeepPartial 定义
+│  └─ config.ts                 应用配置模型、字体排印配置 (TypographyConfig) 与防注入清洗、频谱律动配置、JSONC 注释解析器与 DeepPartial 定义
 └─ renderer/
    ├─ index.html                CSP 策略与 DOM 挂载入口
    └─ src/
       ├─ main.tsx               React 19 根挂载
       ├─ App.tsx                全局主视图控制器、快捷键调度与状态桥接中心 (含 .window-drag-bar 顶部 28px 沉浸式拖拽热区)
       ├─ styles/global.css      全套 CSS 变量体系、reset 与深色黑曜石主题、.window-drag-bar 拖拽样式与无边框微调
+      ├─ utils/
+      │  └─ typography.ts       字体族预设清单 (UI_FONT_PRESETS 等) 与全局 DOM CSS 变量注入 (applyTypographyToDOM)
       ├─ services/
       │  └─ pcmPlayer.ts        Model B / 方案 C WebAudio PCM 流式管道 (自适应硬件采样率/流世代淡入淡出/防抖调度)
       └─ components/
@@ -96,7 +101,7 @@ src/
          ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/单曲移除/一键清空/定位正在播放)
          ├─ ArtistDrawer.tsx    悬浮抽屉艺人分类 (.css 双级钻取画册流/圆形微棱头像/作品统计/单曲二态开关)
          ├─ PlaylistDrawer.tsx  悬浮抽屉歌单管理 (.css 双级钻取画册流/歌单创建重命名删除/单曲增删/二态开关/MPD歌单协议闭环)
-         ├─ SettingsDrawer.tsx  悬浮抽屉偏好设置 (.css 双级钻取画册流/5大模块精细控件/液态玻璃开关滑块分段单选/配置原子持久化热重载)
+         ├─ SettingsDrawer.tsx  悬浮抽屉偏好设置 (.css 双级钻取画册流/6大模块精细控件包含字体与字形/液态玻璃开关滑块分段单选/配置原子持久化热重载)
          └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
 ```
 
