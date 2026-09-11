@@ -772,6 +772,19 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
      - 用户按下 `Escape` 键时撤销当前未保存的临时输入，恢复为正在生效的配置，并拦截冒泡防止意外触发抽屉返回；
      - 当输入框被清空并失焦（Blur）时，自动回退显示为当前已生效的有效字体名，杜绝留下空白无效占位符。
 
+### 4.19 悬浮胶囊收起态按键全空消失与 Chromium 焦点横向滚动踩坑纪律 (2026-09-11)
+
+1. **子面板获焦引发的父容器意外横向滚动 (Focus-Induced scrollLeft Displacement)**:
+   - **症状**: 用户在使用抽屉内部输入框或特定操作收起胶囊后，左侧悬浮胶囊中的 6 大功能图标全部消失不见，胶囊只剩一个空黑的毛玻璃长圆框；
+   - **根因**:
+     - `.sidebar-capsule` 容器原声明为 `overflow: hidden; display: flex; flex-direction: row;`；在收起态下宽度仅为 `56px`，但内部包含了右侧 `404px` 宽度的子面板（总内容宽 `460px`）；
+     - CSS 规范中 `overflow: hidden` **并不禁止**程序化、焦点导航或 `scrollIntoView` 驱动的滚动。当子面板内的输入框或按钮获取焦点时，Chromium 默认行为会将可滚动祖先的 `scrollLeft` 自动滚至该元素可见位置（实测 `scrollLeft` 被滚至 `374px`）；
+     - 这一滚动导致原本停靠在左侧边缘（offset 0）的导轨 `.capsule-rail` 物理坐标被推至屏幕外 `x = -357px`，而收起态的子面板又处于 `opacity: 0`，最终呈现出全空胶囊黑框的严重视觉缺陷；
+   - **彻底根治方案**:
+     1. **启用现代 CSS `overflow: clip`**: 将 `.sidebar-capsule` 升级为 `overflow: hidden; overflow: clip;`。在 CSS Overflow Level 3 规范中，`clip` 严格禁止创建任何滚动容器，浏览器底层的 `scrollLeft` 被彻底锁定为 0，杜绝任何焦点引起的横向视口偏移；
+     2. **收起态 `visibility: hidden` 隔离**: 为收起态 `.sidebar-capsule.collapsed .capsule-subpanel` 赋予 `visibility: hidden` 并配合 `320ms` 退出过渡延时，确保抽屉收起后彻底从键盘 Tab 链与 DOM 获焦树中摘除，防止隐藏状态下误聚焦；
+     3. **React 状态保护守卫**: 在 `SidebarCapsule` 中添加 `onScroll` 强制归零拦截器，并在 `!isExpanded` 时主动检查并执行 `activeElement.blur()`，确保子面板焦点在抽屉关闭时平滑释放。实测导轨物理位置严格锁定在 `x = 17px`，图标居中定格 `x = 25.5px`，彻底杜绝位移隐患。
+
 ---
 
 ## 5. 下一步开发计划 (Next Milestone)

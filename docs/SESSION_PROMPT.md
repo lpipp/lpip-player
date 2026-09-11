@@ -24,6 +24,11 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已修复] 悬浮胶囊收起态按键消失缺陷彻底根治:
+  1. 根因剖析: 原 .sidebar-capsule 声明为 overflow: hidden，包含 460px 子面板，子面板内元素（如字体输入框）获焦时触发 Chromium 默认机制，将父容器 scrollLeft 自动滚至 374px，导致 offset 0 的左侧导轨 (.capsule-rail) 被推至视窗外 x = -357px，形成按键消失假象；
+  2. 现代 CSS overflow: clip: 升级为 overflow: clip，严格禁止任何获焦或 JS 驱动的横向滚动视口偏移；
+  3. 收起态 visibility: hidden 隔离: 抽屉收起后为子面板挂载 visibility: hidden，彻底从焦点树与 Tab 链剥离；
+  4. React 状态双重守卫: 增加 onScroll 强制归零拦截器，并在收起时主动释放内部焦点 (activeElement.blur())；实测导轨定格 x = 17px，按键居中 x = 25.5px 零位移。
 - [已完备] M2-2 偏好设置新增“字体与字形 (Typography)”设置模块卡片与全文本字阶热重载全套闭环:
   1. 悬浮胶囊偏好设置第 6 模块卡片: 矢量字形图标 (TypeIcon)、加粗标题、动态参数摘要（UI/提示/歌词大小）与钻取指示箭头；
   2. 层级 2 字体设置详情流: 划分为 UI 界面通用字体、提示与辅助文本、星盘歌词排印（正文与翻译双轨）、配置重置与维护 4 大精细控件组；
