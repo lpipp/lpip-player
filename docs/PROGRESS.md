@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-11
-> 当前阶段: M2-2 (封面预压缩双档缓存与提取并发上限落地，曲库/队列/艺人/歌单封面统一走 512px 缩略图，原图档留待 M2-3 黑胶大舞台)
-> 最新进展: 封面链路新增 512px JPEG 缩略图双档缓存（`<hash>.jpg` 原图 + `<hash>.thumb.jpg` 缩略图），renderer 零改动（协议层 `?tier` 缺省即 thumb），从音频剥离原图的提取并发上限 2 手写 promise 队列；CDP 实测 30 张并发迁移缩略图 475ms/主进程 CPU 6.8% 无尖峰、分档 thumb/full 各自 200、console 零报错，详见 §2.19 与 §4.22
+> 当前阶段: M2-2 (悬浮面板全局最小 12px 字阶托底落地，低 PPI 可读性补齐；封面预压缩双档缓存与提取并发上限落地，曲库/队列/艺人/歌单封面统一走 512px 缩略图，原图档留待 M2-3 黑胶大舞台)
+> 最新进展: 悬浮面板六组件 75 处 <12px 字号托底 12px（硬编码 9~11.5px 全量上调 + hint 变量 calc 负偏移归零 + hint 默认 11→12），ui/hint 解析钳位收紧为 12 起跳，行盒同步补偿防夹行溢出；单测 11/11 + e2e 新增 Step 11 computed 扫描全绿（提交 d229c2a），详见 §2.20 与 §4.23
 
 ---
 
@@ -474,6 +474,15 @@
 - **边界与失败模式**: 无内嵌封面 `.nocover` 短路不变、404 行为不变；缩略图生成失败降级回退 serve 原图（不 404）；原图提取失败沿用 unlink + nocover 逻辑；请求期间文件被清由协议层 `existsSync` 检查覆盖。
 - **实测（CDP 9222 探针）**: 30 张并发迁移缩略图全生成（10~54KB，中位 ~37KB）、总耗时 475ms、主进程 CPU 6.8% 无尖峰；分档 thumb/full/缺省各自 200；冷提取（删缓存重取）原图 + 缩略图双档再生 119ms；console 零报错。
 
+### 2.20 悬浮面板全局最小 12px 字阶托底 (`Global 12px Minimum Font Floor`) - 2026-09-11 完成
+
+> **结论先行：低 PPI 屏幕可读性补齐。** 悬浮面板六组件（SidebarCapsule/SidebarBubble/MusicLibraryList/QueueDrawer/ArtistDrawer/PlaylistDrawer/SettingsDrawer）共 75 处 `<12px` 字号声明全部托底 12px；ui/hint 解析钳位与 hint 默认值同步收紧为 12 起跳，偏好设置滑块 min=12；行盒同步补偿，436 行曲库 + L1/L2 全抽屉 computed 扫描零残留、零夹行、零溢出。
+
+- **字号托底三板斧**: ① 硬编码 `9/9.5/10/10.5/11/11.5px` 正则全量上调 12px（含艺人/歌单 9px 音质徽标、导轨 9px `M-B` 徽标）；② hint 变量 calc 负偏移（`-0.5/-2/-2.5px`）归零为 `var(--font-size-hint, 12px)`，`queue-track-duration` 的 `+0.5px` 保留；③ hint 默认 `11→12`（`DEFAULT_TYPOGRAPHY_CONFIG`），解析钳位 ui `11~20` / hint `9~16` 收紧为 **12 起跳**（`parseTypographyConfig` + `applyTypographyToDOM` + SettingsDrawer 滑块 `min={12}`/desc/预览默认值同步）。
+- **行盒补偿防夹行溢出**: 艺人/歌单单曲行高 `54→56px`（+ `contain-intrinsic-size` 同步）；曲库行纵向内边距 `7→6px`（曲库标题 14.5px 不变）；Lib/Queue 音质徽标高度 `13/12→16px` 放行 12px 文字；艺人/歌单卡片与单曲双行 `gap 3→2px`、Artist 单曲 meta `gap 2→1px`、Playlist 添加项 `gap 2→1px`。动静分离铁律不受影响（只改盒尺寸与间距，不动缩放宿主）。
+- **测试闭环**: 单测 11/11（Test 3 钳位期望更新 + 新增 Test 11 全局托底断言）；e2e Step 9 重置期望 hint `11px→12px` + 新增 **Step 11 computed 扫描**（TreeWalker 遍历胶囊内真实文本宿主 computed font-size，`<12px` 即失败）；typecheck/build 全绿。
+- **实测（CDP 9222 探针，HMR 热更后 reload）**: 曲库 436 行 / 队列 10 行 / 艺人 L1 238 卡 / 歌单 L1 / 艺人 L2 单曲 / 歌单 L2 10 行，`<12px=0、夹行=0、溢出=0`；用户桌面窗口保留运行，亲手核验排版。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -863,3 +872,11 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 - **方案 C 动态采样率**: MPD 原生透传 + WebAudio 动态采样率感知自适应（**已于 2026-09-10 彻底消除 48kHz 曲目背景爆破音**）。
 
 
+
+### 4.23 字号托底的「渲染值」验收纪律：声明值 ≠ 渲染值 (2026-09-11)
+
+悬浮面板 12px 托底中沉淀的验收教训：
+
+1. **grep 声明值只能算施工清单，不能算验收**: `font-size: 11px` 改完后 grep 零残留，但 `calc(var(--font-size-hint, 11px) - 2px)` 这类声明在变量注入前渲染值仅 9px，且变量默认值（hint=11）本身就是渲染链一环。验收必须以浏览器 **computed font-size 扫描**为准（TreeWalker 遍历真实文本宿主，跳过 `visibility:hidden`/收起态隔离节点）。
+2. **e2e 断言会随设计基线漂移，需同步更新**: 重置默认值 hint `11→12` 后，Step 9 的 `hintSizeVar === '11px'` 与落盘 `fontSize === 11` 断言立即变红 —— 这是设计变更的正常连带，不是回归。改默认值时必须同步 grep 测试文件中的旧基线期望。
+3. **首次全量扫描的「3 行夹行」是探针误报**: 首轮 CDP 探针报 3 行标题被夹（21px vs 行高 19px），但该探针在抽屉未展开（0 行）与虚拟化中途（索引越界）两种状态下都跑过；重载后在正确抽屉态重扫 436 行夹行=0。教训：探针必须先断言「行数符合预期」（如曲库 436 行），再谈行盒结论，否则就是在对空集合/错位索引做诊断。
