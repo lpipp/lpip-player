@@ -258,5 +258,31 @@ body {
   background: transparent !important;
 }
 
+/* ============================================================
+   沉浸式窗口无边框顶部拖拽区域 (Window Drag Region)
+   仅在 data-window-immersive="true" 时激活，支持在窗口顶部空白处抓取移动窗口
+   ============================================================ */
+.window-drag-bar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  -webkit-app-region: drag;
+  z-index: 35;
+  pointer-events: auto;
+}
 
+[data-window-immersive='true'] .window-drag-bar {
+  display: block;
+}
 
+/* 确保所有交互控件、胶囊抽屉、状态栏不被拖拽事件拦截 */
+.sidebar-capsule,
+.status-bar,
+button,
+input,
+a {
+  -webkit-app-region: no-drag;
+}

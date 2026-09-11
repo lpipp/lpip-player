@@ -322,6 +322,9 @@ export default function App() {
 
   return (
     <div className="stage">
+      {/* 沉浸式无边框窗口顶部拖拽区域 (仅在无边框形态下激活，可直接按住窗口顶部空白处拖拽移动窗口) */}
+      <div className="window-drag-bar" aria-hidden="true" />
+
       {/* 动态视频壁纸图层 (当配置视频壁纸时自动激活硬件加速播放) */}
       <WallpaperLayer />
 

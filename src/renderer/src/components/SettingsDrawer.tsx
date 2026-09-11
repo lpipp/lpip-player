@@ -694,7 +694,7 @@ export default function SettingsDrawer() {
                   <div className="settings-control-row">
                     <div className="settings-control-info">
                       <span className="settings-control-label">沉浸式无边框模式</span>
-                      <span className="settings-control-desc">隐藏系统原生标题栏与边缘边框，尽享极简全面屏视效</span>
+                      <span className="settings-control-desc">隐藏系统原生标题栏与边缘边框，尽享极简全面屏视效 (切换时将即时无缝重构窗口)</span>
                     </div>
                     <ToggleSwitch
                       checked={config.window.immersive}

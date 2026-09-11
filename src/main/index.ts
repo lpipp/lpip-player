@@ -172,10 +172,84 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
   win.webContents.executeJavaScript(script).catch(() => {})
 }
 
+// 追踪当前窗口的沉浸式形态以及是否处于平滑重建过程中
+let currentWindowImmersive = false
+let isRecreatingWindow = false
+
+/**
+ * 根据沉浸式配置重建窗口
+ * Electron 在 Linux/Wayland 下 frame (原生窗框/无边框) 为窗口创建时固定属性，
+ * 无法通过单实例 API 动态切换。此处通过创建新窗口、状态无缝交接并安全销毁旧窗口实现即时生效。
+ */
+export function recreateWindow(oldWin: BrowserWindow, isImmersive: boolean): BrowserWindow {
+  if (isRecreatingWindow || !oldWin || oldWin.isDestroyed()) return oldWin
+  isRecreatingWindow = true
+  currentWindowImmersive = isImmersive
+
+  const bounds = oldWin.getBounds()
+  const isMaximized = oldWin.isMaximized()
+  const isFullScreen = oldWin.isFullScreen()
+
+  const newWin = new BrowserWindow({
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    minWidth: 720,
+    minHeight: 480,
+    show: false,
+    frame: !isImmersive,
+    backgroundColor: '#0a0a0f',
+    title: 'lpip-player',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      sandbox: true
+    }
+  })
+
+  newWin.webContents.on('did-finish-load', () => {
+    applyConfigToWindow(newWin, loadConfig())
+  })
+
+  newWin.once('ready-to-show', () => {
+    if (isFullScreen) {
+      newWin.setFullScreen(true)
+    } else if (isMaximized) {
+      newWin.maximize()
+    }
+    newWin.show()
+    // 等新窗口就绪并展示后，销毁旧窗口，视觉无缝切换
+    setTimeout(() => {
+      try {
+        if (!oldWin.isDestroyed()) {
+          oldWin.destroy()
+        }
+      } catch {
+        // 忽略销毁瞬态异常
+      }
+      isRecreatingWindow = false
+    }, 60)
+  })
+
+  newWin.webContents.on('did-fail-load', () => {
+    isRecreatingWindow = false
+  })
+
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    newWin.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    newWin.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+
+  return newWin
+}
+
 function createWindow(): void {
   // 读取运行时配置, 判定是否开启沉浸式效果
   const config = loadConfig()
   const isImmersive = config.window.immersive
+  currentWindowImmersive = isImmersive
 
   const win = new BrowserWindow({
     width: 1100,
@@ -408,12 +482,30 @@ app.whenReady().then(() => {
   // 更新当前应用全局配置并安全持久化
   ipcMain.handle(IPC_CHANNELS.CONFIG_UPDATE, async (_event, partial: DeepPartial<AppConfig>) => {
     try {
+      const configFilePath = process.env['LPIP_CONFIG_PATH'] || getDefaultConfigPath()
+      const prevConfig = loadConfig(configFilePath)
+      const prevImmersive = prevConfig.window.immersive
+
       const updatedConfig = saveConfig(partial)
+      const nextImmersive = updatedConfig.window.immersive
+
+      // 检查沉浸式无边框模式是否发生了变更
+      const immersiveChanged =
+        typeof partial.window?.immersive === 'boolean' && prevImmersive !== nextImmersive
+
       const windows = BrowserWindow.getAllWindows()
-      for (const win of windows) {
-        if (!win.isDestroyed()) {
-          applyConfigToWindow(win, updatedConfig)
-          win.webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+      if (immersiveChanged) {
+        // 重建窗口以使无边框模式 (frame: false / true) 瞬时平滑生效
+        const targetWin = BrowserWindow.getFocusedWindow() || windows[0]
+        if (targetWin && !targetWin.isDestroyed()) {
+          recreateWindow(targetWin, nextImmersive)
+        }
+      } else {
+        for (const win of windows) {
+          if (!win.isDestroyed()) {
+            applyConfigToWindow(win, updatedConfig)
+            win.webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+          }
         }
       }
       return { success: true, config: updatedConfig }
@@ -447,10 +539,18 @@ app.whenReady().then(() => {
             try {
               const updatedConfig = loadConfig(configFilePath)
               const windows = BrowserWindow.getAllWindows()
-              for (const win of windows) {
-                if (!win.isDestroyed()) {
-                  applyConfigToWindow(win, updatedConfig)
-                  win.webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+              // 如果外部直接编辑 config.json 改变了 immersive 属性
+              if (updatedConfig.window.immersive !== currentWindowImmersive) {
+                const targetWin = BrowserWindow.getFocusedWindow() || windows[0]
+                if (targetWin && !targetWin.isDestroyed()) {
+                  recreateWindow(targetWin, updatedConfig.window.immersive)
+                }
+              } else {
+                for (const win of windows) {
+                  if (!win.isDestroyed()) {
+                    applyConfigToWindow(win, updatedConfig)
+                    win.webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+                  }
                 }
               }
             } catch {
@@ -478,7 +578,8 @@ app.whenReady().then(() => {
   })
 })
 
-// 除 macOS 外, 全部窗口关闭即退出
+// 除 macOS 外, 全部窗口关闭即退出 (重建窗口过程中忽略此事件)
 app.on('window-all-closed', () => {
+  if (isRecreatingWindow) return
   if (process.platform !== 'darwin') app.quit()
 })
