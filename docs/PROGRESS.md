@@ -698,6 +698,24 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
    - 用户在二级设置页按 Esc 或 Backspace 时，若未在详情层拦截，按键会冒泡至胶囊外层直接收起整个抽屉；
    - **正解**: 在二级详情层挂载全局捕获拦截（`capture: true`），非输入框聚焦时按 Esc / Backspace 优先回退至一级分类总览，再按 Esc 才收起抽屉。
 
+### 4.17 原生窗框与沉浸式无边框模式热切换机制与顶部拖拽踩坑纪律 (2026-09-11)
+
+1. **Electron 无法单实例动态切换 frame 的平台限制与无缝交接重构 (Window Reconstruction Pattern)**:
+   - **症状**: 用户在偏好设置中切换“沉浸式无边框模式”开关后，配置文件虽已写入 `immersive: true`，但当前运行窗口的原生标题栏与边框纹丝不动；
+   - **根因**: Electron 底层依赖 Chromium Views 与操作系统窗口管理器协议（Linux Wayland xdg_toplevel / X11 Motif Hints），`frame: false/true` 为窗口实例化时的不可变硬属性，Electron 未提供任何 `win.setFrame()` 接口；调用 `applyConfigToWindow` 仅在 DOM 上添加了 `data-window-immersive` 属性，无法移除操作系统绘制的外部窗框；
+   - **解决方案**: 在主进程实现 `recreateWindow(oldWin, isImmersive)`：
+     - 保留原窗口的物理坐标、尺寸（bounds）、最大化与全屏状态；
+     - 创建带有相反 `frame` 配置的新 `BrowserWindow` 实例；
+     - 在 `ready-to-show` 时同步原最大化状态并展示新窗口，随后安全销毁旧窗口；
+     - 在 `CONFIG_UPDATE` 与配置目录 watcher 中检测 `prevImmersive !== nextImmersive`，一旦变化即触发无缝交接，视觉过渡自然平滑；
+     - 设置 `isRecreatingWindow` 互斥保护标志，并拦截 `app.on('window-all-closed')`，防止旧窗口销毁时瞬间触发应用退出。
+2. **无边框沉浸式窗口的移动拖拽热区 (Invisible Window Drag Strip)**:
+   - **症状**: 原生窗框移除后，窗口失去了系统标题栏抓手，常规拖拽无法移动窗口；
+   - **解决方案**:
+     - 在 `.stage` 顶部挂载高度为 28px 的 `.window-drag-bar`；
+     - 仅在 `[data-window-immersive='true']` 下激活显示，并赋予 CSS `-webkit-app-region: drag`；
+     - 为 `.sidebar-capsule`、`.status-bar` 以及全局交互元素显式声明 `-webkit-app-region: no-drag`，杜绝拖拽事件污染控制栏。
+
 ---
 
 ## 5. 下一步开发计划 (Next Milestone)
