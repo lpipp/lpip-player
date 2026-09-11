@@ -286,10 +286,14 @@ function FontPickerControl({
   // 输入框 DOM 引用，支持在取消或空值失焦时无延迟同步恢复 DOM 节点值
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // 当用户未处于活跃编辑态时，基准字形始终同步保持为最新已生效的合法字形
-  if (!isEditingRef.current) {
-    initialFontRef.current = currentFont
-  }
+  // 基准字形仅在开始新编辑会话时从当前 prop 同步，避免外部 prop 变更（如测试中直接调 onInputChange）
+  // 覆盖 ref 导致后续 Escape 回退时没有有效 baseline
+  // 若 prop 在空闲态发生变更（如 Reset 按钮），useEffect 会同步一次；否则下次 focus 时由 onFocus 同步
+  useEffect(() => {
+    if (!isEditingRef.current) {
+      initialFontRef.current = currentFont
+    }
+  }, [currentFont])
 
   const handleCommit = useCallback((val: string) => {
     isEditingRef.current = false
