@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, renameSync, unlinkSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { homedir } from 'node:os'
 import { app } from 'electron'
+import type { DeepPartial } from '../types/config'
 
 /**
  * 云母微光色调风格预设
@@ -176,12 +178,13 @@ export interface MpdConfig {
 import {
   DEFAULT_VISUALIZER_CONFIG,
   parseVisualizerConfig,
+  parseMpdConfig,
   type VisualizerConfig,
   type VisualizerStyle
 } from '../types/config'
 
-export type { VisualizerConfig, VisualizerStyle }
-export { DEFAULT_VISUALIZER_CONFIG, parseVisualizerConfig }
+export type { VisualizerConfig, VisualizerStyle, DeepPartial }
+export { DEFAULT_VISUALIZER_CONFIG, parseVisualizerConfig, parseMpdConfig }
 
 /**
  * 应用全局运行时配置结构
@@ -363,11 +366,12 @@ export function parseMicaConfig(rawMica: unknown): MicaConfig {
 export function resolveHomePath(filePath: string): string {
   if (!filePath || typeof filePath !== 'string') return ''
   const trimmed = filePath.trim()
+  const home = app?.getPath ? app.getPath('home') : homedir()
   if (trimmed === '~') {
-    return app.getPath('home')
+    return home
   }
   if (trimmed.startsWith('~/') || trimmed.startsWith('~\\')) {
-    return join(app.getPath('home'), trimmed.slice(2))
+    return join(home, trimmed.slice(2))
   }
   return trimmed
 }
@@ -620,7 +624,8 @@ export function stripJsonComments(text: string): string {
  * 获取运行时配置文件的默认绝对路径 (~/.config/lpip-player/config.json)
  */
 export function getDefaultConfigPath(): string {
-  const configHome = process.env['XDG_CONFIG_HOME'] || join(app.getPath('home'), '.config')
+  const home = app?.getPath ? app.getPath('home') : homedir()
+  const configHome = process.env['XDG_CONFIG_HOME'] || join(home, '.config')
   return join(configHome, 'lpip-player', 'config.json')
 }
 
@@ -660,14 +665,112 @@ export function loadConfig(customPath?: string): AppConfig {
       },
       audio,
       visualizer,
-      mpd: {
-        host: typeof parsed.mpd?.host === 'string' ? parsed.mpd.host : DEFAULT_CONFIG.mpd.host,
-        port: typeof parsed.mpd?.port === 'number' ? parsed.mpd.port : DEFAULT_CONFIG.mpd.port,
-        streamPort: typeof parsed.mpd?.streamPort === 'number' ? parsed.mpd.streamPort : DEFAULT_CONFIG.mpd.streamPort
-      }
+      mpd: parseMpdConfig(parsed.mpd)
     }
   } catch {
     // 遇到解析异常或无权限时, 安全使用默认配置
     return DEFAULT_CONFIG
   }
+}
+
+/**
+ * 递归深度合并对象
+ */
+export function deepMerge<T extends Record<string, unknown>>(target: T, source: Record<string, unknown>): T {
+  const output = { ...target } as Record<string, unknown>
+  if (!source || typeof source !== 'object') return output as T
+  for (const key of Object.keys(source)) {
+    const srcVal = source[key]
+    if (srcVal === undefined) continue
+    const targetVal = output[key]
+    if (
+      srcVal !== null &&
+      typeof srcVal === 'object' &&
+      !Array.isArray(srcVal) &&
+      typeof targetVal === 'object' &&
+      targetVal !== null &&
+      !Array.isArray(targetVal)
+    ) {
+      output[key] = deepMerge(targetVal as Record<string, unknown>, srcVal as Record<string, unknown>)
+    } else {
+      output[key] = srcVal
+    }
+  }
+  return output as T
+}
+
+/**
+ * 安全保存并持久化运行时配置
+ * 1. 与现有配置深度合并
+ * 2. 校验与钳位每一模块数据
+ * 3. 写入前备份至 ~/.config/lpip-player/config.json.bak
+ * 4. 格式化写入 config.json
+ */
+export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: string): AppConfig {
+  const configPath = customPath || process.env['LPIP_CONFIG_PATH'] || getDefaultConfigPath()
+  const currentConfig = loadConfig(configPath)
+
+  if (!partialConfig || typeof partialConfig !== 'object') {
+    return currentConfig
+  }
+
+  const merged = deepMerge(
+    currentConfig as unknown as Record<string, unknown>,
+    partialConfig as Record<string, unknown>
+  ) as unknown as Partial<AppConfig>
+
+  const theme = parseThemeConfig(merged.window?.theme)
+  const background = parseBackgroundConfig(merged.window?.background, merged.window?.mica)
+  const sidebar = parseSidebarConfig(merged.window?.sidebar)
+  const audio = parseAudioConfig(merged.audio)
+  const visualizer = parseVisualizerConfig(merged.visualizer)
+  const mpd = parseMpdConfig(merged.mpd)
+
+  const finalConfig: AppConfig = {
+    window: {
+      immersive:
+        typeof merged.window?.immersive === 'boolean'
+          ? merged.window.immersive
+          : currentConfig.window.immersive,
+      theme,
+      background,
+      sidebar,
+      mica: background.mica
+    },
+    audio,
+    visualizer,
+    mpd
+  }
+
+  const dir = dirname(configPath)
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+
+  // 写入前安全备份至 .bak
+  if (existsSync(configPath)) {
+    try {
+      copyFileSync(configPath, `${configPath}.bak`)
+    } catch (err) {
+      console.error('[lpip-player:config] 创建配置文件备份失败:', err)
+    }
+  }
+
+  const formattedJson = JSON.stringify(finalConfig, null, 2)
+  const tempPath = `${configPath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
+  try {
+    writeFileSync(tempPath, formattedJson, 'utf-8')
+    renameSync(tempPath, configPath)
+  } catch (err) {
+    if (existsSync(tempPath)) {
+      try {
+        unlinkSync(tempPath)
+      } catch {
+        // 忽略清理临时文件的瞬态异常
+      }
+    }
+    throw err
+  }
+
+  return finalConfig
 }

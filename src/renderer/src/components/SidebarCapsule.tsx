@@ -4,6 +4,7 @@ import MusicLibraryList from './MusicLibraryList'
 import QueueDrawer from './QueueDrawer'
 import ArtistDrawer from './ArtistDrawer'
 import PlaylistDrawer from './PlaylistDrawer'
+import SettingsDrawer from './SettingsDrawer'
 import './SidebarCapsule.css'
 
 /**
@@ -455,7 +456,9 @@ export default function SidebarCapsule({
                   ? 'subpanel-content-artists'
                   : activeModuleId === 'playlists'
                     ? 'subpanel-content-playlists'
-                    : ''
+                    : activeModuleId === 'settings'
+                      ? 'subpanel-content-settings'
+                      : ''
           }`}
         >
           {activeModuleId === 'library' ? (
@@ -484,6 +487,8 @@ export default function SidebarCapsule({
               onPlaySong={onPlaySong}
               onAddToQueue={onAddToQueue}
             />
+          ) : activeModuleId === 'settings' ? (
+            <SettingsDrawer />
           ) : (
             <>
               <div className="subpanel-section-hint">

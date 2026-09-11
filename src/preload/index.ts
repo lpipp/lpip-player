@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../main/ipc-channels'
 import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode } from '../types/music'
-import type { AppConfig } from '../main/config'
+import type { AppConfig, DeepPartial } from '../types/config'
 
 /**
  * 暴露给渲染进程的安全 API 接口定义
@@ -70,6 +70,8 @@ export interface ElectronAPI {
   config: {
     /** 获取当前应用全局运行时配置 */
     get: () => Promise<AppConfig>
+    /** 更新应用运行时配置并安全持久化 */
+    update: (partial: DeepPartial<AppConfig>) => Promise<{ success: boolean; config: AppConfig; error?: string }>
     /** 监听配置文件变更并触发回调 */
     onChange: (callback: (config: AppConfig) => void) => () => void
   }
@@ -126,6 +128,8 @@ const api: ElectronAPI = {
   },
   config: {
     get: () => ipcRenderer.invoke(IPC_CHANNELS.CONFIG_GET),
+    update: (partial: DeepPartial<AppConfig>) =>
+      ipcRenderer.invoke(IPC_CHANNELS.CONFIG_UPDATE, partial),
     onChange: (callback: (config: AppConfig) => void) => {
       const handler = (_event: unknown, cfg: AppConfig): void => callback(cfg)
       ipcRenderer.on(IPC_CHANNELS.CONFIG_CHANGED, handler)

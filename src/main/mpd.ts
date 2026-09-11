@@ -421,6 +421,7 @@ export async function getStatus(): Promise<MpdStatus> {
       })
     }
 
+    result.connected = true
     return result
   } catch (error) {
     console.error('[lpip-player:mpd] 查询状态失败:', error)
@@ -435,7 +436,8 @@ export async function getStatus(): Promise<MpdStatus> {
       repeat: false,
       random: false,
       single: false,
-      mode: 'sequence'
+      mode: 'sequence',
+      connected: false
     }
   }
 }

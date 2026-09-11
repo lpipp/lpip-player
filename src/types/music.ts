@@ -79,6 +79,8 @@ export interface MpdStatus {
   single: boolean
   /** 当前播放模式 ('sequence' | 'shuffle' | 'single') */
   mode: PlaybackMode
+  /** MPD 服务端连接健康状态 (true: 已连接流通, false: 离线或连接失败) */
+  connected?: boolean
 }
 
 /**

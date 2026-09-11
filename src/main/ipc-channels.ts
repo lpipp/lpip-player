@@ -63,6 +63,8 @@ export const IPC_CHANNELS = {
   MPD_STATUS_CHANGED: 'mpd:status-changed',
   /** 获取当前应用全局配置 */
   CONFIG_GET: 'config:get',
+  /** 更新当前应用全局配置并安全持久化 */
+  CONFIG_UPDATE: 'config:update',
   /** 主进程向渲染层广播的配置变更事件 (文件热更新) */
   CONFIG_CHANGED: 'config:changed'
 } as const

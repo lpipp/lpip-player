@@ -1,9 +1,11 @@
-import { existsSync, watch } from 'node:fs'
-import { extname, join } from 'node:path'
+import { existsSync, watch, mkdirSync } from 'node:fs'
+import { extname, join, dirname, basename } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, protocol, net, ipcMain } from 'electron'
 
-import { loadConfig, getDefaultConfigPath } from './config'
+import { loadConfig, getDefaultConfigPath, saveConfig, type AppConfig, type DeepPartial } from './config'
+export { loadConfig, saveConfig, getDefaultConfigPath }
+export type { AppConfig, DeepPartial }
 import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
 import { IPC_CHANNELS } from './ipc-channels'
 import type { PlaybackMode } from '../types/music'
@@ -69,6 +71,107 @@ protocol.registerSchemesAsPrivileged([
   }
 ])
 
+/**
+ * 将最新的应用配置即时同步并注入到指定的 BrowserWindow
+ * 包含 CSS 变量与 HTML data 属性，无须重新加载页面即可实现即时视觉热生效
+ */
+export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void {
+  if (!win || win.isDestroyed()) return
+
+  const { background, theme, sidebar } = config.window
+  const wpPayload = background.mode === 'wallpaper' ? resolveWallpaperPayload(background.wallpaper) : null
+
+  const script = `
+    (() => {
+      try {
+        const root = document.documentElement;
+        const s = root.style;
+
+        // 窗口沉浸式形态标记
+        root.setAttribute('data-window-immersive', ${JSON.stringify(String(config.window.immersive))});
+
+        // 1. 窗口背景模式与相关材质/壁纸参数
+        const mode = ${JSON.stringify(background.mode)};
+        root.setAttribute('data-bg-mode', mode);
+
+        if (mode === 'mica') {
+          root.setAttribute('data-mica', 'true');
+          root.setAttribute('data-mica-style', ${JSON.stringify(background.mica.style)});
+          root.setAttribute('data-mica-border', ${JSON.stringify(String(background.mica.border))});
+          root.removeAttribute('data-wallpaper-type');
+          root.removeAttribute('data-wallpaper-url');
+
+          s.setProperty('--mica-grain-opacity', ${JSON.stringify(String(background.mica.grainOpacity))});
+          s.setProperty('--mica-tint-opacity', ${JSON.stringify(String(background.mica.tintOpacity))});
+          s.setProperty('--mica-edge-highlight', ${JSON.stringify(String(background.mica.edgeHighlight))});
+        } else if (mode === 'wallpaper') {
+          root.removeAttribute('data-mica');
+          const wpPayload = ${JSON.stringify(wpPayload)};
+          if (wpPayload) {
+            root.setAttribute('data-wallpaper-type', wpPayload.mediaType);
+            root.setAttribute('data-wallpaper-url', wpPayload.mediaUrl);
+            root.setAttribute('data-wallpaper-blur', String(wpPayload.blur));
+            root.setAttribute('data-wallpaper-overlay-opacity', String(wpPayload.overlayOpacity));
+            root.setAttribute('data-wallpaper-fit', wpPayload.fit);
+            root.setAttribute('data-wallpaper-muted', String(wpPayload.muted));
+            root.setAttribute('data-wallpaper-loop', String(wpPayload.loop));
+            root.setAttribute('data-wallpaper-playback-rate', String(wpPayload.playbackRate));
+
+            s.setProperty('--wallpaper-image', 'url("' + wpPayload.mediaUrl + '")');
+            s.setProperty('--wallpaper-media-url', 'url("' + wpPayload.mediaUrl + '")');
+            s.setProperty('--wallpaper-blur', wpPayload.blur + 'px');
+            s.setProperty('--wallpaper-overlay-opacity', String(wpPayload.overlayOpacity));
+            s.setProperty('--wallpaper-fit', wpPayload.fit);
+          } else {
+            root.setAttribute('data-bg-mode', 'default');
+            root.removeAttribute('data-wallpaper-type');
+            root.removeAttribute('data-wallpaper-url');
+          }
+        } else {
+          root.removeAttribute('data-mica');
+          root.removeAttribute('data-wallpaper-type');
+          root.removeAttribute('data-wallpaper-url');
+        }
+
+        // 2. 主题明暗、微调偏移与对比度
+        root.setAttribute('data-theme', ${JSON.stringify(theme.mode)});
+        root.setAttribute('data-theme-brightness', ${JSON.stringify(String(theme.brightness))});
+        root.setAttribute('data-theme-contrast', ${JSON.stringify(String(theme.contrast))});
+        s.setProperty('--theme-mode', ${JSON.stringify(theme.mode)});
+        s.setProperty('--theme-brightness', ${JSON.stringify(String(theme.brightness))});
+        s.setProperty('--theme-contrast', ${JSON.stringify(String(theme.contrast))});
+
+        // 3. 侧边悬浮胶囊抽屉
+        const sidebarEnabled = ${JSON.stringify(sidebar.enabled)};
+        root.setAttribute('data-sidebar-enabled', String(sidebarEnabled));
+        if (sidebarEnabled) {
+          root.setAttribute('data-sidebar-opacity', ${JSON.stringify(String(sidebar.opacity))});
+          root.setAttribute('data-sidebar-glow-hint', ${JSON.stringify(String(sidebar.glowHint))});
+          root.setAttribute('data-sidebar-trigger-delay', ${JSON.stringify(String(sidebar.triggerDelay))});
+          root.setAttribute('data-sidebar-close-delay', ${JSON.stringify(String(sidebar.closeDelay))});
+          root.setAttribute('data-sidebar-close-buffer', ${JSON.stringify(String(sidebar.closeBuffer))});
+          root.setAttribute('data-sidebar-vertical-extension', ${JSON.stringify(String(sidebar.verticalExtension))});
+
+          s.setProperty('--sidebar-opacity', ${JSON.stringify(String(sidebar.opacity))});
+          s.setProperty('--sidebar-bg', 'rgba(14, 16, 24, ' + ${JSON.stringify(String(sidebar.opacity))} + ')');
+          s.setProperty('--sidebar-bg-hover', 'rgba(18, 21, 32, ' + ${JSON.stringify(String(Math.min(1, sidebar.opacity + 0.08)))} + ')');
+          s.setProperty('--sidebar-bg-expanded', 'rgba(12, 14, 22, ' + ${JSON.stringify(String(Math.min(1, sidebar.opacity + 0.12)))} + ')');
+          s.setProperty('--sidebar-width', ${JSON.stringify(`${sidebar.width}px`)});
+          s.setProperty('--sidebar-trigger-width', ${JSON.stringify(`${sidebar.triggerWidth}px`)});
+          s.setProperty('--sidebar-close-buffer', ${JSON.stringify(`${sidebar.closeBuffer}px`)});
+          s.setProperty('--sidebar-vertical-extension', ${JSON.stringify(`${sidebar.verticalExtension}px`)});
+          s.setProperty('--sidebar-duration', ${JSON.stringify(`${sidebar.animationDuration}ms`)});
+          s.setProperty('--sidebar-easing', ${JSON.stringify(sidebar.animationEasing)});
+        }
+      } catch (err) {
+        console.error('[lpip-player:applyConfigToWindow] 注入配置异常:', err);
+      }
+    })();
+  `
+
+  win.webContents.executeJavaScript(script).catch(() => {})
+}
+
 function createWindow(): void {
   // 读取运行时配置, 判定是否开启沉浸式效果
   const config = loadConfig()
@@ -91,111 +194,9 @@ function createWindow(): void {
     }
   })
 
-  // 页面加载完成后, 根据配置注入相应的窗口背景效果 (云母、自定义壁纸或默认基底)
+  // 页面加载完成后, 注入最新的运行时配置 (云母、壁纸、主题与悬浮胶囊等)
   win.webContents.on('did-finish-load', () => {
-    const { background } = config.window
-
-    if (background.mode === 'mica') {
-      const { grainOpacity, tintOpacity, edgeHighlight, style, border } = background.mica
-      win.webContents.insertCSS(
-        `:root {
-          --mica-grain-opacity: ${grainOpacity};
-          --mica-tint-opacity: ${tintOpacity};
-          --mica-edge-highlight: ${edgeHighlight};
-        }`
-      )
-      win.webContents.executeJavaScript(
-        `document.documentElement.setAttribute('data-bg-mode', 'mica');
-         document.documentElement.setAttribute('data-mica', 'true');
-         document.documentElement.setAttribute('data-mica-style', '${style}');
-         document.documentElement.setAttribute('data-mica-border', '${border}');`
-      )
-    } else if (background.mode === 'wallpaper') {
-      const payload = resolveWallpaperPayload(background.wallpaper)
-      if (payload) {
-        win.webContents.insertCSS(
-          `:root {
-            --wallpaper-image: url("${payload.mediaUrl}");
-            --wallpaper-media-url: url("${payload.mediaUrl}");
-            --wallpaper-blur: ${payload.blur}px;
-            --wallpaper-overlay-opacity: ${payload.overlayOpacity};
-            --wallpaper-fit: ${payload.fit};
-          }`
-        )
-        win.webContents.executeJavaScript(
-          `document.documentElement.setAttribute('data-bg-mode', 'wallpaper');
-           document.documentElement.setAttribute('data-wallpaper-type', '${payload.mediaType}');
-           document.documentElement.setAttribute('data-wallpaper-url', '${payload.mediaUrl}');
-           document.documentElement.setAttribute('data-wallpaper-blur', '${payload.blur}');
-           document.documentElement.setAttribute('data-wallpaper-overlay-opacity', '${payload.overlayOpacity}');
-           document.documentElement.setAttribute('data-wallpaper-fit', '${payload.fit}');
-           document.documentElement.setAttribute('data-wallpaper-muted', '${payload.muted}');
-           document.documentElement.setAttribute('data-wallpaper-loop', '${payload.loop}');
-           document.documentElement.setAttribute('data-wallpaper-playback-rate', '${payload.playbackRate}');
-           document.documentElement.removeAttribute('data-mica');`
-        )
-      } else {
-        win.webContents.executeJavaScript(
-          `document.documentElement.setAttribute('data-bg-mode', 'default');
-           document.documentElement.removeAttribute('data-wallpaper-type');
-           document.documentElement.removeAttribute('data-wallpaper-url');
-           document.documentElement.removeAttribute('data-mica');`
-        )
-      }
-    } else {
-      win.webContents.executeJavaScript(
-        `document.documentElement.setAttribute('data-bg-mode', 'default');
-         document.documentElement.removeAttribute('data-wallpaper-type');
-         document.documentElement.removeAttribute('data-wallpaper-url');
-         document.documentElement.removeAttribute('data-mica');`
-      )
-    }
-
-    // 注入明暗主题与微调配置 (CSS 变量与 HTML 属性)
-    const { theme, sidebar } = config.window
-    win.webContents.insertCSS(
-      `:root {
-        --theme-mode: ${theme.mode};
-        --theme-brightness: ${theme.brightness};
-        --theme-contrast: ${theme.contrast};
-      }`
-    )
-    win.webContents.executeJavaScript(
-      `document.documentElement.setAttribute('data-theme', '${theme.mode}');
-       document.documentElement.setAttribute('data-theme-brightness', '${theme.brightness}');
-       document.documentElement.setAttribute('data-theme-contrast', '${theme.contrast}');`
-    )
-
-    // 注入左侧滑出气泡弹窗配置 (CSS 变量与触发参数)
-    if (sidebar.enabled) {
-      win.webContents.insertCSS(
-        `:root {
-          --sidebar-opacity: ${sidebar.opacity};
-          --sidebar-bg: rgba(14, 16, 24, ${sidebar.opacity});
-          --sidebar-bg-hover: rgba(18, 21, 32, ${Math.min(1, sidebar.opacity + 0.08)});
-          --sidebar-bg-expanded: rgba(12, 14, 22, ${Math.min(1, sidebar.opacity + 0.12)});
-          --sidebar-width: ${sidebar.width}px;
-          --sidebar-trigger-width: ${sidebar.triggerWidth}px;
-          --sidebar-close-buffer: ${sidebar.closeBuffer}px;
-          --sidebar-vertical-extension: ${sidebar.verticalExtension}px;
-          --sidebar-duration: ${sidebar.animationDuration}ms;
-          --sidebar-easing: ${sidebar.animationEasing};
-        }`
-      )
-      win.webContents.executeJavaScript(
-        `document.documentElement.setAttribute('data-sidebar-enabled', 'true');
-         document.documentElement.setAttribute('data-sidebar-opacity', '${sidebar.opacity}');
-         document.documentElement.setAttribute('data-sidebar-glow-hint', '${sidebar.glowHint}');
-         document.documentElement.setAttribute('data-sidebar-trigger-delay', '${sidebar.triggerDelay}');
-         document.documentElement.setAttribute('data-sidebar-close-delay', '${sidebar.closeDelay}');
-         document.documentElement.setAttribute('data-sidebar-close-buffer', '${sidebar.closeBuffer}');
-         document.documentElement.setAttribute('data-sidebar-vertical-extension', '${sidebar.verticalExtension}');`
-      )
-    } else {
-      win.webContents.executeJavaScript(
-        `document.documentElement.setAttribute('data-sidebar-enabled', 'false');`
-      )
-    }
+    applyConfigToWindow(win, loadConfig())
   })
 
   // 渲染完成再显示, 避免白屏闪烁
@@ -404,24 +405,59 @@ app.whenReady().then(() => {
     return loadConfig()
   })
 
-  // 监听配置文件变更并向渲染层广播热更新
-  const configFilePath = getDefaultConfigPath()
-  let configDebounceTimer: ReturnType<typeof setTimeout> | null = null
-  if (existsSync(configFilePath)) {
+  // 更新当前应用全局配置并安全持久化
+  ipcMain.handle(IPC_CHANNELS.CONFIG_UPDATE, async (_event, partial: DeepPartial<AppConfig>) => {
     try {
-      watch(configFilePath, () => {
-        if (configDebounceTimer) clearTimeout(configDebounceTimer)
-        configDebounceTimer = setTimeout(() => {
-          try {
-            const updatedConfig = loadConfig()
-            const windows = BrowserWindow.getAllWindows()
-            if (windows.length > 0 && !windows[0].isDestroyed()) {
-              windows[0].webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+      const updatedConfig = saveConfig(partial)
+      const windows = BrowserWindow.getAllWindows()
+      for (const win of windows) {
+        if (!win.isDestroyed()) {
+          applyConfigToWindow(win, updatedConfig)
+          win.webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+        }
+      }
+      return { success: true, config: updatedConfig }
+    } catch (err) {
+      console.error('[lpip-player:main] CONFIG_UPDATE 异常:', err)
+      const current = loadConfig(process.env['LPIP_CONFIG_PATH'] || getDefaultConfigPath())
+      return { success: false, config: current, error: (err as Error).message }
+    }
+  })
+
+  // 监听配置文件变更并向渲染层广播热更新 (监听父目录以兼容原子 rename 与冷启动未创建场景)
+  const configFilePath = process.env['LPIP_CONFIG_PATH'] || getDefaultConfigPath()
+  const configDir = dirname(configFilePath)
+  const configFileName = basename(configFilePath)
+  if (!existsSync(configDir)) {
+    try {
+      mkdirSync(configDir, { recursive: true })
+    } catch {
+      // 忽略目录预创建瞬态异常
+    }
+  }
+
+  let configDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  if (existsSync(configDir)) {
+    try {
+      watch(configDir, (_eventType, filename) => {
+        // 严格过滤仅处理目标配置文件变更，规避 .bak 与 .tmp 引起的循环广播
+        if (!filename || filename === configFileName) {
+          if (configDebounceTimer) clearTimeout(configDebounceTimer)
+          configDebounceTimer = setTimeout(() => {
+            try {
+              const updatedConfig = loadConfig(configFilePath)
+              const windows = BrowserWindow.getAllWindows()
+              for (const win of windows) {
+                if (!win.isDestroyed()) {
+                  applyConfigToWindow(win, updatedConfig)
+                  win.webContents.send(IPC_CHANNELS.CONFIG_CHANGED, updatedConfig)
+                }
+              }
+            } catch {
+              // 忽略文件读取过程中的瞬态竞争
             }
-          } catch {
-            // 忽略文件读取过程中的瞬态竞争
-          }
-        }, 150)
+          }, 150)
+        }
       })
     } catch {
       // 忽略文件监听异常

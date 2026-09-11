@@ -1,0 +1,794 @@
+/* ============================================================
+   偏好设置专属抽屉样式 (SettingsDrawer.css)
+   设计规范:
+   1. 404px 视窗空间极致利用, 卡片宽度定格 380px
+   2. 双级钻取 (Two-Tier Drill-Down) 画册流转场
+   3. 动静分离铁律 (文字坐标绝对静止 ΔX=ΔY=0px, ::before 承载微光)
+   4. 数字防抖铁律 (所有数值指示器强制 tabular-nums)
+   5. 原生液态玻璃控件 (ToggleSwitch, SliderControl, SegmentedControl)
+   6. 统一挂载 .liquid-scrollbar 5px 液态滑动条
+   ============================================================ */
+
+.settings-drawer-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------
+   层级 1: 分类总览层 (Overview Tier)
+   ------------------------------------------------------------ */
+.settings-overview-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 顶部状态提示栏 */
+.settings-overview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-toolbar-title-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-toolbar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6ee7b7;
+  box-shadow: 0 0 8px #6ee7b7;
+}
+
+.settings-toolbar-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.3px;
+}
+
+.settings-toolbar-badge {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: rgba(110, 231, 183, 0.85);
+  background: rgba(110, 231, 183, 0.1);
+  border: 1px solid rgba(110, 231, 183, 0.22);
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+}
+
+/* 滚动容器 */
+.settings-scroll-area {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 12px 12px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* 5 大分类画册卡片 (定格 380px 宽度) */
+.settings-category-card {
+  position: relative;
+  width: 380px;
+  min-height: 68px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  cursor: pointer;
+  outline: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+/* 动静分离铁律: 宿主容器文字绝对静止, ::before 承载背景与微光 */
+.settings-category-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    background 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 0;
+}
+
+.settings-category-card:hover::before {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(110, 231, 183, 0.35);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.38),
+    0 0 14px rgba(110, 231, 183, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transform: scale(1.012);
+}
+
+.settings-category-card:active::before {
+  transform: scale(0.995);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.settings-category-card:focus-visible::before {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(110, 231, 183, 0.6);
+  box-shadow:
+    0 0 0 2px rgba(110, 231, 183, 0.4),
+    0 6px 20px rgba(0, 0, 0, 0.38),
+    0 0 14px rgba(110, 231, 183, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+/* 卡片内部元素定格在 z-index: 1, 保证文字无坐标位移 */
+.settings-card-icon-box {
+  position: relative;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(110, 231, 183, 0.08);
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 12px;
+  transition: all 0.22s ease;
+}
+
+.settings-category-card:hover .settings-card-icon-box {
+  background: rgba(110, 231, 183, 0.15);
+  border-color: rgba(110, 231, 183, 0.4);
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.2);
+}
+
+.settings-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.94);
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+.settings-card-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.settings-card-arrow {
+  position: relative;
+  z-index: 1;
+  color: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.settings-category-card:hover .settings-card-arrow {
+  color: #6ee7b7;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.4));
+}
+
+/* ------------------------------------------------------------
+   层级 2: 设置详情层 (Detail Tier)
+   ------------------------------------------------------------ */
+.settings-detail-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 顶部微画卷 Hero 卡片 */
+.settings-detail-hero {
+  position: relative;
+  width: 100%;
+  padding: 0 12px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.settings-hero-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 极简返回按键 (‹ 全部设置) */
+.settings-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-back-btn:hover {
+  background: rgba(110, 231, 183, 0.15);
+  border-color: rgba(110, 231, 183, 0.4);
+  color: #6ee7b7;
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.15);
+}
+
+.settings-back-btn:focus-visible {
+  background: rgba(110, 231, 183, 0.15);
+  border-color: rgba(110, 231, 183, 0.6);
+  color: #6ee7b7;
+  outline: 2px solid rgba(110, 231, 183, 0.5);
+  outline-offset: 1px;
+}
+
+.settings-hero-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-hero-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(110, 231, 183, 0.1);
+  border: 1px solid rgba(110, 231, 183, 0.25);
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-hero-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-hero-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.4px;
+}
+
+.settings-hero-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 详情项卡片组 (定格 380px 宽度) */
+.settings-group-card {
+  position: relative;
+  width: 380px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.settings-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 7px;
+}
+
+.settings-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.settings-group-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(110, 231, 183, 0.8);
+  background: rgba(110, 231, 183, 0.08);
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.settings-control-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-control-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.settings-control-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   原生交互控件 1: 开关 (Toggle Switch)
+   ------------------------------------------------------------ */
+.liquid-toggle-btn {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  outline: none;
+  padding: 2px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-toggle-btn:focus-visible {
+  outline: 2px solid rgba(110, 231, 183, 0.6);
+  outline-offset: 2px;
+}
+
+.liquid-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.liquid-toggle-btn.checked {
+  background: rgba(110, 231, 183, 0.25);
+  border-color: rgba(110, 231, 183, 0.6);
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.25);
+}
+
+.liquid-toggle-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease;
+}
+
+.liquid-toggle-btn.checked .liquid-toggle-thumb {
+  transform: translateX(18px);
+  background: #6ee7b7;
+  box-shadow: 0 0 6px #6ee7b7;
+}
+
+/* ------------------------------------------------------------
+   原生交互控件 2: 滑轨 (Slider Control)
+   ------------------------------------------------------------ */
+.liquid-slider-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.liquid-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.liquid-slider-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.1);
+  border: 1px solid rgba(110, 231, 183, 0.22);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+}
+
+.liquid-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.liquid-slider-input:focus {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.liquid-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #6ee7b7;
+  border: 2px solid #0a0a0f;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.6);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.liquid-slider-input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.9);
+}
+
+.liquid-slider-input::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 0 0 14px #6ee7b7;
+}
+
+/* ------------------------------------------------------------
+   原生交互控件 3: 分段单选控件 (Segmented Control)
+   ------------------------------------------------------------ */
+.liquid-segmented-group {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.liquid-segment-btn {
+  flex: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 6px;
+  cursor: pointer;
+  outline: none;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-segment-btn:hover {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.liquid-segment-btn.active {
+  background: rgba(110, 231, 183, 0.16);
+  border-color: rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.15);
+}
+
+.liquid-segment-btn:focus-visible {
+  outline: 2px solid rgba(110, 231, 183, 0.6);
+  outline-offset: -1px;
+}
+
+/* ------------------------------------------------------------
+   原生交互控件 4: 纯文本/数字输入框 (Text & Number Input)
+   ------------------------------------------------------------ */
+.liquid-text-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 11.5px;
+  padding: 6px 9px;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+  transition: all 0.18s ease;
+}
+
+.liquid-text-input:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(110, 231, 183, 0.45);
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.2);
+}
+
+.liquid-text-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* 操作按键 (Action Button) */
+.liquid-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background: rgba(110, 231, 183, 0.14);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-action-btn:hover {
+  background: rgba(110, 231, 183, 0.24);
+  border-color: rgba(110, 231, 183, 0.6);
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.35);
+}
+
+.liquid-action-btn:active {
+  background: rgba(110, 231, 183, 0.32);
+}
+
+.liquid-action-btn:focus-visible {
+  outline: 2px solid rgba(110, 231, 183, 0.6);
+  outline-offset: 2px;
+}
+
+.liquid-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  box-shadow: none;
+}
+
+.liquid-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.liquid-action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+/* 只读信息清单 (Readonly Spec List) */
+.liquid-spec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+
+.liquid-spec-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  padding: 3px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.liquid-spec-item:last-child {
+  border-bottom: none;
+}
+
+.liquid-spec-key {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.liquid-spec-val {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.liquid-spec-val.highlight {
+  color: #6ee7b7;
+}
+
+/* 快捷键列表 */
+.liquid-shortcut-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.liquid-shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+}
+
+.liquid-kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.1);
+  border: 1px solid rgba(110, 231, 183, 0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.liquid-shortcut-desc {
+  color: rgba(255, 255, 255, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 状态徽章 */
+.liquid-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.liquid-status-badge.connected {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.3);
+}
+
+.liquid-status-badge.disconnected {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.liquid-status-dot-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: dotPulse 2s infinite ease-in-out;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* 异常状态提示横幅 (Liquid Glass Error Banner) */
+.settings-error-banner {
+  margin: 6px 12px 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  animation: bannerFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-error-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #f87171;
+  box-shadow: 0 0 6px #f87171;
+  flex-shrink: 0;
+}
+
+.settings-error-text {
+  font-size: 11px;
+  color: #fca5a5;
+  font-weight: 500;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+@keyframes bannerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
