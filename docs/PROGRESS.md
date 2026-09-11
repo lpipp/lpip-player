@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-11
-> 当前阶段: M2-2 (悬浮面板全局最小 12px 字阶托底落地，低 PPI 可读性补齐；封面预压缩双档缓存与提取并发上限落地，曲库/队列/艺人/歌单封面统一走 512px 缩略图，原图档留待 M2-3 黑胶大舞台)
-> 最新进展: 悬浮面板六组件 75 处 <12px 字号托底 12px（硬编码 9~11.5px 全量上调 + hint 变量 calc 负偏移归零 + hint 默认 11→12），ui/hint 解析钳位收紧为 12 起跳，行盒同步补偿防夹行溢出；单测 11/11 + e2e 新增 Step 11 computed 扫描全绿（提交 d229c2a），详见 §2.20 与 §4.23
+> 当前阶段: M2-2 (全界面文字受控分层映射联动设置落地，设置页自身同步缩放；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
+> 最新进展: 九组件 89 处硬编码字号全量变量化（HINT/TITLE/MODAL/HERO/ICON 五层语义映射，拖 ui/hint 滑条整组联动，设置页自身同步缩放），全局 12px 托底收口（translation/ui 钳位与滑条 min、badge 负偏移、global.css/example 基线）；单测 11/11 + e2e 新增 Step 12 联动验收全绿（提交 0e43511），详见 §2.21 与 §4.24
 
 ---
 
@@ -483,6 +483,14 @@
 - **测试闭环**: 单测 11/11（Test 3 钳位期望更新 + 新增 Test 11 全局托底断言）；e2e Step 9 重置期望 hint `11px→12px` + 新增 **Step 11 computed 扫描**（TreeWalker 遍历胶囊内真实文本宿主 computed font-size，`<12px` 即失败）；typecheck/build 全绿。
 - **实测（CDP 9222 探针，HMR 热更后 reload）**: 曲库 436 行 / 队列 10 行 / 艺人 L1 238 卡 / 歌单 L1 / 艺人 L2 单曲 / 歌单 L2 10 行，`<12px=0、夹行=0、溢出=0`；用户桌面窗口保留运行，亲手核验排版。
 
+### 2.21 全界面文字受控分层映射联动设置 (`Typography Layered Mapping`) - 2026-09-11 完成
+
+> **结论先行：界面每一个文字都能通过设置更改，设置页自身同步缩放。** 九组件 89 处硬编码 `font-size` 全量变量化，零硬编码残留；五层语义映射（HINT=hint 直挂 / TITLE=ui 直挂 / MODAL=ui+0.5 / HERO=ui+3 / ICON=ui+1），拖 ui/hint 滑条整组联动；全局 12px 托底收口，单测 11/11 + e2e Step 12 联动验收全绿。
+
+- **分层映射施工**: MusicLibraryList 4 / QueueDrawer 5 / ArtistDrawer 16 / PlaylistDrawer 32 / SettingsDrawer 23 / SidebarBubble 4 / SidebarCapsule 5（含 StatusBar 3 处 hint 11→12 回退基线同步）；缺 `font-family` 的块同步补 `var(--font-family-ui/hint)` 族；`font:` 简写与 TSX 内联经查零残留（仅 StatusBar SVG 装饰数字 `fontSize="8"`，非界面文字，不管）。
+- **12px 托底收口**: translation 解析/DOM 钳位/滑条 min `10→12`，ui DOM 钳位 `11→12`，badge 负偏移归零（StatusBar `-1.5px`、Capsule `-0.5px`，Capsule 以 `+0px` 形式保留声明可溯），`global.css` hint 默认 `11→12`，`config.example.json` hint `11→12`（此前托底会话遗留）。
+- **测试闭环**: 单测 Test 3 翻译钳位期望 `10→12`；e2e 新增 **Step 12 联动验收**（ui 13→18 / hint 12→16 时设置页自身三处 computed 同步放大且可恢复基线，全程 `<12px=0`）；typecheck/build 全绿；CDP 9222 实测 Step 12 `13.5→18.5 / 12→16 / 13→18` 联动成立、恢复基线一致，Step 11 托底扫描仍为 0。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -880,3 +888,11 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 1. **grep 声明值只能算施工清单，不能算验收**: `font-size: 11px` 改完后 grep 零残留，但 `calc(var(--font-size-hint, 11px) - 2px)` 这类声明在变量注入前渲染值仅 9px，且变量默认值（hint=11）本身就是渲染链一环。验收必须以浏览器 **computed font-size 扫描**为准（TreeWalker 遍历真实文本宿主，跳过 `visibility:hidden`/收起态隔离节点）。
 2. **e2e 断言会随设计基线漂移，需同步更新**: 重置默认值 hint `11→12` 后，Step 9 的 `hintSizeVar === '11px'` 与落盘 `fontSize === 11` 断言立即变红 —— 这是设计变更的正常连带，不是回归。改默认值时必须同步 grep 测试文件中的旧基线期望。
 3. **首次全量扫描的「3 行夹行」是探针误报**: 首轮 CDP 探针报 3 行标题被夹（21px vs 行高 19px），但该探针在抽屉未展开（0 行）与虚拟化中途（索引越界）两种状态下都跑过；重载后在正确抽屉态重扫 436 行夹行=0。教训：探针必须先断言「行数符合预期」（如曲库 436 行），再谈行盒结论，否则就是在对空集合/错位索引做诊断。
+
+### 4.24 分层映射三纪律：语义层 × 无残留 × 自证联动 (2026-09-11)
+
+全文字受控改造中沉淀的施工纪律：
+
+1. **按语义分层，不按原像素值分层**: 同是 12px，徽标/副行归 HINT（跟 hint 走），按钮/输入框归 HINT（跟 hint 走），卡片名/分组标题归 TITLE/MODAL（跟 ui 走）。原值只决定它是小字还是标题，不决定它跟哪个滑条。
+2. **硬编码清零必须含 font-family 与简写/内联**: 光改 `font-size` 不够，同块缺 `font-family` 必须补 var 族；另须 grep `font:` 简写与 TSX 内联 `fontSize/fontFamily`（本次仅 SVG 装饰数字，不管）。否则字号联动了字形仍不受控。
+3. **联动必须由设置页自身实测自证**: Step 12 直接拖动设置页内两根滑条，断言设置页自身三处 computed 同步放大且可恢复基线 —— 设置页自己就是联动的第一证人，不依赖跨抽屉展开状态。
