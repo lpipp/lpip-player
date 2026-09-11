@@ -448,6 +448,21 @@
   - `test-typography-unit.mjs`: 10/10 单元测试全数通过（含空值回退、边界钳位、旧版平铺格式兼容、安全转义与别名解析）；
   - `test-typography-e2e.mjs`: 11/11 端到端实机交互全数通过（含一级卡片检测、钻取详情、胶囊点击、滑块连续拖拽防抖、安全清洗、输入回退与重置默认）。
 
+### 2.18 音频与性能深度体检 (`Audio & Performance Health Audit`) - 2026-09-11 完成
+
+> **结论先行：核心音频指标全部健康，零缺陷。** 体检期间发现的 3 个疑似异常（CPU 偏高、采样率漂移、全局调试变量缺失）经复核全部澄清：前两者为探针自身偏差与正常自适应，后者为既有 CDP 指标已覆盖，无需改代码。
+
+- **体检方法**：免安装依赖探针脚本（Node 24 原生 `globalThis.WebSocket` 直连 CDP 9222 + 原生 TCP 直连 MPD 6600 + `/proc/<pid>/stat` 差分采样），可复用于后续回归体检（脚本在会话临时目录，需要时可按本文档方法重建）。
+- **核心音频指标实测（播放中 30 秒窗，200ms 采样）**：
+  - `consoleErrors = 0`，页面零报错；
+  - 调度健康度 `leadMs`：均值 **88.0ms** / 最小 79.7ms / 最大 97.4ms / 标准差 5.3ms —— 全部落于 70~110ms 铁律窗，抖动极小；
+  - 活跃音频源 `activeSources.size`：稳定 5 个（健康区间 3~6）；
+  - seek 响应：歌词寻道实测 301~302ms（含 200ms 采样粒度误差，接近一拍）；
+  - 双级增益拓扑成员完整：`activeFadeGainNode -> masterGainNode -> analyserNode` 与 `nextPlayTime`、`streamSampleRate` 等均按设计暴露于 `window.__pcmPlayer`。
+- **动态采样率自适应交叉验证**：48kHz 曲目播放中 `streamSampleRate = 48000` 且与 MPD `audio: 48000:16:2` 一致；seek/切歌后回落 44100 亦与 MPD `audio: 44100:16:2` 及 `getSampleRate()` 一致 —— 属队列中不同采样率曲目间的正常自适应，非漂移缺陷。
+- **全进程树 CPU 实测（8 进程：main + 3 zygote + gpu + renderer + net-utility + audio-utility）**：播放中 **2.8%** / 暂停 **1.0%**（Δ1.8%），其中 renderer 播放中约 2.2%（频谱 RAF + PCM 调度）、暂停后主进程近乎归零。此前初测的 12.2%/5.0% 为探针自身 CDP 高频轮询污染所致（详见 §4.21），非应用缺陷。
+- **调试通道备忘**：`window.__mpdSong` / `__mpdDuration` 全局不存在属预期 —— 切歌识别应走 `__pcmPlayer.currentStreamUrl` 变化或 MPD `currentsong`，初测的 600ms 切歌延迟为探针固定 sleep 值而非真实延迟。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -793,6 +808,14 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
 1. **症状**: 字体输入框 (`FontPickerControl`) 的 Escape 回退基准 `initialFontRef` 原先在渲染期直接赋值 `currentFont`；当外部 prop 在空闲态被变更（如测试脚本直接调用 `onInputChange`、一键重置默认）后，渲染期赋值会冲掉编辑中的基准值，导致后续按下 Escape 时没有正确的 baseline 可回退；
 2. **根因**: React 渲染期写入 ref 属于副作用（与并发渲染模式相悖），无法感知“用户是否正在编辑”这一动态状态；
 3. **解决方案**: 改用 `useEffect([currentFont])` 在空闲态（`!isEditingRef.current`）同步基准，编辑会话的 baseline 由 `onFocus` 建立，渲染期不再写 ref；`pnpm typecheck` 0 报错、单测 10/10 通过（提交 `7641beb`）。
+
+### 4.21 体检探针三坑: pgrep 自匹配、Chromium cmdline 改写与探针流量污染基线 (2026-09-11)
+
+音频与性能深度体检中踩过的三个探针自身缺陷，复用探针时务必遵守：
+
+1. **`pgrep -f` 自匹配**: 在 shell 探针里用 `pgrep -f "pattern | head -1"` 这类带管道的匹配串时，`pgrep -f` 会匹配到包裹命令自身的 `/bin/sh -c` 进程（模式串本身出现在其 cmdline 中），采到空壳进程得出 0% CPU 假象。根治：不用 `pgrep -f` 匹配应用，改扫 `/proc/*/exe` readlink 匹配真实二进制路径；
+2. **Chromium setproctitle 改写 argv**: Electron 主进程的 `/proc/<pid>/cmdline` 中 NUL 分隔符被改写为空格，读出单串 `"electron ."`（argv 数组长度为 1），按 `split('\0')` 数参数个数的判定永远失效。根治：`replace(/\0/g, ' ')` 空格归一化后，用「无 `--type=` 参数」判定主进程（zygote/gpu/renderer/utility 全都带 `--type=`）；
+3. **探针自身流量污染 CPU 基线**: 初测「播放 12.2% / 暂停 5.0%」实为探针 CDP `Runtime.evaluate` 200ms 高频轮询 + 串口日志自身开销；改为纯 `/proc/<pid>/stat` utime/stime 差分（无 CDP 参与采样窗）后，真值仅播放 2.8% / 暂停 1.0%。教训：**测量探针必须与被测数据通路隔离，CPU/延迟类基线必须在无探针轮询的静默窗内采样**；另 Node 24 原生 `WebSocket`（`addEventListener`，无 `.once()`）可零依赖直连 CDP，无需 ws 库。
 
 ---
 
