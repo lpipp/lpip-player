@@ -1318,7 +1318,7 @@ export default function SettingsDrawer() {
                   </div>
 
                   <FontPickerControl
-                    label="界面通用字形 (Font Family)"
+                    label="界面通用字形"
                     desc="控制主工作区、状态栏曲目名、抽屉导航列表等"
                     presets={UI_FONT_PRESETS}
                     currentFont={config.typography?.ui?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily}
@@ -1361,7 +1361,7 @@ export default function SettingsDrawer() {
                   </div>
 
                   <FontPickerControl
-                    label="辅助提示字形 (Font Family)"
+                    label="辅助提示字形"
                     desc="控制等宽播放时间、SQ/Hi-Res 音质徽标、歌手专辑副标题"
                     presets={HINT_FONT_PRESETS}
                     currentFont={config.typography?.hint?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily}
@@ -1399,13 +1399,13 @@ export default function SettingsDrawer() {
                 {/* 3. 星盘歌词排印 */}
                 <div className="settings-group-card">
                   <div className="settings-group-header">
-                    <span className="settings-group-title">星盘歌词排印</span>
+                    <span className="settings-group-title">歌词排印</span>
                     <span className="settings-group-badge">Lyrics</span>
                   </div>
 
                   {/* 歌词正文 */}
                   <FontPickerControl
-                    label="歌词正文字形 (Body Font)"
+                    label="歌词正文字形"
                     desc="极坐标星盘主歌词大号高亮字形"
                     presets={LYRICS_BODY_FONT_PRESETS}
                     currentFont={config.typography?.lyrics?.body?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily}
@@ -1448,7 +1448,7 @@ export default function SettingsDrawer() {
 
                   {/* 歌词翻译 */}
                   <FontPickerControl
-                    label="歌词翻译字形 (Translation Font)"
+                    label="歌词翻译字形"
                     desc="歌词译文与次级辅文本字形"
                     presets={LYRICS_TRANS_FONT_PRESETS}
                     currentFont={config.typography?.lyrics?.translation?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily}
@@ -1732,7 +1732,7 @@ export default function SettingsDrawer() {
                   </div>
 
                   <div className="liquid-slider-block">
-                    <span className="settings-control-label">控制命令端口 (Control Port)</span>
+                    <span className="settings-control-label">控制命令端口</span>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1751,7 +1751,7 @@ export default function SettingsDrawer() {
                   </div>
 
                   <div className="liquid-slider-block">
-                    <span className="settings-control-label">音频流端口 (PCM Stream Port)</span>
+                    <span className="settings-control-label">音频流端口</span>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1807,7 +1807,7 @@ export default function SettingsDrawer() {
                     </div>
                     <div className="liquid-spec-item">
                       <span className="liquid-spec-key">音频输出管道</span>
-                      <span className="liquid-spec-val">WebAudio PCM 流式管道 (Model B)</span>
+                      <span className="liquid-spec-val">WebAudio PCM 流式管道</span>
                     </div>
                     <div className="liquid-spec-item">
                       <span className="liquid-spec-key">界面设计哲学</span>
