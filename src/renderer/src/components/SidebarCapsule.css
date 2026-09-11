@@ -35,6 +35,7 @@
   flex-direction: row;
   box-sizing: border-box;
   overflow: hidden;
+  overflow: clip;
   user-select: none;
   pointer-events: auto;
 
@@ -232,14 +233,16 @@
   overflow: hidden;
   transition:
     opacity 240ms ease,
-    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 320ms;
 }
 
-/* 收起状态: 完全透明并微左移，静默裁剪在 56px 胶囊外，禁止点击交互 */
+/* 收起状态: 完全透明并微左移，静默裁剪在 56px 胶囊外，禁止点击交互与获焦 */
 .sidebar-capsule.collapsed .capsule-subpanel {
   opacity: 0;
   transform: translateX(-16px);
   pointer-events: none;
+  visibility: hidden;
 }
 
 /* 展开状态: 随抽屉右展平滑淡入并滑入归位 */
@@ -247,6 +250,11 @@
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
+  visibility: visible;
+  transition:
+    opacity 240ms ease,
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0s;
 }
 
 /* 子菜单头部 (隐藏关闭按钮 X，依靠移出安全距离自动收起) */

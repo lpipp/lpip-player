@@ -338,6 +338,23 @@ export default function SidebarCapsule({
     }
   }, [isExpanded])
 
+  // 抽屉收展保护: 收起时强制将容器 scrollLeft 归零并释放子面板可能残留的焦点，杜绝横向位移
+  useEffect(() => {
+    if (capsuleRef.current) {
+      capsuleRef.current.scrollLeft = 0
+    }
+    if (!isExpanded && capsuleRef.current) {
+      const activeEl = document.activeElement as HTMLElement | null
+      if (
+        activeEl &&
+        capsuleRef.current.contains(activeEl) &&
+        !capsuleRef.current.querySelector('.capsule-rail')?.contains(activeEl)
+      ) {
+        activeEl.blur()
+      }
+    }
+  }, [isExpanded])
+
   // 点击图标: 若未展开则展开并展示该模块子菜单; 若已展开且点击同一图标则收起抽屉; 若点击其他图标则切换到该模块子菜单
   const handleIconClick = (id: string): void => {
     cancelCloseTimer()
@@ -397,6 +414,11 @@ export default function SidebarCapsule({
       className={`sidebar-capsule ${isExpanded ? 'expanded' : 'collapsed'}`}
       aria-label="主控制导航抽屉"
       onMouseEnter={cancelCloseTimer}
+      onScroll={(e) => {
+        if (e.currentTarget.scrollLeft !== 0) {
+          e.currentTarget.scrollLeft = 0
+        }
+      }}
     >
       {/* 左侧固定图标导轨 (收起时即整只胶囊, 展开时作为左侧快速切换栏) */}
       <div className="capsule-rail">
