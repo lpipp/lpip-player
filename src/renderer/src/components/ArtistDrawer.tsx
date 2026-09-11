@@ -620,12 +620,11 @@ export default function ArtistDrawer({
                       )}
                     </div>
 
-                    {/* 歌曲信息与音质徽标 */}
+                    {/* 歌曲信息与音质徽标 (整洁化: 专辑名已隐藏, 仅保留标题与徽标) */}
                     <div className="artist-song-meta">
                       <span className="artist-song-title">{song.title}</span>
                       <div className="artist-song-subinfo">
                         <span className={`artist-badge-${song.quality.toLowerCase()}`}>{song.quality}</span>
-                        <span className="artist-song-album">{song.album || '单曲'}</span>
                       </div>
                     </div>
 

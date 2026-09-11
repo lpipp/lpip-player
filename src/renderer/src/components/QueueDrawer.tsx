@@ -551,10 +551,9 @@ export default function QueueDrawer({
                       </span>
                       <span
                         className="queue-track-artist-album"
-                        title={`${song.artist}${song.album && song.album !== '未知专辑' ? ` - ${song.album}` : ''}`}
+                        title={song.artist}
                       >
                         {song.artist}
-                        {song.album && song.album !== '未知专辑' ? ` · ${song.album}` : ''}
                       </span>
                     </div>
                   </div>

@@ -170,6 +170,7 @@ function SliderControl({
   step?: number
   displayValue: string
   label: string
+  // 整洁化: desc prop 保留签名兼容调用处, 但不再渲染
   desc?: string
   onChange: (val: number) => void
 }) {
@@ -178,7 +179,6 @@ function SliderControl({
       <div className="liquid-slider-header">
         <div className="settings-control-info">
           <span className="settings-control-label">{label}</span>
-          {desc && <span className="settings-control-desc">{desc}</span>}
         </div>
         <span className="liquid-slider-value">{displayValue}</span>
       </div>
@@ -268,6 +268,7 @@ function FontPickerControl({
   previewStyle
 }: {
   label: string
+  // 整洁化: desc prop 保留签名兼容调用处, 但不再渲染
   desc?: string
   presets: FontPreset[]
   currentFont: string
@@ -354,7 +355,6 @@ function FontPickerControl({
     <div className="liquid-font-control-block">
       <div className="settings-control-info">
         <span className="settings-control-label">{label}</span>
-        {desc && <span className="settings-control-desc">{desc}</span>}
       </div>
 
       <div className="liquid-font-pills" role="group" aria-label={`${label}推荐预设`}>
@@ -854,52 +854,38 @@ export default function SettingsDrawer() {
     {
       id: 'window',
       title: '外观与窗口',
-      desc:
-        config.window.background.mode === 'wallpaper'
-          ? `自定义壁纸 · 模糊 ${config.window.background.wallpaper.blur}px · ${config.window.immersive ? '沉浸式' : '标准边框'}`
-          : config.window.background.mode === 'mica'
-            ? `云母材质 · ${config.window.background.mica.style} 微光 · ${config.window.immersive ? '沉浸式' : '标准边框'}`
-            : `经典黑曜石 · ${config.window.immersive ? '沉浸式无边框' : '标准边框'}`,
+      // 整洁化: 模块卡副文本已隐藏, desc 置空保留字段
+      desc: '',
       icon: <WindowIcon />
     },
     {
       id: 'typography',
       title: '字体与字形',
-      desc: `UI ${config.typography?.ui?.fontSize ?? 13}px · 提示 ${config.typography?.hint?.fontSize ?? 12}px · 歌词 ${config.typography?.lyrics?.body?.fontSize ?? 18}px / ${config.typography?.lyrics?.translation?.fontSize ?? 12}px`,
+      desc: '',
       icon: <TypographyIcon />
     },
     {
       id: 'audio',
       title: '音频与过渡',
-      desc: config.audio.fade.enabled
-        ? `淡入淡出 ${config.audio.fade.duration}ms · ${(hardwareSampleRate / 1000).toFixed(1)} kHz 自适应直通`
-        : `硬切无过渡 · ${(hardwareSampleRate / 1000).toFixed(1)} kHz 硬件直通`,
+      desc: '',
       icon: <AudioWaveIcon />
     },
     {
       id: 'visualizer',
       title: '蓝图频谱',
-      desc: config.visualizer.enabled
-        ? `${
-            config.visualizer.style === 'blueprint'
-              ? '蓝图工程风'
-              : config.visualizer.style === 'wave'
-                ? '高频正弦波'
-                : '制表柱状图'
-          } · 高度 ${config.visualizer.height}px`
-        : '频谱律动已关闭',
+      desc: '',
       icon: <SpectrumPulseIcon />
     },
     {
       id: 'mpd',
       title: 'MPD 服务',
-      desc: `${config.mpd.host}:${config.mpd.port} · ${mpdConnected ? '已连接 (活跃)' : '离线 (未就绪)'}`,
+      desc: '',
       icon: <ServerIcon />
     },
     {
       id: 'about',
       title: '关于播放器',
-      desc: 'lpip-player v0.1.0 · Model B 架构 · Electron + React',
+      desc: '',
       icon: <AboutDiscIcon />
     }
   ]
@@ -940,7 +926,6 @@ export default function SettingsDrawer() {
                 <div className="settings-card-icon-box">{item.icon}</div>
                 <div className="settings-card-content">
                   <span className="settings-card-title">{item.title}</span>
-                  <span className="settings-card-desc">{item.desc}</span>
                 </div>
                 <span className="settings-card-arrow">
                   <NextChevronIcon />
@@ -994,7 +979,6 @@ export default function SettingsDrawer() {
               <div className="settings-hero-icon-box">{activeModuleMeta.icon}</div>
               <div className="settings-hero-info">
                 <span className="settings-hero-title">{activeModuleMeta.title}</span>
-                <span className="settings-hero-desc">{activeModuleMeta.desc}</span>
               </div>
             </div>
           </header>
@@ -1020,7 +1004,6 @@ export default function SettingsDrawer() {
                   <div className="settings-control-row">
                     <div className="settings-control-info">
                       <span className="settings-control-label">沉浸式无边框模式</span>
-                      <span className="settings-control-desc">隐藏系统原生标题栏与边缘边框，尽享极简全面屏视效 (切换时将即时无缝重构窗口)</span>
                     </div>
                     <ToggleSwitch
                       checked={config.window.immersive}
@@ -1149,7 +1132,6 @@ export default function SettingsDrawer() {
                     <div className="settings-control-row">
                       <div className="settings-control-info">
                         <span className="settings-control-label">全周边框微弱冷光轮廓</span>
-                        <span className="settings-control-desc">在窗口最外边缘添加 1px 细微光轮廓</span>
                       </div>
                       <ToggleSwitch
                         checked={config.window.background.mica.border}
@@ -1261,7 +1243,6 @@ export default function SettingsDrawer() {
                     <div className="settings-control-row">
                       <div className="settings-control-info">
                         <span className="settings-control-label">视频壁纸静音播放</span>
-                        <span className="settings-control-desc">避免动态壁纸自带音频与音乐播放冲突</span>
                       </div>
                       <ToggleSwitch
                         checked={config.window.background.wallpaper.muted ?? true}
@@ -1516,7 +1497,6 @@ export default function SettingsDrawer() {
                   <div className="settings-control-row">
                     <div className="settings-control-info">
                       <span className="settings-control-label">重置为默认字体配置</span>
-                      <span className="settings-control-desc">一键恢复 UI 字体、提示文本与歌词排印的初始推荐字形与字阶</span>
                     </div>
                     <button
                       type="button"
@@ -1545,7 +1525,6 @@ export default function SettingsDrawer() {
                   <div className="settings-control-row">
                     <div className="settings-control-info">
                       <span className="settings-control-label">平滑淡入淡出总开关</span>
-                      <span className="settings-control-desc">切歌与寻道时毫秒级音量包络过渡，杜绝硬切爆音</span>
                     </div>
                     <ToggleSwitch
                       checked={config.audio.fade.enabled}
@@ -1633,7 +1612,6 @@ export default function SettingsDrawer() {
                   <div className="settings-control-row">
                     <div className="settings-control-info">
                       <span className="settings-control-label">频谱律动总开关</span>
-                      <span className="settings-control-desc">在状态栏上方渲染 60fps 硬件加速音频频谱图层</span>
                     </div>
                     <ToggleSwitch
                       checked={config.visualizer.enabled}
@@ -1717,11 +1695,6 @@ export default function SettingsDrawer() {
                     <div className="settings-control-info">
                       <span className="settings-control-label">
                         {mpdConnected ? 'TCP 控制信道与 PCM 直流正常' : '无法连接至 MPD 服务端'}
-                      </span>
-                      <span className="settings-control-desc">
-                        {mpdConnected
-                          ? `${config.mpd.host}:${config.mpd.port} & :${config.mpd.streamPort} 活跃流通`
-                          : '连接失败或超时，请检查服务状态与端口配置'}
                       </span>
                     </div>
                     <button

@@ -445,13 +445,12 @@ export default function MusicLibraryList({
                       <span className={`music-quality-badge badge-${song.quality.toLowerCase()}`}>
                         {song.quality}
                       </span>
-                      {/* 歌手与专辑副文本 */}
+                      {/* 歌手副文本 (整洁化: 仅保留歌手, 专辑名已隐藏) */}
                       <span
                         className="music-track-artist-album"
-                        title={`${song.artist}${song.album && song.album !== '未知专辑' ? ` - ${song.album}` : ''}`}
+                        title={song.artist}
                       >
                         {song.artist}
-                        {song.album && song.album !== '未知专辑' ? ` - ${song.album}` : ''}
                       </span>
                     </div>
                   </div>

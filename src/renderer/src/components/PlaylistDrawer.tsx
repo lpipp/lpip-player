@@ -1123,7 +1123,7 @@ export default function PlaylistDrawer({
                           <div className="playlist-add-item-info">
                             <span className="playlist-add-item-title">{song.title}</span>
                             <span className="playlist-add-item-artist">
-                              {song.artist} · {song.album || '单曲'}
+                              {song.artist}
                             </span>
                           </div>
                           <button
@@ -1223,7 +1223,7 @@ export default function PlaylistDrawer({
                         )}
                       </div>
 
-                      {/* 歌曲信息与音质徽标 */}
+                      {/* 歌曲信息与音质徽标 (整洁化: 仅保留歌手, 专辑名已隐藏) */}
                       <div className="playlist-song-meta">
                         <span className="playlist-song-title">{song.title}</span>
                         <div className="playlist-song-subinfo">
@@ -1231,7 +1231,7 @@ export default function PlaylistDrawer({
                             {song.quality}
                           </span>
                           <span className="playlist-song-artist">
-                            {song.artist} · {song.album || '单曲'}
+                            {song.artist}
                           </span>
                         </div>
                       </div>

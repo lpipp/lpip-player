@@ -447,10 +447,8 @@ export default function SidebarCapsule({
           })}
         </nav>
 
-        {/* 导轨底部状态或简略标志 */}
-        <div className="capsule-rail-bottom">
-          <span className="capsule-model-badge">M-B</span>
-        </div>
+        {/* 整洁化: 导轨底部 M-B 徽标已隐藏, 保留占位以维持布局 */}
+        <div className="capsule-rail-bottom" aria-hidden="true" />
       </div>
 
       {/* 右侧子菜单内容区 (保持 DOM 结构恒定，通过外层视窗裁剪展开，彻底杜绝折行重排抖动) */}
@@ -512,14 +510,8 @@ export default function SidebarCapsule({
           ) : activeModuleId === 'settings' ? (
             <SettingsDrawer />
           ) : (
+            // 整洁化: 子项配置移出提示已隐藏, fallback 模块列表保留
             <>
-              <div className="subpanel-section-hint">
-                <span>{activeModule.label} 子项配置</span>
-                <span className="subpanel-config-hint">
-                  移出 {configRef.current.closeDistance}px / {configRef.current.closeDelay}ms 关闭
-                </span>
-              </div>
-
               <ul className="subpanel-list">
                 {activeModule.items.map((item) => (
                   <li key={item.id} className="subpanel-item">
@@ -535,11 +527,7 @@ export default function SidebarCapsule({
           )}
         </div>
 
-        {/* 子菜单底部提示 */}
-        <footer className="subpanel-footer">
-          <span>lpip-player v0.1.0</span>
-          <span className="subpanel-status-tag">就绪</span>
-        </footer>
+        {/* 整洁化: 子菜单底部版本号与就绪提示已隐藏 */}
       </section>
     </aside>
   )
