@@ -274,7 +274,8 @@
 }
 
 .subpanel-title {
-  font-size: 14px;
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--font-size-ui, 13px) + 1px);
   font-weight: 600;
   letter-spacing: 0.5px;
   color: rgba(255, 255, 255, 0.92);
@@ -430,7 +431,8 @@
 }
 
 .subpanel-item-title {
-  font-size: 12.5px;
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--font-size-ui, 13px) - 0.5px);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
@@ -439,7 +441,8 @@
 }
 
 .subpanel-item-desc {
-  font-size: 11px;
+  font-family: var(--font-family-hint);
+  font-size: var(--font-size-hint, 11px);
   color: rgba(255, 255, 255, 0.45);
   white-space: nowrap;
   overflow: hidden;
@@ -449,7 +452,8 @@
 .subpanel-item-badge {
   position: relative;
   z-index: 1;
-  font-size: 10.5px;
+  font-family: var(--font-family-hint);
+  font-size: calc(var(--font-size-hint, 11px) - 0.5px);
   font-weight: 500;
   padding: 2px 7px;
   border-radius: 6px;

@@ -163,6 +163,39 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
           s.setProperty('--sidebar-duration', ${JSON.stringify(`${sidebar.animationDuration}ms`)});
           s.setProperty('--sidebar-easing', ${JSON.stringify(sidebar.animationEasing)});
         }
+
+        // 4. 全局文字排印与字体系统
+        const typography = ${JSON.stringify(config.typography || null)};
+        if (typography) {
+          if (typography.ui) {
+            if (typography.ui.fontFamily) s.setProperty('--font-family-ui', typography.ui.fontFamily);
+            if (typography.ui.fontSize) s.setProperty('--font-size-ui', typography.ui.fontSize + 'px');
+          }
+          if (typography.hint) {
+            if (typography.hint.fontFamily) s.setProperty('--font-family-hint', typography.hint.fontFamily);
+            if (typography.hint.fontSize) s.setProperty('--font-size-hint', typography.hint.fontSize + 'px');
+          }
+          if (typography.lyrics) {
+            if (typography.lyrics.body) {
+              if (typography.lyrics.body.fontFamily) {
+                s.setProperty('--font-family-lyrics-body', typography.lyrics.body.fontFamily);
+                s.setProperty('--font-family-lyrics', typography.lyrics.body.fontFamily);
+              }
+              if (typography.lyrics.body.fontSize) {
+                s.setProperty('--font-size-lyrics-body', typography.lyrics.body.fontSize + 'px');
+                s.setProperty('--font-size-lyrics', typography.lyrics.body.fontSize + 'px');
+              }
+            }
+            if (typography.lyrics.translation) {
+              if (typography.lyrics.translation.fontFamily) {
+                s.setProperty('--font-family-lyrics-translation', typography.lyrics.translation.fontFamily);
+              }
+              if (typography.lyrics.translation.fontSize) {
+                s.setProperty('--font-size-lyrics-translation', typography.lyrics.translation.fontSize + 'px');
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error('[lpip-player:applyConfigToWindow] 注入配置异常:', err);
       }

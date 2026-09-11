@@ -689,7 +689,7 @@
 }
 
 .liquid-kbd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   font-size: 10.5px;
   font-weight: 600;
   color: #6ee7b7;
@@ -790,5 +790,127 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ------------------------------------------------------------
+   原生交互控件 5: 字体族选择器与实时预览 (Font Picker & Live Preview)
+   ------------------------------------------------------------ */
+.settings-hero-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-reset-btn:hover {
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.35);
+  color: #6ee7b7;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.12);
+}
+
+.settings-reset-btn:focus-visible {
+  outline: 2px solid rgba(110, 231, 183, 0.6);
+  outline-offset: 1px;
+}
+
+.liquid-font-control-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.liquid-font-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.liquid-font-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  cursor: pointer;
+  outline: none;
+  line-height: 1.4;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-font-pill:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.liquid-font-pill.active {
+  background: rgba(110, 231, 183, 0.16);
+  border-color: rgba(110, 231, 183, 0.4);
+  color: #6ee7b7;
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.15);
+}
+
+.liquid-font-pill:focus-visible {
+  outline: 2px solid rgba(110, 231, 183, 0.6);
+  outline-offset: 1px;
+}
+
+.liquid-font-input-row {
+  display: flex;
+  width: 100%;
+}
+
+.liquid-font-preview-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
+  min-height: 48px;
+  overflow: hidden;
+}
+
+.liquid-font-preview-tag {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.liquid-font-preview-text {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+  word-break: break-word;
+  transition: font-family 0.15s ease, font-size 0.15s ease;
 }
 

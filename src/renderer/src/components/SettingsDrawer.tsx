@@ -1,13 +1,22 @@
 import { useEffect, useState, useRef, useCallback, type ReactNode, type ChangeEvent } from 'react'
-import type { AppConfig, DeepPartial, BackgroundMode, MicaStyle, WallpaperFit, VisualizerStyle } from '../../../types/config'
-import { DEFAULT_CONFIG } from '../../../types/config'
+import type { AppConfig, TypographyConfig, DeepPartial, BackgroundMode, MicaStyle, WallpaperFit, VisualizerStyle } from '../../../types/config'
+import { DEFAULT_CONFIG, DEFAULT_TYPOGRAPHY_CONFIG } from '../../../types/config'
 import { pcmPlayer } from '../services/pcmPlayer'
+import {
+  applyTypographyToDOM,
+  sanitizeFontFamily,
+  UI_FONT_PRESETS,
+  HINT_FONT_PRESETS,
+  LYRICS_BODY_FONT_PRESETS,
+  LYRICS_TRANS_FONT_PRESETS,
+  type FontPreset
+} from '../utils/typography'
 import './SettingsDrawer.css'
 
 /**
- * 5 大设置模块标识符
+ * 6 大设置模块标识符 (外观窗口、字体排印、音频过渡、蓝图频谱、MPD 服务、关于播放器)
  */
-export type SettingsModuleId = 'window' | 'audio' | 'visualizer' | 'mpd' | 'about'
+export type SettingsModuleId = 'window' | 'typography' | 'audio' | 'visualizer' | 'mpd' | 'about'
 
 /**
  * 设置模块卡片元数据接口
@@ -22,6 +31,16 @@ interface SettingsModuleMeta {
 /**
  * SVG 纯线条矢量图标库 (免第三方字体依赖)
  */
+function TypographyIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="4 7 4 4 20 4 20 7" />
+      <line x1="9" y1="20" x2="15" y2="20" />
+      <line x1="12" y1="4" x2="12" y2="20" />
+    </svg>
+  )
+}
+
 function WindowIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -235,6 +254,192 @@ function SegmentedControl<T extends string>({
 }
 
 /**
+ * 原生字形选取与自由输入控件 (Font Picker & Custom Input)
+ */
+function FontPickerControl({
+  label,
+  desc,
+  presets,
+  currentFont,
+  inputValue,
+  onFontChange,
+  onInputChange,
+  previewText,
+  previewStyle
+}: {
+  label: string
+  desc?: string
+  presets: FontPreset[]
+  currentFont: string
+  inputValue: string
+  onFontChange: (font: string) => void
+  onInputChange: (val: string) => void
+  previewText: string
+  previewStyle?: React.CSSProperties
+}) {
+  // 记录输入框获得焦点前的有效基准字形，用于空值离开或 Escape 时精准回退
+  const initialFontRef = useRef(currentFont)
+  // 追踪当前输入框是否处于主动编辑态
+  const isEditingRef = useRef(false)
+  // 标记是否正处于 Escape 取消流中，防止 blur 事件读取未刷新的 dirty DOM 值再次提交
+  const isCancelingRef = useRef(false)
+  // 输入框 DOM 引用，支持在取消或空值失焦时无延迟同步恢复 DOM 节点值
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // 当用户未处于活跃编辑态时，基准字形始终同步保持为最新已生效的合法字形
+  if (!isEditingRef.current) {
+    initialFontRef.current = currentFont
+  }
+
+  const handleCommit = useCallback((val: string) => {
+    isEditingRef.current = false
+    if (isCancelingRef.current) {
+      isCancelingRef.current = false
+      return
+    }
+    const trimmed = val.trim()
+    if (!trimmed || trimmed.replace(/['"\s,]/g, '').length === 0) {
+      // 若用户清空了输入框或仅输入空白/纯引号并离开，回退显示为聚焦前的有效基准字形并提交恢复
+      const fallback = initialFontRef.current || currentFont
+      if (inputRef.current) {
+        inputRef.current.value = fallback
+      }
+      onInputChange(fallback)
+      onFontChange(fallback)
+      return
+    }
+    const clean = sanitizeFontFamily(trimmed, currentFont)
+    initialFontRef.current = clean
+    if (inputRef.current) {
+      inputRef.current.value = clean
+    }
+    onInputChange(clean)
+    onFontChange(clean)
+  }, [currentFont, onInputChange, onFontChange])
+
+  const handleBlur = useCallback((val: string) => {
+    isEditingRef.current = false
+    if (isCancelingRef.current) {
+      isCancelingRef.current = false
+      return
+    }
+    const trimmed = val.trim()
+    if (!trimmed || trimmed.replace(/['"\s,]/g, '').length === 0) {
+      const fallback = initialFontRef.current || currentFont
+      if (inputRef.current) {
+        inputRef.current.value = fallback
+      }
+      handleCommit(fallback)
+      return
+    }
+    handleCommit(val)
+  }, [currentFont, handleCommit])
+
+  // 双重监听保障: 既通过 React onBlur 响应标准 focusout 委托，又在 DOM 节点直接监听原生 blur 事件
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    const onDomBlur = () => {
+      handleBlur(el.value)
+    }
+    el.addEventListener('blur', onDomBlur)
+    return () => el.removeEventListener('blur', onDomBlur)
+  }, [handleBlur])
+
+  return (
+    <div className="liquid-font-control-block">
+      <div className="settings-control-info">
+        <span className="settings-control-label">{label}</span>
+        {desc && <span className="settings-control-desc">{desc}</span>}
+      </div>
+
+      <div className="liquid-font-pills" role="group" aria-label={`${label}推荐预设`}>
+        {presets.map((preset) => {
+          const isSelected = currentFont.trim().toLowerCase() === preset.value.trim().toLowerCase()
+          return (
+            <button
+              key={preset.label}
+              type="button"
+              className={`liquid-font-pill ${isSelected ? 'active' : ''}`}
+              onClick={() => {
+                isEditingRef.current = false
+                initialFontRef.current = preset.value
+                if (inputRef.current) {
+                  inputRef.current.value = preset.value
+                }
+                onInputChange(preset.value)
+                onFontChange(preset.value)
+              }}
+              title={preset.value}
+            >
+              {preset.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="liquid-font-input-row">
+        <input
+          ref={inputRef}
+          type="text"
+          className="liquid-text-input"
+          value={inputValue}
+          placeholder="输入自定义字体族名称 (如 Inter, MiSans, Fira Code...)"
+          onFocus={() => {
+            isEditingRef.current = true
+            initialFontRef.current = currentFont
+            isCancelingRef.current = false
+          }}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            isEditingRef.current = true
+            const val = e.target.value
+            onInputChange(val)
+            const trimmed = val.trim()
+            // 关键保障: 仅在非空且包含实际字形字符时才即时触发 live preview，禁止将临时空白或纯引号写入全局配置与 DOM
+            if (trimmed.replace(/['"\s,]/g, '').length > 0) {
+              onFontChange(val)
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleCommit(e.currentTarget.value)
+              e.currentTarget.blur()
+            } else if (e.key === 'Escape') {
+              e.stopPropagation()
+              e.preventDefault()
+              isEditingRef.current = false
+              isCancelingRef.current = true
+              const fallback = initialFontRef.current || currentFont
+              if (inputRef.current) {
+                inputRef.current.value = fallback
+              }
+              e.currentTarget.value = fallback
+              onInputChange(fallback)
+              onFontChange(fallback)
+              e.currentTarget.blur()
+            }
+          }}
+          onBlur={(e) => {
+            handleBlur(e.target.value)
+          }}
+          aria-label={`${label}自定义输入`}
+        />
+      </div>
+
+      <div className="liquid-font-preview-box">
+        <span className="liquid-font-preview-tag">字形预览</span>
+        <span
+          className="liquid-font-preview-text"
+          style={{ fontFamily: currentFont, ...previewStyle }}
+        >
+          {previewText}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/**
  * 偏好设置抽屉组件 (SettingsDrawer)
  *
  * 核心架构:
@@ -259,7 +464,15 @@ export default function SettingsDrawer() {
   const [wallpaperPathInput, setWallpaperPathInput] = useState('')
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null)
 
+  // 字体设置自由输入框状态缓存
+  const [uiFontInput, setUiFontInput] = useState(DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily)
+  const [hintFontInput, setHintFontInput] = useState(DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
+  const [lyricsBodyFontInput, setLyricsBodyFontInput] = useState(DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily)
+  const [lyricsTransFontInput, setLyricsTransFontInput] = useState(DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
+
   const isMountedRef = useRef(true)
+  const configRef = useRef<AppConfig>(DEFAULT_CONFIG)
+  configRef.current = config
   const pendingUpdateRef = useRef<Record<string, unknown>>({})
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -276,6 +489,110 @@ export default function SettingsDrawer() {
       if (isMountedRef.current) setSaveErrorMessage(null)
     }, 3500)
   }, [])
+
+  // 安全防抖同步并持久化配置 (立即更新本地 React 状态，防抖写入磁盘与通知 IPC)
+  const updateConfigDebounced = useCallback((partial: DeepPartial<AppConfig>, delayMs = 60): void => {
+    const mergeHelper = (target: Record<string, unknown>, src: Record<string, unknown>) => {
+      for (const k of Object.keys(src)) {
+        if (src[k] !== null && typeof src[k] === 'object' && !Array.isArray(src[k])) {
+          if (!target[k] || typeof target[k] !== 'object') target[k] = {}
+          mergeHelper(target[k] as Record<string, unknown>, src[k] as Record<string, unknown>)
+        } else {
+          target[k] = src[k]
+        }
+      }
+    }
+
+    // 0. 归一化 font 别名入参: 若传入 { font: ... } 则自动同步合并至 typography
+    const rawPartial = partial as Record<string, unknown>
+    const typoPayload = rawPartial.typography ?? rawPartial.font
+
+    // 0. 同步合并到 configRef.current，杜绝 React 批量更新期间读取到陈旧配置
+    const nextConfig = structuredClone(configRef.current) as unknown as Record<string, unknown>
+    mergeHelper(nextConfig, partial as Record<string, unknown>)
+    if (typoPayload && !nextConfig.typography) {
+      nextConfig.typography = {}
+    }
+    if (rawPartial.font && typeof rawPartial.font === 'object') {
+      mergeHelper((nextConfig.typography || {}) as Record<string, unknown>, rawPartial.font as Record<string, unknown>)
+    }
+    configRef.current = nextConfig as unknown as AppConfig
+
+    // 1. 若包含字体排印变更，立即同步注入 DOM 根节点 CSS 变量，确保零延迟视觉响应
+    if (typoPayload) {
+      applyTypographyToDOM(configRef.current.typography)
+    }
+
+    // 2. 本地 React 状态响应, 达到 60fps 零延迟视觉反馈
+    setConfig(configRef.current)
+
+    // 3. 将本次变更合并进 pendingUpdateRef 批次中
+    mergeHelper(pendingUpdateRef.current, partial as Record<string, unknown>)
+
+    // 3. 防抖通知主进程持久化保存
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
+
+    const flush = async () => {
+      if (isFlushingRef.current) return
+      if (Object.keys(pendingUpdateRef.current).length === 0) return
+
+      isFlushingRef.current = true
+      const currentSeq = ++updateSeqRef.current
+      const payload = structuredClone(pendingUpdateRef.current) as DeepPartial<AppConfig>
+      pendingUpdateRef.current = {}
+
+      try {
+        if (window.electronAPI?.config?.update) {
+          const res = await window.electronAPI.config.update(payload)
+          if (!isMountedRef.current) return
+          if (res?.success === false) {
+            showErrorMessage(res.error ? `配置保存失败: ${res.error}` : '配置保存失败: 文件只读或无写权限')
+            if (res.config) setConfig(res.config)
+          } else if (res?.config && currentSeq === updateSeqRef.current && Object.keys(pendingUpdateRef.current).length === 0) {
+            setConfig(res.config)
+            setSaveErrorMessage(null)
+          }
+        }
+      } catch (err) {
+        console.error('[SettingsDrawer] 持久化配置异常:', err)
+        if (isMountedRef.current) {
+          showErrorMessage('配置持久化通信异常')
+        }
+      } finally {
+        isFlushingRef.current = false
+        // 若在异步写入期间累积了新的变更，调度下一轮刷新以确保最终状态一致
+        if (Object.keys(pendingUpdateRef.current).length > 0) {
+          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+          debounceTimerRef.current = setTimeout(flush, 50)
+        }
+      }
+    }
+
+    if (delayMs === 0) {
+      flush()
+    } else {
+      debounceTimerRef.current = setTimeout(flush, delayMs)
+    }
+  }, [showErrorMessage])
+
+  // 立即同步无需防抖 (适用于开关、单选等离散项)
+  const updateConfigImmediate = useCallback((partial: DeepPartial<AppConfig>): void => {
+    updateConfigDebounced(partial, 0)
+  }, [updateConfigDebounced])
+
+  // 重置为默认字体配置
+  const handleResetTypography = useCallback(() => {
+    const defaultTypo = structuredClone(DEFAULT_TYPOGRAPHY_CONFIG)
+    setUiFontInput(defaultTypo.ui.fontFamily)
+    setHintFontInput(defaultTypo.hint.fontFamily)
+    setLyricsBodyFontInput(defaultTypo.lyrics.body.fontFamily)
+    setLyricsTransFontInput(defaultTypo.lyrics.translation.fontFamily)
+    applyTypographyToDOM(defaultTypo)
+    updateConfigImmediate({ typography: defaultTypo })
+  }, [updateConfigImmediate])
 
   // 测试 MPD 服务端连接 (带并发防护)
   const testMpdConnection = useCallback(async (): Promise<void> => {
@@ -320,18 +637,34 @@ export default function SettingsDrawer() {
     if (window.electronAPI?.config) {
       window.electronAPI.config.get().then((cfg) => {
         if (!isMountedRef.current || !cfg) return
+        configRef.current = cfg
         setConfig(cfg)
         setMpdHostInput(cfg.mpd?.host ?? '127.0.0.1')
         setMpdPortInput(String(cfg.mpd?.port ?? 6600))
         setMpdStreamPortInput(String(cfg.mpd?.streamPort ?? 8000))
         setWallpaperPathInput(cfg.window?.background?.wallpaper?.path ?? '')
+        if (cfg.typography) {
+          setUiFontInput(cfg.typography.ui?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily)
+          setHintFontInput(cfg.typography.hint?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
+          setLyricsBodyFontInput(cfg.typography.lyrics?.body?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily)
+          setLyricsTransFontInput(cfg.typography.lyrics?.translation?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
+          applyTypographyToDOM(cfg.typography)
+        }
       })
 
       const unsub = window.electronAPI.config.onChange((cfg) => {
         if (!isMountedRef.current || !cfg) return
         // 若当前有正在进行中的滑动或未提交的防抖编辑，暂缓被外部广播覆盖以防数值跳动
         if (Object.keys(pendingUpdateRef.current).length > 0) return
+        configRef.current = cfg
         setConfig(cfg)
+        if (cfg.typography) {
+          setUiFontInput(cfg.typography.ui?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily)
+          setHintFontInput(cfg.typography.hint?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
+          setLyricsBodyFontInput(cfg.typography.lyrics?.body?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily)
+          setLyricsTransFontInput(cfg.typography.lyrics?.translation?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
+          applyTypographyToDOM(cfg.typography)
+        }
       })
 
       testMpdConnection()
@@ -395,21 +728,44 @@ export default function SettingsDrawer() {
     }
   }, [config.mpd])
 
+  useEffect(() => {
+    if (config.typography) {
+      const active = document.activeElement
+      const isEditing = Boolean(
+        active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || (active as HTMLElement).isContentEditable)
+      )
+      if (!isEditing && Object.keys(pendingUpdateRef.current).length === 0) {
+        setUiFontInput(config.typography.ui?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily)
+        setHintFontInput(config.typography.hint?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
+        setLyricsBodyFontInput(config.typography.lyrics?.body?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily)
+        setLyricsTransFontInput(config.typography.lyrics?.translation?.fontFamily ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
+      }
+    }
+  }, [config.typography])
+
   // 键盘无障碍导航: 在二级详情层时拦截 Escape 与 Backspace 优先平滑返回一级总览
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
+      const active = document.activeElement
+      const isEditing = Boolean(
+        active &&
+          (active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            (active as HTMLElement).isContentEditable)
+      )
+
       if (e.key === 'Escape') {
         if (selectedModuleId !== null) {
+          if (isEditing) {
+            // 焦点处于输入控件中时，允许输入框自有的 onKeyDown 先行处理取消/回退与 stopPropagation
+            return
+          }
           e.stopImmediatePropagation()
           e.preventDefault()
-          if (document.activeElement && document.activeElement.tagName === 'INPUT') {
-            ;(document.activeElement as HTMLElement).blur()
-          } else {
-            setSelectedModuleId(null)
-          }
+          setSelectedModuleId(null)
         }
       } else if (e.key === 'Backspace') {
-        if (selectedModuleId !== null && document.activeElement && document.activeElement.tagName !== 'INPUT') {
+        if (selectedModuleId !== null && !isEditing) {
           e.stopImmediatePropagation()
           e.preventDefault()
           setSelectedModuleId(null)
@@ -417,97 +773,35 @@ export default function SettingsDrawer() {
       }
     }
 
+    // 在捕获阶段监听，确保在非输入编辑状态下优先拦截 Escape 返回一级总览，防止侧边栏整栏意外折叠
     window.addEventListener('keydown', handleKeyDown, { capture: true })
+
+    // 在冒泡阶段兜底: 若处于输入框中的 Escape 未被特定控件 stopPropagation，则执行失焦防护，防止穿透关闭抽屉
+    const handleBubbleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && selectedModuleId !== null) {
+        const active = document.activeElement
+        const isEditing = Boolean(
+          active &&
+            (active.tagName === 'INPUT' ||
+              active.tagName === 'TEXTAREA' ||
+              (active as HTMLElement).isContentEditable)
+        )
+        if (isEditing) {
+          e.stopPropagation()
+          e.preventDefault()
+          ;(active as HTMLElement).blur()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleBubbleKeyDown, { capture: false })
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown, { capture: true })
+      window.removeEventListener('keydown', handleBubbleKeyDown, { capture: false })
     }
   }, [selectedModuleId])
 
-  // 安全防抖同步并持久化配置 (立即更新本地 React 状态，防抖写入磁盘与通知 IPC)
-  const updateConfigDebounced = useCallback((partial: DeepPartial<AppConfig>, delayMs = 60): void => {
-    // 1. 本地状态即时响应, 达到 60fps 零延迟视觉反馈
-    setConfig((prev) => {
-      const clone = structuredClone(prev) as unknown as Record<string, unknown>
-      const mergeHelper = (target: Record<string, unknown>, src: Record<string, unknown>) => {
-        for (const k of Object.keys(src)) {
-          if (src[k] !== null && typeof src[k] === 'object' && !Array.isArray(src[k])) {
-            if (!target[k] || typeof target[k] !== 'object') target[k] = {}
-            mergeHelper(target[k] as Record<string, unknown>, src[k] as Record<string, unknown>)
-          } else {
-            target[k] = src[k]
-          }
-        }
-      }
-      mergeHelper(clone, partial as Record<string, unknown>)
-      return clone as unknown as AppConfig
-    })
 
-    // 2. 将本次变更合并进 pendingUpdateRef 批次中
-    const mergePending = (target: Record<string, unknown>, src: Record<string, unknown>) => {
-      for (const k of Object.keys(src)) {
-        if (src[k] !== null && typeof src[k] === 'object' && !Array.isArray(src[k])) {
-          if (!target[k] || typeof target[k] !== 'object') target[k] = {}
-          mergePending(target[k] as Record<string, unknown>, src[k] as Record<string, unknown>)
-        } else {
-          target[k] = src[k]
-        }
-      }
-    }
-    mergePending(pendingUpdateRef.current, partial as Record<string, unknown>)
-
-    // 3. 防抖通知主进程持久化保存
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-      debounceTimerRef.current = null
-    }
-
-    const flush = async () => {
-      if (isFlushingRef.current) return
-      if (Object.keys(pendingUpdateRef.current).length === 0) return
-
-      isFlushingRef.current = true
-      const currentSeq = ++updateSeqRef.current
-      const payload = structuredClone(pendingUpdateRef.current) as DeepPartial<AppConfig>
-      pendingUpdateRef.current = {}
-
-      try {
-        if (window.electronAPI?.config?.update) {
-          const res = await window.electronAPI.config.update(payload)
-          if (!isMountedRef.current) return
-          if (res?.success === false) {
-            showErrorMessage(res.error ? `配置保存失败: ${res.error}` : '配置保存失败: 文件只读或无写权限')
-            if (res.config) setConfig(res.config)
-          } else if (res?.config && currentSeq === updateSeqRef.current && Object.keys(pendingUpdateRef.current).length === 0) {
-            setConfig(res.config)
-            setSaveErrorMessage(null)
-          }
-        }
-      } catch (err) {
-        console.error('[SettingsDrawer] 持久化配置异常:', err)
-        if (isMountedRef.current) {
-          showErrorMessage('配置持久化通信异常')
-        }
-      } finally {
-        isFlushingRef.current = false
-        // 若在异步写入期间累积了新的变更，调度下一轮刷新以确保最终状态一致
-        if (Object.keys(pendingUpdateRef.current).length > 0) {
-          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-          debounceTimerRef.current = setTimeout(flush, 50)
-        }
-      }
-    }
-
-    if (delayMs === 0) {
-      flush()
-    } else {
-      debounceTimerRef.current = setTimeout(flush, delayMs)
-    }
-  }, [showErrorMessage])
-
-  // 立即同步无需防抖 (适用于开关、单选等离散项)
-  const updateConfigImmediate = useCallback((partial: DeepPartial<AppConfig>): void => {
-    updateConfigDebounced(partial, 0)
-  }, [updateConfigDebounced])
 
   // 应用壁纸路径
   const handleApplyWallpaper = useCallback(() => {
@@ -543,7 +837,7 @@ export default function SettingsDrawer() {
     mpdTestTimerRef.current = setTimeout(testMpdConnection, 300)
   }, [mpdHostInput, mpdPortInput, mpdStreamPortInput, updateConfigImmediate, testMpdConnection])
 
-  // 动态构建 5 大模块概览卡片信息
+  // 动态构建 6 大模块概览卡片信息
   const modulesMeta: SettingsModuleMeta[] = [
     {
       id: 'window',
@@ -555,6 +849,12 @@ export default function SettingsDrawer() {
             ? `云母材质 · ${config.window.background.mica.style} 微光 · ${config.window.immersive ? '沉浸式' : '标准边框'}`
             : `经典黑曜石 · ${config.window.immersive ? '沉浸式无边框' : '标准边框'}`,
       icon: <WindowIcon />
+    },
+    {
+      id: 'typography',
+      title: '字体与字形',
+      desc: `UI ${config.typography?.ui?.fontSize ?? 13}px · 提示 ${config.typography?.hint?.fontSize ?? 11}px · 歌词 ${config.typography?.lyrics?.body?.fontSize ?? 18}px / ${config.typography?.lyrics?.translation?.fontSize ?? 12}px`,
+      icon: <TypographyIcon />
     },
     {
       id: 'audio',
@@ -661,7 +961,21 @@ export default function SettingsDrawer() {
                 <BackChevronIcon />
                 <span>全部设置</span>
               </button>
-              <span className="settings-toolbar-badge">{activeModuleMeta.title}</span>
+              <div className="settings-hero-nav-actions">
+                {selectedModuleId === 'typography' && (
+                  <button
+                    type="button"
+                    className="settings-reset-btn"
+                    onClick={handleResetTypography}
+                    title="恢复默认字体配置"
+                    aria-label="恢复默认字体配置"
+                  >
+                    <RefreshIcon />
+                    <span>重置默认</span>
+                  </button>
+                )}
+                <span className="settings-toolbar-badge">{activeModuleMeta.title}</span>
+              </div>
             </div>
 
             <div className="settings-hero-header">
@@ -1000,7 +1314,213 @@ export default function SettingsDrawer() {
               </>
             )}
 
-            {/* 模块 2: 音频与过渡 */}
+            {/* 模块 2: 字体排印 */}
+            {selectedModuleId === 'typography' && (
+              <>
+                {/* 1. UI 界面通用字体 */}
+                <div className="settings-group-card">
+                  <div className="settings-group-header">
+                    <span className="settings-group-title">UI 界面通用字体</span>
+                    <span className="settings-group-badge">UI Font</span>
+                  </div>
+
+                  <FontPickerControl
+                    label="界面通用字形 (Font Family)"
+                    desc="控制主工作区、状态栏曲目名、抽屉导航列表等"
+                    presets={UI_FONT_PRESETS}
+                    currentFont={config.typography?.ui?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily}
+                    inputValue={uiFontInput}
+                    onInputChange={setUiFontInput}
+                    onFontChange={(font) => {
+                      updateConfigDebounced({
+                        typography: {
+                          ui: { fontFamily: font }
+                        }
+                      }, 100)
+                    }}
+                    previewText="lpip-player · 音乐即生命 · The quick brown fox jumps over 12345"
+                    previewStyle={{ fontSize: `${config.typography?.ui?.fontSize ?? 13}px` }}
+                  />
+
+                  <SliderControl
+                    label="界面基准字号"
+                    desc="全局界面与列表主文本字阶 (11 ~ 20px)"
+                    value={config.typography?.ui?.fontSize ?? 13}
+                    min={11}
+                    max={20}
+                    step={1}
+                    displayValue={`${config.typography?.ui?.fontSize ?? 13}px`}
+                    onChange={(val) =>
+                      updateConfigDebounced({
+                        typography: {
+                          ui: { fontSize: val }
+                        }
+                      })
+                    }
+                  />
+                </div>
+
+                {/* 2. 提示与辅助文本 */}
+                <div className="settings-group-card">
+                  <div className="settings-group-header">
+                    <span className="settings-group-title">提示与辅助文本</span>
+                    <span className="settings-group-badge">Hint Font</span>
+                  </div>
+
+                  <FontPickerControl
+                    label="辅助提示字形 (Font Family)"
+                    desc="控制等宽播放时间、SQ/Hi-Res 音质徽标、歌手专辑副标题"
+                    presets={HINT_FONT_PRESETS}
+                    currentFont={config.typography?.hint?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily}
+                    inputValue={hintFontInput}
+                    onInputChange={setHintFontInput}
+                    onFontChange={(font) => {
+                      updateConfigDebounced({
+                        typography: {
+                          hint: { fontFamily: font }
+                        }
+                      }, 100)
+                    }}
+                    previewText="03:45 / 04:12 · 192kHz 24-bit · FLAC Hi-Res · 歌手名 - 专辑"
+                    previewStyle={{ fontSize: `${config.typography?.hint?.fontSize ?? 11}px` }}
+                  />
+
+                  <SliderControl
+                    label="辅助提示字号"
+                    desc="时间标签与音质徽标等较小字阶 (9 ~ 16px)"
+                    value={config.typography?.hint?.fontSize ?? 11}
+                    min={9}
+                    max={16}
+                    step={1}
+                    displayValue={`${config.typography?.hint?.fontSize ?? 11}px`}
+                    onChange={(val) =>
+                      updateConfigDebounced({
+                        typography: {
+                          hint: { fontSize: val }
+                        }
+                      })
+                    }
+                  />
+                </div>
+
+                {/* 3. 星盘歌词排印 */}
+                <div className="settings-group-card">
+                  <div className="settings-group-header">
+                    <span className="settings-group-title">星盘歌词排印</span>
+                    <span className="settings-group-badge">Lyrics</span>
+                  </div>
+
+                  {/* 歌词正文 */}
+                  <FontPickerControl
+                    label="歌词正文字形 (Body Font)"
+                    desc="极坐标星盘主歌词大号高亮字形"
+                    presets={LYRICS_BODY_FONT_PRESETS}
+                    currentFont={config.typography?.lyrics?.body?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily}
+                    inputValue={lyricsBodyFontInput}
+                    onInputChange={setLyricsBodyFontInput}
+                    onFontChange={(font) => {
+                      updateConfigDebounced({
+                        typography: {
+                          lyrics: {
+                            body: { fontFamily: font }
+                          }
+                        }
+                      }, 100)
+                    }}
+                    previewText="Ubique, benigna lux spargitur"
+                    previewStyle={{ fontSize: `${config.typography?.lyrics?.body?.fontSize ?? 18}px` }}
+                  />
+
+                  <SliderControl
+                    label="歌词正文字号"
+                    desc="星盘主歌词基准尺寸 (14 ~ 36px)"
+                    value={config.typography?.lyrics?.body?.fontSize ?? 18}
+                    min={14}
+                    max={36}
+                    step={1}
+                    displayValue={`${config.typography?.lyrics?.body?.fontSize ?? 18}px`}
+                    onChange={(val) =>
+                      updateConfigDebounced({
+                        typography: {
+                          lyrics: {
+                            body: { fontSize: val }
+                          }
+                        }
+                      })
+                    }
+                  />
+
+                  {/* 分割线 */}
+                  <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
+
+                  {/* 歌词翻译 */}
+                  <FontPickerControl
+                    label="歌词翻译字形 (Translation Font)"
+                    desc="歌词译文与次级辅文本字形"
+                    presets={LYRICS_TRANS_FONT_PRESETS}
+                    currentFont={config.typography?.lyrics?.translation?.fontFamily || DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily}
+                    inputValue={lyricsTransFontInput}
+                    onInputChange={setLyricsTransFontInput}
+                    onFontChange={(font) => {
+                      updateConfigDebounced({
+                        typography: {
+                          lyrics: {
+                            translation: { fontFamily: font }
+                          }
+                        }
+                      }, 100)
+                    }}
+                    previewText="愿仁慈的光芒普照世间每一寸角落"
+                    previewStyle={{ fontSize: `${config.typography?.lyrics?.translation?.fontSize ?? 12}px` }}
+                  />
+
+                  <SliderControl
+                    label="歌词翻译字号"
+                    desc="次级翻译歌词基准尺寸 (10 ~ 22px)"
+                    value={config.typography?.lyrics?.translation?.fontSize ?? 12}
+                    min={10}
+                    max={22}
+                    step={1}
+                    displayValue={`${config.typography?.lyrics?.translation?.fontSize ?? 12}px`}
+                    onChange={(val) =>
+                      updateConfigDebounced({
+                        typography: {
+                          lyrics: {
+                            translation: { fontSize: val }
+                          }
+                        }
+                      })
+                    }
+                  />
+                </div>
+
+                {/* 4. 重置默认操作卡片 */}
+                <div className="settings-group-card">
+                  <div className="settings-group-header">
+                    <span className="settings-group-title">配置重置与维护</span>
+                    <span className="settings-group-badge">Default</span>
+                  </div>
+
+                  <div className="settings-control-row">
+                    <div className="settings-control-info">
+                      <span className="settings-control-label">重置为默认字体配置</span>
+                      <span className="settings-control-desc">一键恢复 UI 字体、提示文本与歌词排印的初始推荐字形与字阶</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="liquid-action-btn secondary"
+                      onClick={handleResetTypography}
+                      title="重置为默认字体配置"
+                    >
+                      <RefreshIcon />
+                      <span>恢复默认</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* 模块 3: 音频与过渡 */}
             {selectedModuleId === 'audio' && (
               <>
                 {/* 平滑淡入淡出过渡 */}

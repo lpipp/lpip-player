@@ -179,12 +179,32 @@ import {
   DEFAULT_VISUALIZER_CONFIG,
   parseVisualizerConfig,
   parseMpdConfig,
+  DEFAULT_TYPOGRAPHY_CONFIG,
+  parseTypographyConfig,
+  sanitizeFontFamily,
   type VisualizerConfig,
-  type VisualizerStyle
+  type VisualizerStyle,
+  type TypographyConfig,
+  type FontItemConfig,
+  type LyricsTypographyConfig
 } from '../types/config'
 
-export type { VisualizerConfig, VisualizerStyle, DeepPartial }
-export { DEFAULT_VISUALIZER_CONFIG, parseVisualizerConfig, parseMpdConfig }
+export type {
+  VisualizerConfig,
+  VisualizerStyle,
+  DeepPartial,
+  TypographyConfig,
+  FontItemConfig,
+  LyricsTypographyConfig
+}
+export {
+  DEFAULT_VISUALIZER_CONFIG,
+  parseVisualizerConfig,
+  parseMpdConfig,
+  DEFAULT_TYPOGRAPHY_CONFIG,
+  parseTypographyConfig,
+  sanitizeFontFamily
+}
 
 /**
  * 应用全局运行时配置结构
@@ -194,6 +214,7 @@ export interface AppConfig {
   audio: AudioConfig
   visualizer: VisualizerConfig
   mpd: MpdConfig
+  typography: TypographyConfig
 }
 
 /**
@@ -288,7 +309,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     host: '127.0.0.1',
     port: 6600,
     streamPort: 8000
-  }
+  },
+  typography: DEFAULT_TYPOGRAPHY_CONFIG
 }
 
 /**
@@ -652,6 +674,7 @@ export function loadConfig(customPath?: string): AppConfig {
     const sidebar = parseSidebarConfig(parsed.window?.sidebar)
     const audio = parseAudioConfig(parsed.audio)
     const visualizer = parseVisualizerConfig(parsed.visualizer)
+    const typography = parseTypographyConfig(parsed.typography ?? (parsed as Record<string, unknown>).font)
 
     return {
       window: {
@@ -665,7 +688,8 @@ export function loadConfig(customPath?: string): AppConfig {
       },
       audio,
       visualizer,
-      mpd: parseMpdConfig(parsed.mpd)
+      mpd: parseMpdConfig(parsed.mpd),
+      typography
     }
   } catch {
     // 遇到解析异常或无权限时, 安全使用默认配置
@@ -726,6 +750,16 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
   const visualizer = parseVisualizerConfig(merged.visualizer)
   const mpd = parseMpdConfig(merged.mpd)
 
+  const rawTypoCandidate = (partialConfig as Record<string, unknown>)?.typography ?? (partialConfig as Record<string, unknown>)?.font
+  const currentTypo = currentConfig.typography || DEFAULT_TYPOGRAPHY_CONFIG
+  const mergedTypoObj = rawTypoCandidate !== undefined
+    ? deepMerge(
+        currentTypo as unknown as Record<string, unknown>,
+        rawTypoCandidate as Record<string, unknown>
+      )
+    : (merged.typography ?? (merged as Record<string, unknown>).font)
+  const typography = parseTypographyConfig(mergedTypoObj)
+
   const finalConfig: AppConfig = {
     window: {
       immersive:
@@ -739,7 +773,8 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
     },
     audio,
     visualizer,
-    mpd
+    mpd,
+    typography
   }
 
   const dir = dirname(configPath)

@@ -13,6 +13,7 @@ import {
   stripJsonComments,
   type VisualizerConfig
 } from '../../types/config'
+import { applyTypographyToDOM } from './utils/typography'
 
 // 挂载到 window 供调试与运行时状态分析
 if (typeof window !== 'undefined') {
@@ -119,9 +120,12 @@ export default function App() {
       } catch {}
     }
 
-    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡、频谱律动配置)
+    // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡、频谱律动配置、全局字体排印)
     window.electronAPI?.config.get().then((cfg) => {
       if (!isMounted || !cfg) return
+      if (cfg.typography) {
+        applyTypographyToDOM(cfg.typography)
+      }
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
       }
@@ -135,6 +139,9 @@ export default function App() {
     // 监听运行时配置热更新 (用户编辑 config.json 后即时生效)
     const unsubConfig = window.electronAPI?.config.onChange((cfg) => {
       if (!isMounted || !cfg) return
+      if (cfg.typography) {
+        applyTypographyToDOM(cfg.typography)
+      }
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
       }

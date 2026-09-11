@@ -303,7 +303,8 @@
 }
 
 .music-track-title {
-  font-size: 14.5px;
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--font-size-ui, 13px) + 1.5px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.94);
   white-space: nowrap;
@@ -329,7 +330,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-family: var(--font-family-hint);
+  font-size: calc(var(--font-size-hint, 11px) - 2px);
   font-weight: 700;
   line-height: 1;
   height: 13px;
@@ -370,7 +372,8 @@
 
 /* 歌手与专辑副标题 */
 .music-track-artist-album {
-  font-size: 11.5px;
+  font-family: var(--font-family-hint);
+  font-size: var(--font-size-hint, 11px);
   color: rgba(255, 255, 255, 0.52);
   white-space: nowrap;
   overflow: hidden;

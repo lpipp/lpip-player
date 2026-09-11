@@ -355,7 +355,8 @@
 
 /* 时间标签: 等宽数字渲染，固定宽度防止秒数跳变引起轻微颤动 */
 .status-bar-time {
-  font-size: 12px;
+  font-family: var(--font-family-hint);
+  font-size: calc(var(--font-size-hint, 11px) + 1px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
@@ -488,7 +489,8 @@
 }
 
 .status-bar-meta-title {
-  font-size: 13.5px;
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 600;
   color: var(--theme-text-primary, rgba(255, 255, 255, 0.92));
   white-space: nowrap;
@@ -506,7 +508,8 @@
 }
 
 .status-bar-quality-badge {
-  font-size: 9.5px;
+  font-family: var(--font-family-hint);
+  font-size: calc(var(--font-size-hint, 11px) - 1.5px);
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 4px;
@@ -540,7 +543,8 @@
 }
 
 .status-bar-meta-artist {
-  font-size: 11px;
+  font-family: var(--font-family-hint);
+  font-size: var(--font-size-hint, 11px);
   color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
   white-space: nowrap;
   overflow: hidden;

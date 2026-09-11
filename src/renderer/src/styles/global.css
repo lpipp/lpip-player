@@ -18,6 +18,18 @@ body,
   --theme-brightness: 0;
   --theme-contrast: 1;
   --statusbar-height: 80px;
+
+  /* 全局文字排印系统 CSS 变量 (Typography System) */
+  --font-family-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-size-ui: 13px;
+  --font-family-hint: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'JetBrains Mono', monospace;
+  --font-size-hint: 11px;
+  --font-family-lyrics-body: 'Playfair Display', 'DejaVu Serif', 'Liberation Serif', 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  --font-family-lyrics: var(--font-family-lyrics-body);
+  --font-size-lyrics-body: 18px;
+  --font-size-lyrics: var(--font-size-lyrics-body);
+  --font-family-lyrics-translation: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-size-lyrics-translation: 12px;
 }
 
 /* 深色黑曜石模式 (Dark Mode, 默认) */
@@ -78,13 +90,9 @@ body,
 body {
   background: var(--theme-bg-body, #0a0a0f);
   overflow: hidden;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-ui);
+  font-size-adjust: from-font;
   -webkit-user-select: none;
   user-select: none;
   -webkit-font-smoothing: antialiased;

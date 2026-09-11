@@ -396,7 +396,8 @@
 }
 
 .queue-track-title {
-  font-size: 13.5px;
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
@@ -422,7 +423,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 8.5px;
+  font-family: var(--font-family-hint);
+  font-size: calc(var(--font-size-hint, 11px) - 2.5px);
   font-weight: 700;
   line-height: 1;
   height: 12px;
@@ -458,7 +460,8 @@
 }
 
 .queue-track-artist-album {
-  font-size: 11px;
+  font-family: var(--font-family-hint);
+  font-size: var(--font-size-hint, 11px);
   color: rgba(255, 255, 255, 0.48);
   white-space: nowrap;
   overflow: hidden;
@@ -469,7 +472,8 @@
    曲目时长与操作按键组
    ------------------------------------------------------------ */
 .queue-track-duration {
-  font-size: 11.5px;
+  font-family: var(--font-family-hint);
+  font-size: calc(var(--font-size-hint, 11px) + 0.5px);
   color: rgba(255, 255, 255, 0.4);
   font-variant-numeric: tabular-nums;
   margin-left: 2px;

@@ -179,6 +179,38 @@ export interface MpdConfig {
 }
 
 /**
+ * 单项字体字形与字号配置
+ */
+export interface FontItemConfig {
+  /** 字体族名称 (如推荐优质字体族或自定义字体名) */
+  fontFamily: string
+  /** 字体基准大小 (px) */
+  fontSize: number
+}
+
+/**
+ * 歌词专用字体配置 (区分正文主歌词与次级翻译文本)
+ */
+export interface LyricsTypographyConfig {
+  /** 歌词正文/原文大号高亮字形配置 */
+  body: FontItemConfig
+  /** 歌词翻译/次级辅助字形配置 */
+  translation: FontItemConfig
+}
+
+/**
+ * 全局文字排印与字体系统配置
+ */
+export interface TypographyConfig {
+  /** 界面通用字体 (控制主工作区、状态栏曲目名、抽屉导航列表等) */
+  ui: FontItemConfig
+  /** 提示与辅助文本 (控制等宽播放时间、SQ/Hi-Res 音质徽标、歌手专辑副标题等较小字阶) */
+  hint: FontItemConfig
+  /** 歌词文本 (含正文与翻译) */
+  lyrics: LyricsTypographyConfig
+}
+
+/**
  * 应用全局运行时配置结构
  */
 export interface AppConfig {
@@ -186,6 +218,7 @@ export interface AppConfig {
   audio: AudioConfig
   visualizer: VisualizerConfig
   mpd: MpdConfig
+  typography: TypographyConfig
 }
 
 /**
@@ -273,11 +306,33 @@ export const DEFAULT_WINDOW_CONFIG: WindowConfig = {
   mica: DEFAULT_MICA_CONFIG
 }
 
+export const DEFAULT_TYPOGRAPHY_CONFIG: TypographyConfig = {
+  ui: {
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif',
+    fontSize: 13
+  },
+  hint: {
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "JetBrains Mono", monospace',
+    fontSize: 11
+  },
+  lyrics: {
+    body: {
+      fontFamily: "'Playfair Display', 'DejaVu Serif', 'Liberation Serif', 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif",
+      fontSize: 18
+    },
+    translation: {
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+      fontSize: 12
+    }
+  }
+}
+
 export const DEFAULT_CONFIG: AppConfig = {
   window: DEFAULT_WINDOW_CONFIG,
   audio: DEFAULT_AUDIO_CONFIG,
   visualizer: DEFAULT_VISUALIZER_CONFIG,
-  mpd: DEFAULT_MPD_CONFIG
+  mpd: DEFAULT_MPD_CONFIG,
+  typography: DEFAULT_TYPOGRAPHY_CONFIG
 }
 
 /**
@@ -418,4 +473,179 @@ export function parseMpdConfig(rawMpd: unknown): MpdConfig {
 
   return DEFAULT_MPD_CONFIG
 }
+
+/**
+ * 清理与规范化用户输入的字体族名称
+ * 1. 去除首尾空白字符与非法换行/控制字符
+ * 2. 剥除 CSS 样式声明前缀如 font-family:
+ * 3. 剥除 !important 声明 (杜绝 CSSOM setProperty 静默失效)
+ * 4. 剥除 CSS 注释 /* ... *\/
+ * 5. 剥除分号、花括号、反斜杠 (CSS 逃逸符)、反引号与尖括号 (彻底杜绝 CSS 逃逸与 HTML 注入)
+ * 6. 规范化逗号 (去除首尾悬垂逗号与重复逗号)
+ * 7. 闭合或补齐未闭合的单双引号
+ */
+export function sanitizeFontFamily(input: unknown, fallback: string): string {
+  if (typeof input !== 'string') return fallback
+  let clean = input.trim()
+  if (!clean) return fallback
+
+  // 移除控制字符与换行 (ASCII 0-31 以及 DEL 127)
+  clean = clean.replace(/[\x00-\x1F\x7F]/g, ' ')
+
+  // 剥除 CSS 声明前缀 (如用户误粘贴 font-family: ...)
+  clean = clean.replace(/^font-family\s*:\s*/i, '')
+
+  // 剥除 !important 声明 (避免 setProperty 传参后静默失效)
+  clean = clean.replace(/!\s*important/gi, '')
+
+  // 剥除 CSS 注释
+  clean = clean.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  // 剥除分号、花括号、反斜杠 (CSS 逃逸字符)、尖括号与反引号
+  clean = clean.replace(/[;{}\\\\<>`]/g, '')
+
+  // 规范化逗号 (移除重复逗号以及首尾未完成的悬垂逗号)
+  clean = clean.replace(/,(\s*,)+/g, ',').replace(/^,\s*|,\s*$/g, '')
+
+  // 修复未配对的单双引号
+  const singleQuotes = (clean.match(/'/g) || []).length
+  if (singleQuotes % 2 !== 0) {
+    if (clean.startsWith("'") && !clean.endsWith("'")) {
+      clean = clean + "'"
+    } else if (clean.endsWith("'") && !clean.startsWith("'")) {
+      clean = "'" + clean
+    } else {
+      clean = clean.replace(/'/g, '')
+    }
+  }
+
+  const doubleQuotes = (clean.match(/"/g) || []).length
+  if (doubleQuotes % 2 !== 0) {
+    if (clean.startsWith('"') && !clean.endsWith('"')) {
+      clean = clean + '"'
+    } else if (clean.endsWith('"') && !clean.startsWith('"')) {
+      clean = '"' + clean
+    } else {
+      clean = clean.replace(/"/g, '')
+    }
+  }
+
+  clean = clean.replace(/\s+/g, ' ').trim()
+
+  // 若清理后不包含任何有效字符 (例如输入只有引号、逗号或空白: '""', "''", ",,")，安全回退
+  if (clean.replace(/['"\s,]/g, '').length === 0) {
+    return fallback
+  }
+
+  // 防御性拦截字符串化字面量 "null" 或 "undefined"
+  const lower = clean.toLowerCase()
+  if (lower === 'null' || lower === 'undefined') {
+    return fallback
+  }
+
+  return clean.length > 0 ? clean : fallback
+}
+
+/**
+ * 解析并校验单项字体字形与字号配置
+ */
+export function parseFontItemConfig(
+  rawItem: unknown,
+  defaultItem: FontItemConfig,
+  minSize: number,
+  maxSize: number
+): FontItemConfig {
+  if (typeof rawItem === 'object' && rawItem !== null) {
+    const obj = rawItem as Record<string, unknown>
+    const rawFont = obj['fontFamily']
+    const fontFamily = sanitizeFontFamily(rawFont, defaultItem.fontFamily)
+
+    const rawSize = obj['fontSize']
+    let parsedSize: number = NaN
+    if (typeof rawSize === 'number') {
+      parsedSize = rawSize
+    } else if (typeof rawSize === 'string') {
+      const parsedFloat = parseFloat(rawSize)
+      if (Number.isFinite(parsedFloat)) {
+        parsedSize = parsedFloat
+      }
+    }
+
+    const fontSize =
+      Number.isFinite(parsedSize)
+        ? Math.round(clamp(parsedSize, minSize, maxSize))
+        : defaultItem.fontSize
+
+    return { fontFamily, fontSize }
+  }
+
+  return { ...defaultItem }
+}
+
+/**
+ * 解析并校验全局文字排印与字体系统配置
+ */
+export function parseTypographyConfig(rawTypography: unknown): TypographyConfig {
+  if (typeof rawTypography === 'object' && rawTypography !== null) {
+    const obj = rawTypography as Record<string, unknown>
+    // 兼容可能直接传入包含 typography 或 font 包装节点的外层对象
+    const targetObj =
+      typeof obj['typography'] === 'object' && obj['typography'] !== null
+        ? (obj['typography'] as Record<string, unknown>)
+        : typeof obj['font'] === 'object' && obj['font'] !== null
+          ? (obj['font'] as Record<string, unknown>)
+          : obj
+
+    const lyricsObj =
+      typeof targetObj['lyrics'] === 'object' && targetObj['lyrics'] !== null
+        ? (targetObj['lyrics'] as Record<string, unknown>)
+        : {}
+
+    // 支持向后兼容旧版扁平 lyrics 配置: { lyrics: { fontFamily: string, fontSize: number | string } }
+    const flatFont = typeof lyricsObj['fontFamily'] === 'string' && lyricsObj['fontFamily'].trim().length > 0
+      ? lyricsObj['fontFamily'].trim()
+      : undefined
+    const flatSize = lyricsObj['fontSize']
+    let parsedFlatSize: number = NaN
+    if (typeof flatSize === 'number') {
+      parsedFlatSize = flatSize
+    } else if (typeof flatSize === 'string') {
+      const parsedFloat = parseFloat(flatSize)
+      if (Number.isFinite(parsedFloat)) {
+        parsedFlatSize = parsedFloat
+      }
+    }
+
+    const bodyObj =
+      typeof lyricsObj['body'] === 'object' && lyricsObj['body'] !== null
+        ? (lyricsObj['body'] as Record<string, unknown>)
+        : (flatFont !== undefined || Number.isFinite(parsedFlatSize) ? { fontFamily: flatFont, fontSize: flatSize } : undefined)
+
+    const defaultBody = flatFont !== undefined || Number.isFinite(parsedFlatSize)
+      ? {
+          fontFamily: sanitizeFontFamily(flatFont, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily),
+          fontSize: Number.isFinite(parsedFlatSize)
+            ? Math.round(clamp(parsedFlatSize, 14, 36))
+            : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontSize
+        }
+      : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body
+
+    const transObj =
+      typeof lyricsObj['translation'] === 'object' && lyricsObj['translation'] !== null
+        ? (lyricsObj['translation'] as Record<string, unknown>)
+        : undefined
+
+    return {
+      ui: parseFontItemConfig(targetObj['ui'], DEFAULT_TYPOGRAPHY_CONFIG.ui, 11, 20),
+      hint: parseFontItemConfig(targetObj['hint'], DEFAULT_TYPOGRAPHY_CONFIG.hint, 9, 16),
+      lyrics: {
+        body: parseFontItemConfig(bodyObj, defaultBody, 14, 36),
+        translation: parseFontItemConfig(transObj, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation, 10, 22)
+      }
+    }
+  }
+
+  return { ...DEFAULT_TYPOGRAPHY_CONFIG }
+}
+
 

@@ -165,5 +165,46 @@
     // httpd 音频流输出端口 (浏览器 <audio> 标签取音频流 + WebAudio 频谱分析)
     // 注意: httpd 流为惰性绑定，未播放前不监听，播放时自动建立连接
     "streamPort": 8000
+  },
+
+  // 全局文字排印与字体系统配置 (Typography & Font System)
+  // 支持自主配置 UI 界面、辅助提示以及星盘歌词 (正文与翻译) 的字形 (font-family) 与字号 (font-size)
+  // 配置支持秒级热重载生效，并通过 CSS 变量实时驱动全局文字呈现
+  "typography": {
+    // 界面通用字体 (控制主工作区、状态栏曲目名、抽屉导航列表等)
+    "ui": {
+      // 字体族名称 (支持推荐优质字体族或自定义字体名，留空则使用系统默认字体栈)
+      "fontFamily": "system-ui, -apple-system, \"Segoe UI\", Roboto, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      // 界面基准字号 (单位 px, 范围 11 ~ 20, 默认 13)
+      "fontSize": 13
+    },
+
+    // 提示与辅助文本 (控制等宽播放时间、SQ/Hi-Res 音质徽标、歌手专辑副标题等较小字阶)
+    "hint": {
+      // 字体族名称 (推荐等宽或精密工程字体栈)
+      "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"JetBrains Mono\", monospace",
+      // 辅助提示基准字号 (单位 px, 范围 9 ~ 16, 默认 11)
+      "fontSize": 11
+    },
+
+    // 歌词文本配置 (含正文与翻译独立调节)
+    "lyrics": {
+      // 歌词正文大号高亮字形配置
+      "body": {
+        // 歌词正文字体族名称 (推荐史诗衬线、文艺楷体或现代黑体)
+        "fontFamily": "'Playfair Display', 'DejaVu Serif', 'Liberation Serif', 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif",
+        // 歌词正文基准字号 (单位 px, 范围 14 ~ 36, 默认 18)
+        "fontSize": 18
+      },
+
+      // 歌词翻译/次级辅助字形配置
+      "translation": {
+        // 歌词翻译字体族名称 (推荐清晰易读的无衬线黑体或文艺楷体)
+        "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+        // 歌词翻译基准字号 (单位 px, 范围 10 ~ 22, 默认 12)
+        "fontSize": 12
+      }
+    }
   }
 }
+
