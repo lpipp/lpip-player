@@ -934,6 +934,14 @@ UI 整洁化（去专辑名 + 删三级描述 + 删底部提示）中沉淀的�
 3. **删渲染留签名**: `SettingsModuleMeta.desc` 字段与 `SliderControl/FontPickerControl` 的 `desc?` prop 只删渲染分支、保留类型签名，调用处 17 处传参暂留 —— 零类型涟漪，typecheck 一次通过；后续清理传参另开小会话，不在本轮扩大改动面。`desc` 置空后若 `noUnusedLocals` 报未使用变量（如 `hardwareSampleRate/mpdConnected`），先查他用再删，本次两者均有他用（kHz 直通读数/状态徽标），保留。
 4. **探针先断言行数再谈结论（§4.23 纪律复用）**: 本轮复现两例 —— 按钮索引错位（btn1 实为队列非曲库，首轮误报 `rowCount=0`）与抽屉态未就绪（歌单 L2 需先点歌单卡，添加面板需先点“添加单曲”，直接扫 `pl=0` 是空集合误报）。教训：先打印按钮映射/行数基线（曲库 436/队列 10/艺人 L1 238/歌单 L2 10/添加面板 436），对齐后再谈 `sep=0` 结论。另：`queue-track-grip`（absolute 覆盖序号）与 `capsule-rail <> capsule-subpanel`（动静分离裁剪宿主）系已知预期重叠，非回归。
 
+### 4.29 开关无响应双因：旧主进程 × saveConfig 回填 (2026-09-12)
+
+用户报“点击开关没反应”，排查出两层原因：
+
+1. **旧主进程吞键**：运行中 Electron（14:32）早于构建（15:01），`config.get` 返回 `lyrics keys=[body,translation]` 无 `showTranslation`；旧 `parseTypographyConfig` 把开关值丢掉再回写覆盖本地 state。修法只有重启（`pnpm start`，窗口按铁律经用户确认后 kill+重起）。注意 renderer 与 main 过期是两类问题：上次是 renderer 旧（`Page.reload` 即解），这次是 main 旧（必须重启）。
+2. **`saveConfig` 回填污染**：`deepMerge(current, partial)` + `parseTypographyConfig` 用 DEFAULT 回填，导致未携带开关的普通写入（如探针 OFF→ON）也把 `showTranslation:true` 写盘。修法：`saveConfig` 覆写只认 partial 显式携带（`'showTranslation' in partial.lyrics`），未携带从 `currentTypo` 继承，缺省不写盘 —— 与 `parseTypographyConfig` 的读侧缺省回退对称。
+3. **探针判据要认“零挂载”**：关闭走 `showTranslation &&` 短路，译文节点是 `count=0`（不是 `hidden=count`）；首版探针误判 FAIL。正确判据：OFF=`count=0 && persisted=false`，ON=`count=6 && persisted=true`。附带纪律：探针若写了用户 config，跑完必须 `cp` 备份恢复并 `diff` 自证零漂移。
+
 ### 4.28 歌词翻译显隐开关二纪律：严格布尔 × 重载后验 (2026-09-12)
 
 歌词翻译开关（`typography.lyrics.showTranslation`，默认 true）中沉淀的验证纪律：

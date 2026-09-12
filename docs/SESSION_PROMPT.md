@@ -24,6 +24,9 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已修复] 开关点了没反应：旧主进程 + saveConfig 回填双因 (2026-09-12):
+  表象是 ToggleSwitch 无响应，实为两层：① 运行中 Electron 是 14:32 旧主进程，早于 15:01 构建，`config.get` 返回 lyrics keys 无 showTranslation，旧 parse 把开关值丢掉再回写覆盖；② 即使新主进程，`saveConfig` 用 DEFAULT 回填把未携带的开关写盘，污染老用户 config（真实链路探针 OFF 后 config 多出 `"showTranslation": true`）。
+  修法：重启载入新 out/main；`saveConfig` 覆写只认 partial 显式携带，未携带从 currentTypo 继承、缺省不写盘；探针 `TOGGLE REAL-CHAIN`（关 0 译文 + persisted=false，恢复 6 译文 + persisted=true，config.json 恢复后零漂移）（提交 096135c）。
 - [已完备] 歌词翻译显隐开关 (2026-09-12):
   配置 typography.lyrics.showTranslation（默认 true，严格布尔解析，缺省回退不写盘）；设置歌词排印加「显示歌词翻译」ToggleSwitch（translation 字形前，updateConfigImmediate 即时生效）；
   LyricsOrbit 新增 showTranslation prop（关闭不挂载 secondary），App 由 config.get/onChange 双路径同步；CSS 宿主 data 属性兜底 display:none，主行零影响；
