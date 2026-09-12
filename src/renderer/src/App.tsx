@@ -66,6 +66,8 @@ export default function App() {
   // 歌词拉取世代号 (快切 A→B→C 时旧慢响应到达即丢弃, 只认最新一次拉取)
   const lyricsSeqRef = useRef(0)
   const isSeekingRef = useRef(false)
+  // 寻道锁定时器 (连击寻道时先清旧定时, 避免第一次的 800ms 回调提前解锁第二次寻道)
+  const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isVolDraggingRef = useRef(false)
   // PCM 音频流基地址 (跟随配置 mpd.host/streamPort, 默认与 DEFAULT_MPD_CONFIG 一致)
   const streamUrlRef = useRef<string>(buildStreamUrl(DEFAULT_MPD_CONFIG.host, DEFAULT_MPD_CONFIG.streamPort))
@@ -217,6 +219,11 @@ export default function App() {
 
     return () => {
       isMounted = false
+      // 卸载时清理寻道锁定时器, 避免回调在组件已销毁后写 ref
+      if (seekTimerRef.current !== null) {
+        clearTimeout(seekTimerRef.current)
+        seekTimerRef.current = null
+      }
       unsubConfig?.()
       unsubscribe?.()
       pcmPlayer.stop()
@@ -280,8 +287,13 @@ export default function App() {
         }
       }
     }
-    setTimeout(() => {
+    // 寻道锁自动释放: 连击时先清掉上一次的定时器, 否则第一次的回调会提前解锁第二次寻道
+    if (seekTimerRef.current !== null) {
+      clearTimeout(seekTimerRef.current)
+    }
+    seekTimerRef.current = setTimeout(() => {
       isSeekingRef.current = false
+      seekTimerRef.current = null
     }, 800)
   }
 
