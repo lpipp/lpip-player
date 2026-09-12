@@ -280,7 +280,7 @@ export default function QueueDrawer({
     onPlayQueueSong?.(song)
   }
 
-  // 移除单曲 (deleteid)
+  // 移除单曲 (按 queueId 精准定位, 经新队列快照换算当前 pos, 杜绝 UI 索引漂移误删)
   const handleRemoveSong = async (e: MouseEvent, song: MpdSong, index: number): Promise<void> => {
     e.stopPropagation()
     // 乐观剔除
@@ -289,7 +289,20 @@ export default function QueueDrawer({
 
     try {
       if (window.electronAPI?.mpd) {
-        await window.electronAPI.mpd.removeQueueItem(song.pos ?? index, song.queueId)
+        // queueId 在则先拉新鲜队列映射真实 pos, 失效回退渲染索引
+        let pos = song.pos ?? index
+        if (typeof song.queueId === 'number' && !Number.isNaN(song.queueId)) {
+          try {
+            const fresh = await window.electronAPI.mpd.getQueue()
+            const hit = fresh.find((s) => s.queueId === song.queueId)
+            if (hit && typeof hit.pos === 'number' && !Number.isNaN(hit.pos)) {
+              pos = hit.pos
+            }
+          } catch {
+            // 快照失败则沿用渲染期 pos, 交由主进程兜底
+          }
+        }
+        await window.electronAPI.mpd.removeQueueItem(pos, song.queueId)
         // 从 MPD 重新对齐一次最新队列
         const updated = await window.electronAPI.mpd.getQueue()
         setSongs(updated)
@@ -406,10 +419,28 @@ export default function QueueDrawer({
     setSongs(reindexed)
     handleDragEnd()
 
-    // 2. 同步 MPD move 指令
+    // 2. 同步 MPD move 指令 (UI 索引换算真实 pos: 按 queueId 经新队列快照定位, 失败则回退)
     try {
       if (window.electronAPI?.mpd) {
-        await window.electronAPI.mpd.moveQueueItem(fromIndex, targetPos)
+        let fromPos = fromIndex
+        let toPos = targetPos
+        try {
+          const fresh = await window.electronAPI.mpd.getQueue()
+          const fromSong = songs[fromIndex]
+          const toSong = songs[targetPos]
+          if (fromSong?.queueId !== undefined && toSong?.queueId !== undefined) {
+            const fromHit = fresh.findIndex((s) => s.queueId === fromSong.queueId)
+            const toHit = fresh.findIndex((s) => s.queueId === toSong.queueId)
+            if (fromHit !== -1 && toHit !== -1) {
+              fromPos = fromHit
+              // move 语义为挪至目标槽位, 以新鲜快照下标为准
+              toPos = toHit
+            }
+          }
+        } catch {
+          // 快照失败则沿用 UI 索引, 交由主进程执行
+        }
+        await window.electronAPI.mpd.moveQueueItem(fromPos, toPos)
         // 延时拉取真实 MPD 队列对齐状态
         const updated = await window.electronAPI.mpd.getQueue()
         setSongs(updated)

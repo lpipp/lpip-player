@@ -353,7 +353,7 @@
   user-select: none;
 }
 
-/* 时间标签: 等宽数字渲染，固定宽度防止秒数跳变引起轻微颤动 */
+/* 时间标签: 等宽数字渲染，固定宽度防止秒数跳变引起轻微颤动 (5ch 容下 mm:ss, 小时制变宽属预期) */
 .status-bar-time {
   font-family: var(--font-family-hint);
   font-size: calc(var(--font-size-hint, 12px) + 1px);
@@ -362,7 +362,7 @@
   font-feature-settings: 'tnum';
   color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
   letter-spacing: 0.5px;
-  min-width: 36px;
+  min-width: 5ch;
   white-space: nowrap;
   user-select: none;
   transition: color 0.2s ease;

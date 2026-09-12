@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, statSync, realpathSync } from 'node:fs'
 import { extname } from 'node:path'
 import type { WallpaperConfig } from './config'
 
@@ -117,7 +117,8 @@ export function resolveWallpaperPayload(config: WallpaperConfig): WallpaperStyle
     }
 
     const mediaType: WallpaperMediaType = isVideo ? 'video' : 'image'
-    const mediaUrl = `app-media://${encodeURI(filePath)}`
+    // 编码对称: `#`/`?` 必须转义 (encodeURI 不转), 否则解码侧按查询串截断导致路径错位
+    const mediaUrl = `app-media://${encodeURI(filePath).replace(/#/g, '%23').replace(/\?/g, '%3F')}`
 
     return {
       mediaType,
@@ -135,4 +136,38 @@ export function resolveWallpaperPayload(config: WallpaperConfig): WallpaperStyle
     console.error(`[lpip-player:wallpaper] 读取壁纸文件失败: ${filePath}`, error)
     return null
   }
+}
+
+/**
+ * 判定一条 app-media 常规路径是否在白名单内 (当前壁纸文件或封面缓存目录)
+ * 符号链接用 realpath 收敛到真实路径再比较, 匹配失败一律按越权拒绝
+ *
+ * @param resolvedFile 已 resolve 的待校验绝对路径
+ * @param configuredWallpaper 当前配置的壁纸绝对路径 (可为空)
+ * @param coverCacheDir 封面缓存目录绝对路径
+ */
+export function isAllowedAppMediaFile(resolvedFile: string, configuredWallpaper: string | null, coverCacheDir: string): boolean {
+  // 先做纯字符串前缀判定 (文件不存在时 realpath 会抛, 此时仍需给出 403/404 正确语义)
+  if (configuredWallpaper && resolvedFile === configuredWallpaper) return true
+  if (resolvedFile === coverCacheDir || resolvedFile.startsWith(`${coverCacheDir}/`)) return true
+  // 符号链接收敛复核: 真实路径命中同样放行, 解析失败则维持上面的字符串判定结果 (即拒绝)
+  try {
+    const realFile = realpathSync(resolvedFile)
+    if (configuredWallpaper) {
+      try {
+        if (realFile === realpathSync(configuredWallpaper)) return true
+      } catch {
+        // 壁纸文件不可解析时不额外放行
+      }
+    }
+    try {
+      const realCoverDir = realpathSync(coverCacheDir)
+      if (realFile === realCoverDir || realFile.startsWith(`${realCoverDir}/`)) return true
+    } catch {
+      // 缓存目录不可解析时不额外放行
+    }
+  } catch {
+    // 待校验文件不存在/不可解析: 字符串判定已失败, 此处维持拒绝
+  }
+  return false
 }

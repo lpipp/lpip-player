@@ -1,14 +1,15 @@
 import { existsSync, watch, mkdirSync } from 'node:fs'
-import { extname, join, dirname, basename } from 'node:path'
+import { join, dirname, basename, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, protocol, net, ipcMain } from 'electron'
 
 import { loadConfig, getDefaultConfigPath, saveConfig, type AppConfig, type DeepPartial } from './config'
 export { loadConfig, saveConfig, getDefaultConfigPath }
 export type { AppConfig, DeepPartial }
-import { EXT_TO_MIME, resolveWallpaperPayload } from './wallpaper'
+import { isAllowedAppMediaFile, resolveWallpaperPayload } from './wallpaper'
 import { IPC_CHANNELS } from './ipc-channels'
 import type { PlaybackMode, PlaySessionState } from '../types/music'
+import { sanitizeFontFamily, clamp, DEFAULT_TYPOGRAPHY_CONFIG } from '../types/config'
 import {
   addToPlaylist,
   addToQueue,
@@ -17,6 +18,7 @@ import {
   deduplicateQueue,
   deletePlaylist,
   enqueuePlaylist,
+  getCoverCacheDir,
   getLibrary,
   getOrExtractAlbumCover,
   getPlaylists,
@@ -84,6 +86,20 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
   const { background, theme, sidebar } = config.window
   const wpPayload = background.mode === 'wallpaper' ? resolveWallpaperPayload(background.wallpaper) : null
 
+  // 排印二次净化 (主进程兜底): 字形过 sanitize 防 CSS 逃逸, 字号钳位防超大撑爆布局, 口径与 renderer typography.ts 一致
+  const typo = config.typography || DEFAULT_TYPOGRAPHY_CONFIG
+  const uiFont = sanitizeFontFamily(typo.ui?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.ui.fontFamily)
+  const uiSize = Math.round(clamp(typeof typo.ui?.fontSize === 'number' && Number.isFinite(typo.ui.fontSize) ? typo.ui.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.ui.fontSize, 12, 20))
+  const hintFont = sanitizeFontFamily(typo.hint?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.hint.fontFamily)
+  const hintSize = Math.round(clamp(typeof typo.hint?.fontSize === 'number' && Number.isFinite(typo.hint.fontSize) ? typo.hint.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.hint.fontSize, 12, 16))
+  const bodyFont = sanitizeFontFamily(typo.lyrics?.body?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontFamily)
+  const bodySize = Math.round(clamp(typeof typo.lyrics?.body?.fontSize === 'number' && Number.isFinite(typo.lyrics.body.fontSize) ? typo.lyrics.body.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body.fontSize, 14, 36))
+  const transFont = sanitizeFontFamily(typo.lyrics?.translation?.fontFamily, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontFamily)
+  const transSize = Math.round(clamp(typeof typo.lyrics?.translation?.fontSize === 'number' && Number.isFinite(typo.lyrics.translation.fontSize) ? typo.lyrics.translation.fontSize : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation.fontSize, 12, 22))
+  // 译文显隐与主题仅收敛为白名单字面量 (非 false 一律 true, 非 light 一律 dark)
+  const showTranslationAttr = typo.lyrics?.showTranslation === false ? 'false' : 'true'
+  const safeThemeMode = theme.mode === 'light' ? 'light' : 'dark'
+
   const script = `
     (() => {
       try {
@@ -137,10 +153,10 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
         }
 
         // 2. 主题明暗、微调偏移与对比度
-        root.setAttribute('data-theme', ${JSON.stringify(theme.mode)});
+        root.setAttribute('data-theme', ${JSON.stringify(safeThemeMode)});
         root.setAttribute('data-theme-brightness', ${JSON.stringify(String(theme.brightness))});
         root.setAttribute('data-theme-contrast', ${JSON.stringify(String(theme.contrast))});
-        s.setProperty('--theme-mode', ${JSON.stringify(theme.mode)});
+        s.setProperty('--theme-mode', ${JSON.stringify(safeThemeMode)});
         s.setProperty('--theme-brightness', ${JSON.stringify(String(theme.brightness))});
         s.setProperty('--theme-contrast', ${JSON.stringify(String(theme.contrast))});
 
@@ -167,38 +183,19 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
           s.setProperty('--sidebar-easing', ${JSON.stringify(sidebar.animationEasing)});
         }
 
-        // 4. 全局文字排印与字体系统
-        const typography = ${JSON.stringify(config.typography || null)};
-        if (typography) {
-          if (typography.ui) {
-            if (typography.ui.fontFamily) s.setProperty('--font-family-ui', typography.ui.fontFamily);
-            if (typography.ui.fontSize) s.setProperty('--font-size-ui', typography.ui.fontSize + 'px');
-          }
-          if (typography.hint) {
-            if (typography.hint.fontFamily) s.setProperty('--font-family-hint', typography.hint.fontFamily);
-            if (typography.hint.fontSize) s.setProperty('--font-size-hint', typography.hint.fontSize + 'px');
-          }
-          if (typography.lyrics) {
-            if (typography.lyrics.body) {
-              if (typography.lyrics.body.fontFamily) {
-                s.setProperty('--font-family-lyrics-body', typography.lyrics.body.fontFamily);
-                s.setProperty('--font-family-lyrics', typography.lyrics.body.fontFamily);
-              }
-              if (typography.lyrics.body.fontSize) {
-                s.setProperty('--font-size-lyrics-body', typography.lyrics.body.fontSize + 'px');
-                s.setProperty('--font-size-lyrics', typography.lyrics.body.fontSize + 'px');
-              }
-            }
-            if (typography.lyrics.translation) {
-              if (typography.lyrics.translation.fontFamily) {
-                s.setProperty('--font-family-lyrics-translation', typography.lyrics.translation.fontFamily);
-              }
-              if (typography.lyrics.translation.fontSize) {
-                s.setProperty('--font-size-lyrics-translation', typography.lyrics.translation.fontSize + 'px');
-              }
-            }
-          }
-        }
+        // 4. 全局文字排印与字体系统 (主进程已净化字形并钳位字号, 此处直接落盘)
+        s.setProperty('--font-family-ui', ${JSON.stringify(uiFont)});
+        s.setProperty('--font-size-ui', ${JSON.stringify(`${uiSize}px`)});
+        s.setProperty('--font-family-hint', ${JSON.stringify(hintFont)});
+        s.setProperty('--font-size-hint', ${JSON.stringify(`${hintSize}px`)});
+        s.setProperty('--font-family-lyrics-body', ${JSON.stringify(bodyFont)});
+        s.setProperty('--font-family-lyrics', ${JSON.stringify(bodyFont)});
+        s.setProperty('--font-size-lyrics-body', ${JSON.stringify(`${bodySize}px`)});
+        s.setProperty('--font-size-lyrics', ${JSON.stringify(`${bodySize}px`)});
+        s.setProperty('--font-family-lyrics-translation', ${JSON.stringify(transFont)});
+        s.setProperty('--font-size-lyrics-translation', ${JSON.stringify(`${transSize}px`)});
+        // 歌词翻译显隐开关: 与 renderer LyricsOrbit 宿主属性同口径, 切歌/热更新后保持一致
+        root.setAttribute('data-show-translation', ${JSON.stringify(showTranslationAttr)});
       } catch (err) {
         console.error('[lpip-player:applyConfigToWindow] 注入配置异常:', err);
       }
@@ -343,13 +340,25 @@ app.whenReady().then(() => {
   protocol.handle('app-media', async (request) => {
     const url = request.url
 
+    // 安全解码: 畸形 % 序列会抛 URIError, 一律 400 拒绝 (防协议处理器未捕获异常)
+    const safeDecode = (s: string): string | null => {
+      try {
+        return decodeURIComponent(s)
+      } catch {
+        return null
+      }
+    }
+
     // 场景 1: 音频内嵌封面提取与本地缓存服务 (app-media://cover/<file>?tier=thumb|full)
     if (url.startsWith('app-media://cover/')) {
       const rawRel = url.slice('app-media://cover/'.length)
       const qIndex = rawRel.indexOf('?')
       const encodedPath = qIndex === -1 ? rawRel : rawRel.slice(0, qIndex)
       const query = qIndex === -1 ? '' : rawRel.slice(qIndex + 1)
-      const relPath = decodeURIComponent(encodedPath)
+      const relPath = safeDecode(encodedPath)
+      if (relPath === null || relPath.length === 0) {
+        return new Response('Bad Request', { status: 400 })
+      }
       // 缺省按 thumb 处理; tier=full 保留原图访问路径 (留给大舞台高清场景)
       const tier = query.includes('tier=full') ? 'full' : 'thumb'
       const coverPath = await getOrExtractAlbumCover(relPath, tier)
@@ -361,11 +370,30 @@ app.whenReady().then(() => {
       return new Response('No Cover', { status: 404 })
     }
 
-    // 场景 2: 常规静态图片或大尺寸视频流 Range 请求
+    // 场景 2: 常规静态图片或大尺寸视频流 Range 请求 (白名单仅放行当前壁纸文件与封面缓存目录, 防任意本地文件读取)
     const pathWithoutQuery = url.replace(/^app-media:\/\//, '').split('?')[0]
-    let filePath = decodeURIComponent(pathWithoutQuery)
+    const decoded = safeDecode(pathWithoutQuery)
+    if (decoded === null || decoded.length === 0) {
+      return new Response('Bad Request', { status: 400 })
+    }
+    let filePath = decoded
     if (!filePath.startsWith('/')) {
       filePath = '/' + filePath
+    }
+    const resolvedFile = resolve(filePath)
+    const coverDir = resolve(getCoverCacheDir())
+    let wallpaperFile: string | null = null
+    try {
+      const configured = loadConfig().window.background.wallpaper.path
+      if (typeof configured === 'string' && configured.length > 0) {
+        wallpaperFile = resolve(configured)
+      }
+    } catch {
+      // 配置读取失败则仅放行封面缓存目录
+    }
+    // 白名单判定走 realpath 收敛 (防符号链接绕过), 口径见 wallpaper.isAllowedAppMediaFile
+    if (!isAllowedAppMediaFile(resolvedFile, wallpaperFile, coverDir)) {
+      return new Response('Forbidden', { status: 403 })
     }
     if (!existsSync(filePath)) {
       return new Response('File Not Found', { status: 404 })
@@ -386,14 +414,19 @@ app.whenReady().then(() => {
     if (isBroadcastingInFlight) return
     isBroadcastingInFlight = true
     try {
-      const windows = BrowserWindow.getAllWindows()
-      if (windows.length > 0 && !windows[0].isDestroyed()) {
+      const windows = BrowserWindow.getAllWindows().filter((win) => !win.isDestroyed())
+      if (windows.length > 0) {
         const status = await getStatus()
         playSession = observePlaySession(playSession, status, Date.now(), (file) => {
           // fire-and-forget: sticker get/set 两轮往返挂后台, 不阻塞 500ms 广播节拍
           void incrementPlayCount(file)
         })
-        windows[0].webContents.send(IPC_CHANNELS.MPD_STATUS_CHANGED, status)
+        // 全窗口广播: 多窗口/重建窗口并存时逐个推送, 逐个判活防竞态销毁
+        for (const win of windows) {
+          if (!win.isDestroyed()) {
+            win.webContents.send(IPC_CHANNELS.MPD_STATUS_CHANGED, status)
+          }
+        }
       }
     } catch {
       // 忽略广播异常

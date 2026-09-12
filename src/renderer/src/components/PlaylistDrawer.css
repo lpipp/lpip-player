@@ -957,7 +957,8 @@
   flex-shrink: 0;
 }
 
-.playlist-badge-hires {
+.playlist-badge-hires,
+.playlist-badge-hi-res {
   font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   font-size: var(--font-size-hint, 12px);
   font-weight: 700;

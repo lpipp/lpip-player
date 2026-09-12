@@ -340,16 +340,8 @@ function FontPickerControl({
     handleCommit(val)
   }, [currentFont, handleCommit])
 
-  // 双重监听保障: 既通过 React onBlur 响应标准 focusout 委托，又在 DOM 节点直接监听原生 blur 事件
-  useEffect(() => {
-    const el = inputRef.current
-    if (!el) return
-    const onDomBlur = () => {
-      handleBlur(el.value)
-    }
-    el.addEventListener('blur', onDomBlur)
-    return () => el.removeEventListener('blur', onDomBlur)
-  }, [handleBlur])
+  // 提交保障: 仅保留 React onBlur 统一处理失焦提交, 不再挂载原生 blur 监听
+  // (此前双重订阅会导致同一次失焦触发两次 handleBlur, 空值回退与提交被重复执行)
 
   return (
     <div className="liquid-font-control-block">
@@ -388,7 +380,8 @@ function FontPickerControl({
           type="text"
           className="liquid-text-input"
           value={inputValue}
-          placeholder="输入自定义字体族名称 (如 Inter, MiSans, Fira Code...)"
+          placeholder="输入自定义字体族名称"
+          title="输入自定义字体族名称, 例如 Inter, MiSans, Fira Code"
           onFocus={() => {
             isEditingRef.current = true
             initialFontRef.current = currentFont
@@ -554,8 +547,13 @@ export default function SettingsDrawer() {
           const res = await window.electronAPI.config.update(payload)
           if (!isMountedRef.current) return
           if (res?.success === false) {
-            showErrorMessage(res.error ? `配置保存失败: ${res.error}` : '配置保存失败: 文件只读或无写权限')
-            if (res.config) setConfig(res.config)
+            // 失败分支同样受序列号守卫保护: 仅最新一轮 flush 才可覆盖本地配置, 防止过期失败回包冲掉新值
+            if (res.config && currentSeq === updateSeqRef.current && Object.keys(pendingUpdateRef.current).length === 0) {
+              showErrorMessage(res.error ? `配置保存失败: ${res.error}` : '配置保存失败: 文件只读或无写权限')
+              setConfig(res.config)
+            } else if (currentSeq === updateSeqRef.current) {
+              showErrorMessage(res.error ? `配置保存失败: ${res.error}` : '配置保存失败: 文件只读或无写权限')
+            }
           } else if (res?.config && currentSeq === updateSeqRef.current && Object.keys(pendingUpdateRef.current).length === 0) {
             setConfig(res.config)
             setSaveErrorMessage(null)
@@ -1568,7 +1566,7 @@ export default function SettingsDrawer() {
                       desc="推荐 80 ~ 200ms，毫秒级自适应音频世代切换"
                       value={config.audio.fade.duration}
                       min={20}
-                      max={500}
+                      max={1000}
                       step={10}
                       displayValue={`${config.audio.fade.duration}ms`}
                       onChange={(val) =>

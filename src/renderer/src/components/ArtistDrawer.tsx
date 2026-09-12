@@ -107,6 +107,9 @@ export default function ArtistDrawer({
 
   const isMountedRef = useRef(true)
   const syncSeqRef = useRef<number>(0)
+  // 批量操作互斥锁 (与歌单整单播放/入队口径一致, 防连点并发)
+  const isEnqueueingRef = useRef(false)
+  const isPlayingEntireRef = useRef(false)
   const clickLockRef = useRef<Record<string, boolean>>({})
   const pendingOpsRef = useRef<Map<string, 'add' | 'remove'>>(new Map())
   const lastPlaylistLenRef = useRef<number>(-1)
@@ -200,12 +203,40 @@ export default function ArtistDrawer({
     }
     window.addEventListener('lpip:queue-changed', handleQueueChanged)
 
+    // 键盘无障碍: 详情层 Escape/Backspace 返回总览 (输入编辑态让输入框自有 onKeyDown 先行)
+    const handleKeyDown = (e: globalThis.KeyboardEvent): void => {
+      const active = document.activeElement
+      const isEditing = Boolean(
+        active &&
+          (active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            (active as HTMLElement).isContentEditable)
+      )
+      if (e.key === 'Escape') {
+        if (selectedArtist !== null) {
+          if (isEditing) return
+          e.stopImmediatePropagation()
+          e.preventDefault()
+          setSelectedArtist(null)
+        }
+      } else if (e.key === 'Backspace') {
+        if (selectedArtist !== null && !isEditing) {
+          e.stopImmediatePropagation()
+          e.preventDefault()
+          setSelectedArtist(null)
+        }
+      }
+    }
+    // 捕获阶段优先拦截, 防止外层胶囊整栏误收起
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+
     return () => {
       isMounted = false
       unsubscribe?.()
       window.removeEventListener('lpip:queue-changed', handleQueueChanged)
+      window.removeEventListener('keydown', handleKeyDown, { capture: true })
     }
-  }, [syncQueue])
+  }, [syncQueue, selectedArtist])
 
   // 3. 将全量曲库按歌手名称进行纯内存极速聚合
   const artistGroups = useMemo<ArtistGroup[]>(() => {
@@ -279,10 +310,11 @@ export default function ArtistDrawer({
     }
   }
 
-  // 播放某个艺人的全部单曲 (清空队列并灌入该艺人全部曲目)
+  // 播放某个艺人的全部单曲 (互斥锁防连点并发, 跳过已在队列曲目避免主进程重复灌入)
   const handlePlayArtist = async (e: MouseEvent, group: ArtistGroup): Promise<void> => {
     e.stopPropagation()
-    if (!group.songs.length) return
+    if (!group.songs.length || isPlayingEntireRef.current) return
+    isPlayingEntireRef.current = true
     try {
       const first = group.songs[0]
       if (onPlaySong) {
@@ -293,18 +325,25 @@ export default function ArtistDrawer({
       // 将该艺人后续歌曲依次追加至播放队列
       if (window.electronAPI?.mpd && group.songs.length > 1) {
         for (let i = 1; i < group.songs.length; i++) {
+          if (isQueued(group.songs[i])) continue
           await window.electronAPI.mpd.addToQueue(group.songs[i].file)
         }
         window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
       }
     } catch (err) {
       console.error('[lpip-player:artist] 播放艺人全部歌曲失败:', err)
+    } finally {
+      setTimeout(() => {
+        isPlayingEntireRef.current = false
+      }, 500)
     }
   }
 
-  // 一键将该艺人全部单曲追加至队列
+  // 一键将该艺人全部单曲追加至队列 (互斥锁防连点并发, 已在队列曲目跳过)
   const handleEnqueueAll = async (e: MouseEvent, group: ArtistGroup): Promise<void> => {
     e.stopPropagation()
+    if (isEnqueueingRef.current) return
+    isEnqueueingRef.current = true
     try {
       if (window.electronAPI?.mpd) {
         for (const s of group.songs) {
@@ -317,6 +356,10 @@ export default function ArtistDrawer({
       }
     } catch (err) {
       console.error('[lpip-player:artist] 全部追加至队列失败:', err)
+    } finally {
+      setTimeout(() => {
+        isEnqueueingRef.current = false
+      }, 500)
     }
   }
 
@@ -624,7 +667,7 @@ export default function ArtistDrawer({
                     <div className="artist-song-meta">
                       <span className="artist-song-title">{song.title}</span>
                       <div className="artist-song-subinfo">
-                        <span className={`artist-badge-${song.quality.toLowerCase()}`}>{song.quality}</span>
+                        <span className={`artist-badge-${(song.quality || 'STD').toLowerCase()}`}>{song.quality || 'STD'}</span>
                       </div>
                     </div>
 

@@ -543,8 +543,8 @@ export default function MechanicalGear({
             />
             <line x1={c2 - 16} y1={c2} x2={c2 - 5} y2={c2} stroke="#6ee7b7" strokeWidth="0.7" strokeOpacity="0.75" />
             <line x1={c2 + 5} y1={c2} x2={c2 + 16} y2={c2} stroke="#6ee7b7" strokeWidth="0.7" strokeOpacity="0.75" />
-            <line x1={c2} y1={c2 - 16} x2={c2 - 5} y2={c2} stroke="#6ee7b7" strokeWidth="0.7" strokeOpacity="0.75" />
-            <line x1={c2} y1={c2 + 5} x2={c2 + 16} y2={c2} stroke="#6ee7b7" strokeWidth="0.7" strokeOpacity="0.75" />
+            <line x1={c2} y1={c2 - 16} x2={c2} y2={c2 - 5} stroke="#6ee7b7" strokeWidth="0.7" strokeOpacity="0.75" />
+            <line x1={c2} y1={c2 + 5} x2={c2} y2={c2 + 16} stroke="#6ee7b7" strokeWidth="0.7" strokeOpacity="0.75" />
             <circle cx={c2} cy={c2} r={1.2} fill="#6ee7b7" />
           </svg>
         </div>
@@ -857,7 +857,7 @@ export default function MechanicalGear({
             <line x1={cf - 20} y1={cf} x2={cf - 6} y2={cf} stroke="#6ee7b7" strokeWidth="0.75" strokeOpacity="0.8" />
             <line x1={cf + 6} y1={cf} x2={cf + 20} y2={cf} stroke="#6ee7b7" strokeWidth="0.75" strokeOpacity="0.8" />
             <line x1={cf} y1={cf - 20} x2={cf} y2={cf - 6} stroke="#6ee7b7" strokeWidth="0.75" strokeOpacity="0.8" />
-            <line x1={cf} y1={cf + 6} x2={cf + 20} y2={cf} stroke="#6ee7b7" strokeWidth="0.75" strokeOpacity="0.8" />
+            <line x1={cf} y1={cf + 6} x2={cf} y2={cf + 20} stroke="#6ee7b7" strokeWidth="0.75" strokeOpacity="0.8" />
             <circle cx={cf} cy={cf} r={1.5} fill="#6ee7b7" />
           </svg>
         </div>

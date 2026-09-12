@@ -106,7 +106,8 @@ function CloseIcon() {
 
 /**
  * 6 大功能模块 (曲库中心 / 播放队列 / 艺人分类 / 歌单 / 统计信息 / 偏好设置)
- * 统计信息与偏好设置外的前四者均为占位子菜单项, 实际由专属抽屉组件渲染
+ * 注意: items 仅为导航元数据占位, 当前渲染均走下方专属抽屉组件分支,
+ * 不再消费 items (保留字段供未来子菜单复用, 勿删以免破坏 NavModule 类型)
  */
 const MODULES: NavModule[] = [
   {
@@ -287,9 +288,9 @@ export default function SidebarCapsule({
       }
     }
 
-    // 鼠标彻底离开当前窗口视口
-    const handleMouseLeave = (): void => {
-      if (!closeTimerRef.current) {
+    // 鼠标彻底离开文档视口 (window 不会触发 mouseleave, 改用 documentElement/mouseout 兜底)
+    const handleMouseOut = (e: globalThis.MouseEvent): void => {
+      if (!e.relatedTarget && !closeTimerRef.current) {
         closeTimerRef.current = setTimeout(() => {
           setIsExpanded(false)
           closeTimerRef.current = null
@@ -305,12 +306,14 @@ export default function SidebarCapsule({
     }
 
     window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseleave', handleMouseLeave)
+    document.documentElement.addEventListener('mouseleave', handleMouseOut)
+    document.addEventListener('mouseout', handleMouseOut)
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseleave', handleMouseLeave)
+      document.documentElement.removeEventListener('mouseleave', handleMouseOut)
+      document.removeEventListener('mouseout', handleMouseOut)
       window.removeEventListener('keydown', handleKeyDown)
       cancelCloseTimer()
     }

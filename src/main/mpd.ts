@@ -27,6 +27,14 @@ export function escapeMpdString(str: string): string {
 }
 
 /**
+ * 校验 MPD 位置型数值入参 (队列 pos / songId / 歌单 pos)
+ * 必须为非负整数, 否则拒绝 (防 `0\nclear\n` 类换行注入多指令, IPC 侧类型不可信)
+ */
+export function isValidMpdIndex(n: unknown): n is number {
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0
+}
+
+/**
  * 执行原生 MPD 纯文本 TCP 协议指令
  *
  * @param command 要发送给 MPD 的命令文本 (末尾自动补齐 \n)
@@ -648,10 +656,13 @@ export async function getQueue(): Promise<MpdSong[]> {
  */
 export async function playQueueItem(pos: number, queueId?: number): Promise<boolean> {
   try {
-    if (typeof queueId === 'number' && !Number.isNaN(queueId)) {
+    // queueId 优先, pos 兜底, 两者非法一律拒绝 (不向 MPD 发送未经校验的插值)
+    if (isValidMpdIndex(queueId)) {
       await sendMpdCommand(`playid ${queueId}`)
-    } else {
+    } else if (isValidMpdIndex(pos)) {
       await sendMpdCommand(`play ${pos}`)
+    } else {
+      return false
     }
     return true
   } catch (error) {
@@ -686,13 +697,13 @@ export async function removeQueueItem(pos: number, queueId?: number, file?: stri
     }
 
     // 场景 2: 按 queueId 删除指定单项 (如 QueueDrawer 中按队列 ID 移除)
-    if (typeof queueId === 'number' && !Number.isNaN(queueId)) {
+    if (isValidMpdIndex(queueId)) {
       await sendMpdCommand(`deleteid ${queueId}`)
       return true
     }
 
-    // 场景 3: 按 pos 索引删除单项 (保底按队列槽位)
-    if (typeof pos === 'number' && !Number.isNaN(pos) && pos >= 0) {
+    // 场景 3: 按 pos 索引删除单项 (保底按队列槽位, 非负整数才放行)
+    if (isValidMpdIndex(pos)) {
       await sendMpdCommand(`delete ${pos}`)
       return true
     }
@@ -722,6 +733,10 @@ export async function clearQueue(): Promise<boolean> {
  */
 export async function moveQueueItem(fromPos: number, toPos: number): Promise<boolean> {
   try {
+    // 双端均为非负整数才放行, 否则直接拒绝 (防换行注入多指令)
+    if (!isValidMpdIndex(fromPos) || !isValidMpdIndex(toPos)) {
+      return false
+    }
     await sendMpdCommand(`move ${fromPos} ${toPos}`)
     return true
   } catch (error) {
@@ -775,12 +790,20 @@ export { parseLrc } from './lyrics'
  * 获取指定音频文件的歌词行数据 (优先读取 .lrc 文件，其次提取 FLAC/MP3 内嵌标签)
  */
 export function getSongLyrics(relPath: string): LyricLine[] {
+  // 路径收敛: relPath 非字符串或解析后跳出曲库目录一律拒绝 (防 `../../` 穿越, 口径与歌单沙箱一致)
+  if (typeof relPath !== 'string' || relPath.length === 0) {
+    return []
+  }
   if (cachedLyrics.has(relPath)) {
     return cachedLyrics.get(relPath)!
   }
 
   const musicDir = join(app.getPath('home'), 'Music')
   const audioPath = join(musicDir, relPath)
+  const resolvedAudio = resolve(audioPath)
+  if (!resolvedAudio.startsWith(resolve(musicDir) + sep)) {
+    return []
+  }
 
   if (!existsSync(audioPath)) {
     return []
@@ -903,9 +926,9 @@ function runExtract<T>(task: () => Promise<T>): Promise<T> {
 }
 
 /**
- * 获取封面图片的本地缓存目录
+ * 获取封面图片的本地缓存目录 (导出供 app-media 白名单复用)
  */
-function getCoverCacheDir(): string {
+export function getCoverCacheDir(): string {
   const dir = join(app.getPath('home'), '.cache', 'lpip-player', 'covers')
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
@@ -999,8 +1022,16 @@ function generateThumbFromCover(coverPath: string, thumbPath: string): Promise<b
  * 仅「从音频文件提取原图」这一昂贵步骤进入并发队列，其余路径直接执行。
  */
 export function getOrExtractAlbumCover(relPath: string, tier: 'thumb' | 'full' = 'thumb'): Promise<string | null> {
+  // 路径收敛: relPath 非字符串或解析后跳出曲库目录一律拒绝 (防 `../../` 穿越, 口径与歌单沙箱一致)
+  if (typeof relPath !== 'string' || relPath.length === 0) {
+    return Promise.resolve(null)
+  }
   const musicDir = join(app.getPath('home'), 'Music')
   const audioPath = join(musicDir, relPath)
+  const resolvedAudio = resolve(audioPath)
+  if (!resolvedAudio.startsWith(resolve(musicDir) + sep)) {
+    return Promise.resolve(null)
+  }
 
   if (!existsSync(audioPath)) {
     return Promise.resolve(null)
@@ -1411,7 +1442,8 @@ export async function addToPlaylist(name: string, file: string): Promise<boolean
  */
 export async function removeFromPlaylist(name: string, pos: number): Promise<boolean> {
   const cleanName = sanitizePlaylistName(name)
-  if (!cleanName || pos < 0) return false
+  // pos 非负整数校验 (防换行注入 playlistdelete, 字符串型 IPC 入参一律拒绝)
+  if (!cleanName || !isValidMpdIndex(pos)) return false
 
   try {
     try {

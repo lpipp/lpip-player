@@ -557,7 +557,8 @@
   flex-shrink: 0;
 }
 
-.artist-badge-hires {
+.artist-badge-hires,
+.artist-badge-hi-res {
   font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   font-size: var(--font-size-hint, 12px);
   font-weight: 700;
@@ -568,6 +569,21 @@
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.35);
   color: #fbbf24;
+  flex-shrink: 0;
+}
+
+/* STD 标准灰徽标 (quality 缺省兜底, 与曲库/队列一致) */
+.artist-badge-std {
+  font-family: var(--font-family-hint, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: var(--font-size-hint, 12px);
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.1;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
 

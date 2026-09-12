@@ -283,15 +283,17 @@ export default function App() {
     if (window.electronAPI?.mpd) {
       const ok = await window.electronAPI.mpd.seek(timeSeconds)
       if (ok) {
-        // 方案 C: 寻道时瞬间排空旧缓冲, ~40ms 启动新落点播放
-        pcmPlayer.flushAndReconnect(getStreamUrl())
-        // 暂停态下确认跳转: seek 落点稳定后自动恢复播放
+        // 暂停态确认跳转: 先 resume 让 MPD 回到 play 再重建流, 只重建一次 (P1 单 flush)
+        // 播放态寻道: 瞬间排空旧缓冲, ~40ms 启动新落点播放
         if (wasPaused) {
           const resumed = await window.electronAPI.mpd.resume()
           if (resumed) {
             pcmPlayer.resume(getStreamUrl())
             setIsPlaying(true)
           }
+        } else {
+          // 方案 C: 寻道时瞬间排空旧缓冲, ~40ms 启动新落点播放
+          pcmPlayer.flushAndReconnect(getStreamUrl())
         }
       }
     }

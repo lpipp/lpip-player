@@ -47,16 +47,20 @@
 /* 主齿轮随歌词步进逆时针传动与机械擒纵回弹 (Escapement Stepping & Bounce)
    - 旋转中心严格匹配星盘圆心 cx=0, cy=320
    - 机械超调阻尼贝塞尔曲线 cubic-bezier(0.18, 1.35, 0.32, 1)：
-     切行瞬间爆发跳齿，冲过目标角度约 35%，撞击托瓦宝石后受硬质阻尼强力反弹锁死 */
+     切行瞬间爆发跳齿，冲过目标角度约 35%，撞击托瓦宝石后受硬质阻尼强力反弹锁死
+   - 静止态 (animated=false) 关闭过渡, 一步定格到位 (e2e 抓轨稳定) */
 .astrolabe-main-gear {
   transform-origin: 0px 320px;
   transform: rotate(var(--gear-rotation, 0deg));
-  transition: transform 0.58s cubic-bezier(0.18, 1.35, 0.32, 1);
   will-change: transform;
 }
 
-/* 漂浮多面体缓慢浮动动效 */
-.astrolabe-floating-crystals {
+.lyrics-orbit-wrapper.is-animated .astrolabe-main-gear {
+  transition: transform 0.58s cubic-bezier(0.18, 1.35, 0.32, 1);
+}
+
+/* 漂浮多面体缓慢浮动动效 (静止态暂停, 减少无谓合成) */
+.lyrics-orbit-wrapper.is-animated .astrolabe-floating-crystals {
   animation: floatingCrystals 16s ease-in-out infinite alternate;
 }
 
@@ -75,6 +79,7 @@
 /* ------------------------------------------------------------
    歌词轨道旋转容器 (Lyrics Orbit Wheel)
    以 (cx, cy) 为旋转原点，切行瞬间具备厚重的机械冲程超调与阻尼回弹
+   静止态关闭过渡, 轮盘一步定格 (与齿轮守卫配对)
    ------------------------------------------------------------ */
 .lyrics-orbit-wheel {
   position: absolute;
@@ -84,10 +89,13 @@
   height: 0;
   transform-origin: 0 0;
   transform: rotate(var(--wheel-rotation, 0deg));
-  /* 机械超调阻尼贝塞尔曲线：冲过目标角约 15% 后利落回弹锁死 */
-  transition: transform 0.64s cubic-bezier(0.22, 1.46, 0.36, 1);
   pointer-events: none;
   will-change: transform;
+}
+
+.lyrics-orbit-wrapper.is-animated .lyrics-orbit-wheel {
+  /* 机械超调阻尼贝塞尔曲线：冲过目标角约 15% 后利落回弹锁死 */
+  transition: transform 0.64s cubic-bezier(0.22, 1.46, 0.36, 1);
 }
 
 /* ------------------------------------------------------------
@@ -107,6 +115,12 @@
   cursor: pointer;
   white-space: nowrap;
   border-radius: 8px;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 切行位移过渡仅动效态启用, 静止态一步定格 (宿主 transform 保持纯定位) */
+.lyrics-orbit-wrapper.is-animated .lyric-node {
   transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
               filter 0.5s cubic-bezier(0.16, 1, 0.3, 1),
               transform 0.64s cubic-bezier(0.22, 1.46, 0.36, 1);

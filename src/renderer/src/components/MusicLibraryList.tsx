@@ -441,9 +441,9 @@ export default function MusicLibraryList({
                     </div>
 
                     <div className="music-track-meta-row">
-                      {/* 音质等级徽标 (严格复刻参考设计中的 SQ 浅蓝圆角标签) */}
-                      <span className={`music-quality-badge badge-${song.quality.toLowerCase()}`}>
-                        {song.quality}
+                      {/* 音质等级徽标 (严格复刻参考设计中的 SQ 浅蓝圆角标签, 缺省兜底 STD 防 badge-undefined) */}
+                      <span className={`music-quality-badge badge-${(song.quality || 'STD').toLowerCase()}`}>
+                        {song.quality || 'STD'}
                       </span>
                       {/* 歌手副文本 (整洁化: 仅保留歌手, 专辑名已隐藏) */}
                       <span

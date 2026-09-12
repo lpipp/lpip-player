@@ -175,12 +175,14 @@ export default function PlaylistDrawer({
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [createError, setCreateError] = useState('')
 
-  // 重命名歌单状态
+  // 重命名歌单状态 (renameError 行内提示, 拒绝静默吞错)
   const [renamingPlaylist, setRenamingPlaylist] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [renameError, setRenameError] = useState('')
 
-  // 删除确认状态
+  // 删除确认状态 (deleteError 行内提示, 拒绝静默吞错)
   const [deletingPlaylist, setDeletingPlaylist] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
 
   // 向当前歌单添加单曲状态 (内嵌曲库选择器)
   const [isAddingSongs, setIsAddingSongs] = useState(false)
@@ -202,6 +204,7 @@ export default function PlaylistDrawer({
   const isEnqueueingRef = useRef(false)
   const lastPlaylistLenRef = useRef<number>(-1)
   const lastPlaylistVerRef = useRef<number>(-1)
+  const loadSeqRef = useRef<number>(0)
   const createInputRef = useRef<HTMLInputElement | null>(null)
   const renameInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -291,58 +294,92 @@ export default function PlaylistDrawer({
     }
     window.addEventListener('lpip:queue-changed', handleQueueChanged)
 
+    // 键盘无障碍: 详情层 Escape/Backspace 返回总览 (新建/重命名/删除与输入编辑态让自有 onKeyDown 先行)
+    const handleKeyDown = (e: globalThis.KeyboardEvent): void => {
+      const active = document.activeElement
+      const isEditing = Boolean(
+        active &&
+          (active.tagName === 'INPUT' ||
+            active.tagName === 'TEXTAREA' ||
+            (active as HTMLElement).isContentEditable)
+      )
+      if (e.key === 'Escape') {
+        if (selectedPlaylist !== null && !isCreating && renamingPlaylist === null && deletingPlaylist === null) {
+          if (isEditing) return
+          e.stopImmediatePropagation()
+          e.preventDefault()
+          handleBackToOverview()
+        }
+      } else if (e.key === 'Backspace') {
+        if (selectedPlaylist !== null && !isEditing && !isCreating && renamingPlaylist === null && deletingPlaylist === null) {
+          e.stopImmediatePropagation()
+          e.preventDefault()
+          handleBackToOverview()
+        }
+      }
+    }
+    // 捕获阶段优先拦截, 防止外层胶囊整栏误收起
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+
     return () => {
       isMounted = false
       unsubscribe?.()
       window.removeEventListener('lpip:queue-changed', handleQueueChanged)
+      window.removeEventListener('keydown', handleKeyDown, { capture: true })
     }
-  }, [syncQueue])
+  }, [syncQueue, selectedPlaylist, isCreating, renamingPlaylist, deletingPlaylist])
 
-  // 3. 加载指定歌单详情单曲列表
+  // 3. 加载指定歌单详情单曲列表 (loadSeq 丢弃过期钻取响应, 防止快速连点串歌)
   const loadPlaylistSongs = useCallback(async (playlistName: string): Promise<void> => {
-    setLoadingSongs(true)
+    const seq = ++loadSeqRef.current
+    if (isMountedRef.current) setLoadingSongs(true)
     try {
       if (window.electronAPI?.mpd) {
         const songs = await window.electronAPI.mpd.getPlaylistSongs(playlistName)
-        if (isMountedRef.current) {
-          setPlaylistSongs(songs)
-          setSelectedPlaylist((prev) => {
-            if (!prev || prev.name !== playlistName) return prev
-            const totalDuration = songs.reduce((sum, s) => sum + (s.duration || 0), 0)
-            return {
-              ...prev,
-              songCount: songs.length,
-              totalDuration,
-              coverSong: songs[0]
-            }
-          })
-          setLoadingSongs(false)
-        }
-      } else {
-        if (isMountedRef.current) setLoadingSongs(false)
+        if (!isMountedRef.current || seq !== loadSeqRef.current) return
+        setPlaylistSongs(songs)
+        setSelectedPlaylist((prev) => {
+          if (!prev || prev.name !== playlistName) return prev
+          const totalDuration = songs.reduce((sum, s) => sum + (s.duration || 0), 0)
+          return {
+            ...prev,
+            songCount: songs.length,
+            totalDuration,
+            coverSong: songs[0]
+          }
+        })
+        setLoadingSongs(false)
+      } else if (isMountedRef.current) {
+        setLoadingSongs(false)
       }
     } catch (err) {
       console.error('[lpip-player:playlist] 获取歌单曲目失败:', err)
-      if (isMountedRef.current) setLoadingSongs(false)
+      if (isMountedRef.current && seq === loadSeqRef.current) setLoadingSongs(false)
     }
   }, [])
 
   // 4. 进入歌单详情
   const handleSelectPlaylist = (playlist: MpdPlaylist): void => {
     if (renamingPlaylist || deletingPlaylist) return
+    // 先递增钻取序号再挂载详情, 让上一次飞行的旧歌单响应过期自弃
+    loadSeqRef.current += 1
     setSelectedPlaylist(playlist)
+    setPlaylistSongs([])
     setIsAddingSongs(false)
     setPendingAddFiles(new Set())
     setAddSongQuery('')
     loadPlaylistSongs(playlist.name)
   }
 
-  // 返回歌单总览
+  // 返回歌单总览 (递增序号使飞行中的详情响应过期自弃)
   const handleBackToOverview = (): void => {
+    loadSeqRef.current += 1
     setSelectedPlaylist(null)
+    setPlaylistSongs([])
     setIsAddingSongs(false)
     setAddSongQuery('')
     setPendingAddFiles(new Set())
+    if (isMountedRef.current) setLoadingSongs(false)
   }
 
   // 5. 模糊检索过滤
@@ -412,8 +449,10 @@ export default function PlaylistDrawer({
     e.stopPropagation()
     setIsCreating(false)
     setDeletingPlaylist(null)
+    setDeleteError('')
     setRenamingPlaylist(plName)
     setRenameValue(plName)
+    setRenameError('')
     setTimeout(() => {
       renameInputRef.current?.focus()
       renameInputRef.current?.select()
@@ -429,7 +468,7 @@ export default function PlaylistDrawer({
       return
     }
     if (playlists.some((p) => p.name.toLowerCase() === trimmed.toLowerCase() && p.name !== renamingPlaylist)) {
-      setRenamingPlaylist(null)
+      setRenameError('已存在同名歌单')
       return
     }
     try {
@@ -440,18 +479,20 @@ export default function PlaylistDrawer({
             setSelectedPlaylist((prev) => (prev ? { ...prev, name: trimmed } : null))
           }
           setRenamingPlaylist(null)
+          setRenameError('')
           fetchPlaylists()
         } else {
-          setRenamingPlaylist(null)
+          // 重命名被拒 (如目标已存在/非法字符), 行内提示拒绝静默关闭
+          setRenameError('重命名失败, 名称可能冲突')
         }
       }
     } catch (err) {
       console.error('[lpip-player:playlist] 重命名失败:', err)
-      setRenamingPlaylist(null)
+      setRenameError('重命名失败, 请重试')
     }
   }
 
-  // 8. 删除歌单
+  // 8. 删除歌单 (deleteError 行内提示, 拒绝静默吞错)
   const handleConfirmDelete = async (e: MouseEvent, plName: string): Promise<void> => {
     e.stopPropagation()
     try {
@@ -463,12 +504,15 @@ export default function PlaylistDrawer({
             setIsAddingSongs(false)
           }
           setDeletingPlaylist(null)
+          setDeleteError('')
           fetchPlaylists()
+        } else {
+          setDeleteError('删除失败, 请重试')
         }
       }
     } catch (err) {
       console.error('[lpip-player:playlist] 删除歌单失败:', err)
-      setDeletingPlaylist(null)
+      setDeleteError('删除失败, 请重试')
     }
   }
 
@@ -699,12 +743,15 @@ export default function PlaylistDrawer({
     setImgErrors((prev) => ({ ...prev, [key]: true }))
   }
 
-  // 过滤曲库单曲供添加选择
+  // 过滤曲库单曲供添加选择 (与曲库标题/歌手/专辑三字段口径一致, 空字段守卫防崩)
   const filteredLibrarySongs = useMemo(() => {
     if (!addSongQuery.trim()) return librarySongs
     const q = addSongQuery.trim().toLowerCase()
     return librarySongs.filter(
-      (s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
+      (s) =>
+        (s.title || '').toLowerCase().includes(q) ||
+        (s.artist || '').toLowerCase().includes(q) ||
+        (s.album || '').toLowerCase().includes(q)
     )
   }, [librarySongs, addSongQuery])
 
@@ -869,10 +916,16 @@ export default function PlaylistDrawer({
                               type="text"
                               className="playlist-rename-input"
                               value={renameValue}
-                              onChange={(e) => setRenameValue(e.target.value)}
+                              onChange={(e) => {
+                                setRenameValue(e.target.value)
+                                if (renameError) setRenameError('')
+                              }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleConfirmRename(e)
-                                if (e.key === 'Escape') setRenamingPlaylist(null)
+                                if (e.key === 'Escape') {
+                                  setRenamingPlaylist(null)
+                                  setRenameError('')
+                                }
                               }}
                             />
                             <button
@@ -886,11 +939,15 @@ export default function PlaylistDrawer({
                             <button
                               type="button"
                               className="playlist-rename-cancel-btn"
-                              onClick={() => setRenamingPlaylist(null)}
+                              onClick={() => {
+                                setRenamingPlaylist(null)
+                                setRenameError('')
+                              }}
                               title="取消"
                             >
                               <ClearIcon />
                             </button>
+                            {renameError && <span className="playlist-create-error">{renameError}</span>}
                           </div>
                         ) : (
                           <>
@@ -908,6 +965,7 @@ export default function PlaylistDrawer({
                         {isDeleting ? (
                           <div className="playlist-delete-confirm-box" onClick={(e) => e.stopPropagation()}>
                             <span className="playlist-delete-hint">确定删除?</span>
+                            {deleteError && isDeleting && <span className="playlist-create-error">{deleteError}</span>}
                             <button
                               type="button"
                               className="playlist-delete-confirm-btn"
@@ -919,7 +977,10 @@ export default function PlaylistDrawer({
                             <button
                               type="button"
                               className="playlist-delete-cancel-btn"
-                              onClick={() => setDeletingPlaylist(null)}
+                              onClick={() => {
+                                setDeletingPlaylist(null)
+                                setDeleteError('')
+                              }}
                               title="取消"
                             >
                               取消
@@ -946,7 +1007,9 @@ export default function PlaylistDrawer({
                                 e.stopPropagation()
                                 setIsCreating(false)
                                 setRenamingPlaylist(null)
+                                setRenameError('')
                                 setDeletingPlaylist(pl.name)
+                                setDeleteError('')
                               }}
                               title="删除此歌单"
                               aria-label="删除"
@@ -1227,8 +1290,8 @@ export default function PlaylistDrawer({
                       <div className="playlist-song-meta">
                         <span className="playlist-song-title">{song.title}</span>
                         <div className="playlist-song-subinfo">
-                          <span className={`playlist-badge-${song.quality.toLowerCase()}`}>
-                            {song.quality}
+                          <span className={`playlist-badge-${(song.quality || 'STD').toLowerCase()}`}>
+                            {song.quality || 'STD'}
                           </span>
                           <span className="playlist-song-artist">
                             {song.artist}

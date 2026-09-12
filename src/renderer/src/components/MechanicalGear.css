@@ -43,8 +43,12 @@
   width: 100%;
   height: 100%;
   transform-origin: 250px 250px;
-  animation: mechanicalGearRotate 180s linear infinite;
   will-change: transform;
+}
+
+/* 怠速微旋仅动效态启用 (animated=false 时定格, 省合成) */
+.gear-1-rotator.is-animated {
+  animation: mechanicalGearRotate 180s linear infinite;
 }
 
 /* ------------------------------------------------------------
@@ -71,9 +75,12 @@
   width: 100%;
   height: 100%;
   transform-origin: 90px 90px;
+  will-change: transform;
+}
+
+.gear-2-rotator.is-animated {
   /* 传动比咬合逆向旋转: 60/24 = 2.5倍速 (72s/圈) */
   animation: mechanicalGearRotateReverse 72s linear infinite;
-  will-change: transform;
 }
 
 /* ------------------------------------------------------------
@@ -100,9 +107,12 @@
   width: 100%;
   height: 100%;
   transform-origin: 100px 100px;
+  will-change: transform;
+}
+
+.gear-3-rotator.is-animated {
   /* 传动比咬合逆向旋转: 60/28 齿数比 (84s/圈) */
   animation: mechanicalGearRotateReverse 84s linear infinite;
-  will-change: transform;
 }
 
 /* ------------------------------------------------------------
@@ -132,9 +142,12 @@
   width: 100%;
   height: 100%;
   transform-origin: 125px 125px;
+  will-change: transform;
+}
+
+.flywheel-rotator.is-animated {
   /* 往复谐振摆动: 周期 2.4s，拟合正弦谐波摆动 */
   animation: flywheelOscillate 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-  will-change: transform;
 }
 
 /* 纯线条高精制图 SVG */

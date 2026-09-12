@@ -95,8 +95,20 @@ export default function StatisticsDrawer() {
     }
   }, [])
 
+  // 封面加载失败键上限: 失败封面按文件键记忆以避免重复请求, 上限 200 键, 超限淘汰最早键
+  const MAX_IMG_ERROR_KEYS = 200
+
   const handleImageError = (key: string): void => {
-    setImgErrors((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
+    setImgErrors((prev) => {
+      if (prev[key]) return prev
+      const keys = Object.keys(prev)
+      if (keys.length < MAX_IMG_ERROR_KEYS) return { ...prev, [key]: true }
+      // 超限时淘汰最早记录的一键, 保持内存有界
+      const next: Record<string, boolean> = {}
+      for (let i = 1; i < keys.length; i++) next[keys[i]] = true
+      next[key] = true
+      return next
+    })
   }
 
   const entries = stats?.entries ?? []

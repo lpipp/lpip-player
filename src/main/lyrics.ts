@@ -93,10 +93,17 @@ export function parseLrc(lrcText: string): LyricLine[] {
         time: group[0].time
       })
     } else {
+      // 同戳多行: 首行 primary 作主行; 译文侧每尾随行恰占一项 (拆出的 secondary, 无则用原文, 杜绝重复拼接)
+      const splits = group.map((g) => splitInlineBilingual(g.text))
+      const tailParts: string[] = []
+      if (splits[0]?.secondary !== undefined) tailParts.push(splits[0].secondary)
+      for (let k = 1; k < group.length; k++) {
+        tailParts.push(splits[k]?.secondary ?? group[k].text)
+      }
       merged.push({
         id: merged.length,
-        primary: group[0].text,
-        secondary: group.slice(1).map((g) => g.text).join(' / '),
+        primary: splits[0]?.primary ?? group[0].text,
+        secondary: tailParts.join(' / '),
         time: group[0].time
       })
     }

@@ -502,7 +502,8 @@ export function parseVisualizerConfig(rawVisualizer: unknown): VisualizerConfig 
     }
   }
 
-  return DEFAULT_VISUALIZER_CONFIG
+  // 缺省回退返回拷贝, 禁止外泄 DEFAULT 单例引用 (调用方可能直接改写)
+  return { ...DEFAULT_VISUALIZER_CONFIG }
 }
 
 /**
@@ -526,7 +527,8 @@ export function parseMpdConfig(rawMpd: unknown): MpdConfig {
     return { host, port, streamPort }
   }
 
-  return DEFAULT_MPD_CONFIG
+  // 缺省回退返回拷贝, 禁止外泄 DEFAULT 单例引用 (调用方可能直接改写)
+  return { ...DEFAULT_MPD_CONFIG }
 }
 
 /**
@@ -703,7 +705,17 @@ export function parseTypographyConfig(rawTypography: unknown): TypographyConfig 
     }
   }
 
-  return { ...DEFAULT_TYPOGRAPHY_CONFIG }
+  // 缺省回退返回深拷贝, 禁止外泄 DEFAULT 单例引用 (lyrics 嵌套对象必须逐层拷贝)
+  return {
+    ...DEFAULT_TYPOGRAPHY_CONFIG,
+    ui: { ...DEFAULT_TYPOGRAPHY_CONFIG.ui },
+    hint: { ...DEFAULT_TYPOGRAPHY_CONFIG.hint },
+    lyrics: {
+      body: { ...DEFAULT_TYPOGRAPHY_CONFIG.lyrics.body },
+      translation: { ...DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation },
+      showTranslation: DEFAULT_TYPOGRAPHY_CONFIG.lyrics.showTranslation
+    }
+  }
 }
 
 

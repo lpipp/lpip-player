@@ -403,14 +403,25 @@ export default function LyricsOrbit({
     [activeIndex, controlledIndex, onLineChange, lyrics, onSeek, clearPreview]
   )
 
+  // 滚轮残量累加 (触板 2~6px 步进逐次累积, 满 ±18 预算才步进一行, 拒绝小步进丢弃)
+  const wheelRemainderRef = useRef(0)
+
   // 滚轮交互: 只进入预览态 (轨道跟随预览行), 不触发 seek; 每次 tick 重置超时计时
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.stopPropagation()
-      if (Math.abs(e.deltaY) < 18) return
       if (lyrics.length === 0) return
-      const base = previewStateRef.current.preview ?? activeIndex
-      const next = e.deltaY > 0
+      // 触板 deltaMode=1 (行) 时折算为像素, 累积后按 ±18 预算步进 (单 tick 至多一行, 长抖动不跳行)
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 480 : 1
+      wheelRemainderRef.current += e.deltaY * unit
+      if (Math.abs(wheelRemainderRef.current) < 18) return
+      const dir = wheelRemainderRef.current > 0 ? 1 : -1
+      // 余量扣减 (保留超额行程, 连续滚动不丢距离; 单 tick 至多一行)
+      wheelRemainderRef.current -= dir * 18
+      // 基准钳位 (与 safeDisplayIndex 同逻辑, 越界 activeIndex 先收敛再加减 1)
+      const rawBase = previewStateRef.current.preview ?? activeIndex
+      const base = Math.max(0, Math.min(rawBase, lyrics.length - 1))
+      const next = dir > 0
         ? Math.min(base + 1, lyrics.length - 1)
         : Math.max(base - 1, 0)
       if (next === base) return
@@ -420,20 +431,21 @@ export default function LyricsOrbit({
     [activeIndex, lyrics.length, armPreviewTimer]
   )
 
-  // 键盘方向键监听 (保持直跳, 不进预览; 同时清预览与计时)
+  // 键盘方向键监听 (从预览行起步, 保持直跳不进预览; 同时清预览与计时)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const base = previewIndex ?? activeIndex
       if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault()
-        if (activeIndex < lyrics.length - 1) {
-          handleDirectJump(activeIndex + 1)
+        if (base < lyrics.length - 1) {
+          handleDirectJump(base + 1)
         } else {
           clearPreview()
         }
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault()
-        if (activeIndex > 0) {
-          handleDirectJump(activeIndex - 1)
+        if (base > 0) {
+          handleDirectJump(base - 1)
         } else {
           clearPreview()
         }
@@ -441,34 +453,44 @@ export default function LyricsOrbit({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeIndex, lyrics.length, handleDirectJump, clearPreview])
+  }, [activeIndex, previewIndex, lyrics.length, handleDirectJump, clearPreview])
+
+  // 展示索引钳位 (空歌词时归 -1, 旋转归零避免齿轮空转)
+  const safeDisplayIndex = lyrics.length === 0 ? -1 : Math.max(0, Math.min(displayIndex, lyrics.length - 1))
 
   // 滑动窗口: 以展示索引为中心前后 5 行, 预览时轨道跟随预览行
   const visibleWindow = useMemo(() => {
-    const start = Math.max(0, displayIndex - 5)
-    const end = Math.min(lyrics.length - 1, displayIndex + 5)
+    if (lyrics.length === 0) return [] as Array<{ line: LyricLine; index: number; distance: number }>
+    const start = Math.max(0, safeDisplayIndex - 5)
+    const end = Math.min(lyrics.length - 1, safeDisplayIndex + 5)
     const items: Array<{ line: LyricLine; index: number; distance: number }> = []
     for (let i = start; i <= end; i++) {
       items.push({
         line: lyrics[i],
         index: i,
-        distance: Math.abs(i - displayIndex)
+        distance: Math.abs(i - safeDisplayIndex)
       })
     }
     return items
-  }, [lyrics, displayIndex])
+  }, [lyrics, safeDisplayIndex])
 
-  // 当前轨道旋转角度 (以展示索引归位到 0° 水平线, 预览时跟随预览行)
-  const currentRotation = -displayIndex * stepAngle
+  // 当前轨道旋转角度 (以展示索引归位到 0° 水平线, 预览时跟随预览行; 空歌词归零)
+  const currentRotation = safeDisplayIndex < 0 ? 0 : -safeDisplayIndex * stepAngle
 
   // 齿轮步进角: 60 齿高密度精密机芯齿轮，单个齿距为 360° / 60 = 6.0°
   // 方案 1A: 每切一行歌词，齿轮逆时针跳进刚好 2 齿 (-12.0°)，与歌词轨道步长 12.5° 形成近乎完美的等角联动
   const gearStepAngle = 12.0
-  const gearRotation = -displayIndex * gearStepAngle
+  const gearRotation = safeDisplayIndex < 0 ? 0 : -safeDisplayIndex * gearStepAngle
+
+  // 切歌作用域 key (歌词文本指纹, 切歌即换 key 避免 id 复用导致节点复用错位)
+  const songKey = useMemo(() => {
+    const head = lyrics.slice(0, 3).map((l) => l.primary).join('|')
+    return `${lyrics.length}:${head.length}:${head.slice(0, 48)}`
+  }, [lyrics])
 
   return (
     <div
-      className={`lyrics-orbit-wrapper ${className}`}
+      className={`lyrics-orbit-wrapper ${className} ${animated ? 'is-animated' : ''}`}
       onWheel={handleWheel}
       aria-label="星盘歌词轨道播放区"
       data-active-index={activeIndex}
@@ -777,7 +799,7 @@ export default function LyricsOrbit({
 
           return (
             <div
-              key={`line-${line.id}`}
+              key={`${songKey}-line-${index}`}
               className={`lyric-node ${isCurrent ? 'is-active' : ''}`}
               data-distance={distance}
               data-lyric-index={index}

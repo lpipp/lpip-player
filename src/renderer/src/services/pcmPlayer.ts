@@ -102,6 +102,44 @@ export class PcmPlayer {
   }
 
   /**
+   * 创建全新流世代淡入淡出 GainNode 并挂载主拓扑 (与 flushAndReconnect 共用的唯一创建点)
+   *
+   * 为什么抽成共用: play-after-pause 与 flush 都需要"全新满血增益",
+   * 之前只有 flush 内联创建, play 路径拿不到新节点导致永久静音 (P0)。
+   */
+  private createNewFadeGain(audioCtx: AudioContext): GainNode {
+    const now = audioCtx.currentTime
+    const fresh = audioCtx.createGain()
+    if (this.fadeConfig.enabled) {
+      // 初始 0 增益, 待首个新音频块到达时从 0 平滑爬升至 1.0
+      fresh.gain.setValueAtTime(0, now)
+      this.isFadingIn = true
+    } else {
+      fresh.gain.setValueAtTime(1.0, now)
+      this.isFadingIn = false
+    }
+    if (this.masterGainNode) {
+      fresh.connect(this.masterGainNode)
+    }
+    this.activeFadeGainNode = fresh
+    return fresh
+  }
+
+  /**
+   * 确保当前存在可用淡入淡出 GainNode (暂停后重建, 修复 P0 永久静音)
+   */
+  private ensureFadeGain(): GainNode | null {
+    if (this.activeFadeGainNode) {
+      return this.activeFadeGainNode
+    }
+    const audioCtx = this.initAudioContext()
+    if (!this.masterGainNode) {
+      return null
+    }
+    return this.createNewFadeGain(audioCtx)
+  }
+
+  /**
    * 获取当前活跃的淡入淡出 GainNode (供外部诊断与向后兼容)
    */
   public get fadeGainNode(): GainNode | null {
@@ -159,6 +197,8 @@ export class PcmPlayer {
       return
     }
 
+    // 暂停后增益已置空, 先重建增益再建流, 否则调度出未接入的无声源 (P0 永久静音)
+    this.ensureFadeGain()
     this.startStream(url, this.currentStreamId)
   }
 
@@ -227,20 +267,7 @@ export class PcmPlayer {
     }
 
     // 3. 为新世代创建独立的全新的 fadeGainNode (彻底杜绝旧声与新声在同一 GainNode 冲突)
-    const newFadeGain = audioCtx.createGain()
-    if (this.fadeConfig.enabled) {
-      // 初始为 0 增益, 待首个新音频块到达时从 0 平滑爬升至 1.0
-      newFadeGain.gain.setValueAtTime(0, now)
-      this.isFadingIn = true
-    } else {
-      newFadeGain.gain.setValueAtTime(1.0, now)
-      this.isFadingIn = false
-    }
-
-    if (this.masterGainNode) {
-      newFadeGain.connect(this.masterGainNode)
-    }
-    this.activeFadeGainNode = newFadeGain
+    this.createNewFadeGain(audioCtx)
 
     // 4. 重置新流时间轴与数据残留缓冲
     this.nextPlayTime = 0
@@ -380,6 +407,8 @@ export class PcmPlayer {
     if (audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {})
     }
+    // 建流前确保增益就绪 (暂停后重建, 与 play() 双保险, P0)
+    this.ensureFadeGain()
 
     fetch(url, { signal: ac.signal, cache: 'no-store' })
       .then(async (response) => {
@@ -387,18 +416,29 @@ export class PcmPlayer {
           throw new Error('Response body is null')
         }
         const reader = response.body.getReader()
-
-        while (!ac.signal.aborted && this.currentStreamId === streamId) {
-          const { done, value } = await reader.read()
-          if (done || ac.signal.aborted || this.currentStreamId !== streamId) {
-            break
+        try {
+          while (!ac.signal.aborted && this.currentStreamId === streamId) {
+            const { done, value } = await reader.read()
+            if (done || ac.signal.aborted || this.currentStreamId !== streamId) {
+              break
+            }
+            if (value && value.length > 0) {
+              this.handleIncomingBytes(value, streamId)
+            }
           }
-          if (value && value.length > 0) {
-            this.handleIncomingBytes(value, streamId)
+        } finally {
+          // 读取锁必须释放, 否则复用连接时泄漏 (P1); 自然结束时置空句柄,
+          // 让 play() 健康检查认到断流而不是误判健康 (P2)
+          try {
+            await reader.cancel()
+          } catch {}
+          try {
+            reader.releaseLock()
+          } catch {}
+          if (this.abortController === ac) {
+            this.abortController = null
           }
         }
-
-        reader.cancel().catch(() => {})
 
         // 若 MPD 在歌曲结束或切换格式时自然关闭当前 HTTP 连接,
         // 如果当前仍处于播放状态，延迟微量时间自动重连新流，确保自然跨曲播放无缝连续
@@ -414,6 +454,11 @@ export class PcmPlayer {
         if (ac.signal.aborted || this.currentStreamId !== streamId) {
           // 主动中断属正常交互行为 (切歌/寻道/暂停)
           return
+        }
+        // 真异常断流: 先置空句柄, 让 play() 健康检查认到断流 (P2),
+        // 再延迟重连; 重连的 flush 会建新句柄, 不影响本次置空
+        if (this.abortController === ac) {
+          this.abortController = null
         }
         console.warn('[PcmPlayer] 音频流断开或异常:', err)
         if (this.isPlayingState && this.currentStreamId === streamId) {
@@ -475,9 +520,8 @@ export class PcmPlayer {
             this.processPcmChunk(pcmData)
           }
         } else if (riffOffset === -1 && this.headerBuffer.length > 256) {
-          // 兜底保护: 超过 256 字节仍无 RIFF, 强制按裸 PCM 启动避免死锁
-          this.headerParsed = true
-          this.streamSampleRate = 44100
+          // 兜底保护: 超过 256 字节仍无 RIFF, 按裸 PCM 播放已缓存字节避免死锁,
+          // 但不锁死 headerParsed, 保持继续扫描后续块中的新 WAV 头 (P2 44100 锁死修复)
           const pcmData = this.headerBuffer
           this.headerBuffer = new Uint8Array(0)
           this.processPcmChunk(pcmData)
@@ -486,14 +530,75 @@ export class PcmPlayer {
       return
     }
 
-    // 2. 头部已就绪, 直接按 PCM 帧处理
+    // 2. 头部已就绪: 先扫描块中新 WAV 头 (MPD 同连接内切歌重建流),
+    // 命中则重置采样率与解析态, 重新走头部解析 (P2 44100 锁死修复)
+    const riffAt = this.findRiffIndex(chunk)
+    if (riffAt >= 0) {
+      if (riffAt > 0) {
+        // 先播放新头部之前的旧曲尾巴, 避免丢音
+        this.processPcmChunk(chunk.slice(0, riffAt))
+      }
+      this.headerParsed = false
+      this.headerBuffer = new Uint8Array(0)
+      this.residualBytes = new Uint8Array(0)
+      this.handleIncomingBytes(chunk.slice(riffAt), streamId)
+      return
+    }
     this.processPcmChunk(chunk)
+  }
+
+  /**
+   * 在数据块中定位新 WAV 头 RIFF 标识
+   *
+   * 为什么要验 WAVE: 裸 PCM 音频字节随机撞上 'RIFF' 四字节的概率虽低但非零,
+   * 有足够字节时必须同时校验偏移 +8 处 'WAVE', 避免把正常音频误判成新头部切歌。
+   * 尾部不足 12 字节无法验 WAVE 时按候选接受 (头部恰被切在块边界), 由头部解析路径二次确认。
+   */
+  private findRiffIndex(chunk: Uint8Array): number {
+    for (let i = 0; i <= chunk.length - 4; i++) {
+      if (
+        chunk[i] === 0x52 && // 'R'
+        chunk[i + 1] === 0x49 && // 'I'
+        chunk[i + 2] === 0x46 && // 'F'
+        chunk[i + 3] === 0x46    // 'F'
+      ) {
+        // 块内剩余不足以验 WAVE, 按候选接受
+        if (i + 12 > chunk.length) {
+          return i
+        }
+        // 校验 'WAVE' 标识, 通过才认定为新头部
+        if (
+          chunk[i + 8] === 0x57 && // 'W'
+          chunk[i + 9] === 0x41 && // 'A'
+          chunk[i + 10] === 0x56 && // 'V'
+          chunk[i + 11] === 0x45    // 'E'
+        ) {
+          return i
+        }
+      }
+    }
+    return -1
   }
 
   /**
    * 将裸 PCM 字节转换为 Float32 并调度进入 WebAudio
    */
   private processPcmChunk(chunk: Uint8Array): void {
+    const audioCtx = this.initAudioContext()
+
+    // P0 保底: 无可用增益节点时直接丢块, 严禁调度未接入的无声源空烧 CPU
+    // (检查放在残余合并之前, 丢块不吞 residual, 下一块仍能拼出完整帧)
+    const currentGain = this.activeFadeGainNode
+    if (!currentGain) {
+      return
+    }
+
+    // P1 暂停态积压保护: 上下文仍挂起时丢弃本块并钳位时钟, 待 resume 后再收新块
+    if (audioCtx.state === 'suspended') {
+      this.nextPlayTime = audioCtx.currentTime + 0.08
+      return
+    }
+
     let merged: Uint8Array
     if (this.residualBytes.length > 0) {
       merged = new Uint8Array(this.residualBytes.length + chunk.length)
@@ -517,7 +622,6 @@ export class PcmPlayer {
       this.residualBytes = merged.slice(usableBytes)
     }
 
-    const audioCtx = this.initAudioContext()
     const audioBuffer = audioCtx.createBuffer(2, frameCount, this.streamSampleRate)
     const leftChannel = audioBuffer.getChannelData(0)
     const rightChannel = audioBuffer.getChannelData(1)
@@ -532,11 +636,8 @@ export class PcmPlayer {
     const source = audioCtx.createBufferSource()
     source.buffer = audioBuffer
 
-    // 接入当前流世代专属的淡入淡出 GainNode
-    const currentGain = this.activeFadeGainNode
-    if (currentGain) {
-      source.connect(currentGain)
-    }
+    // 接入当前流世代专属的淡入淡出 GainNode (上游已保底非空, 直连即可)
+    source.connect(currentGain)
 
     const now = audioCtx.currentTime
 
@@ -544,12 +645,15 @@ export class PcmPlayer {
     // 如果是首个 chunk (nextPlayTime === 0) 或发生真实欠载 (nextPlayTime < now)
     // 赋予 80ms 充足抗抖前瞻量, 抵抗主线程或 GC 微暂停.
     // 只要 nextPlayTime >= now (音频仍在持续发声), 严格连续平铺, 严禁插入人工静音裂隙!
+    // 若超前超过约 0.5s (挂起积压), 拉回避免恢复时突发 burst (P1)
     if (this.nextPlayTime < now) {
+      this.nextPlayTime = now + 0.08
+    } else if (this.nextPlayTime - now > 0.5) {
       this.nextPlayTime = now + 0.08
     }
 
     // 若当前为切歌或寻道后的淡入阶段, 在当前专属 GainNode 上启动从 0 渐进至 1.0 的平滑淡入
-    if (this.isFadingIn && currentGain) {
+    if (this.isFadingIn) {
       this.isFadingIn = false
       const fadeInSec = Math.max(0.02, Math.min(0.12, this.fadeConfig.duration / 1000))
       const fadeInStart = this.nextPlayTime

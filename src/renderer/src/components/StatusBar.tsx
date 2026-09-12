@@ -160,6 +160,16 @@ export default function StatusBar({
   // 音量滑动拖拽状态
   const [isVolDragging, setIsVolDragging] = useState(false)
   const [dragVolPercent, setDragVolPercent] = useState(volume / 100)
+  // 音量节流句柄 (move 只刷本地 thumb, 16ms 节流后才推 onVolumeChange; mouseup 保底终值)
+  const volThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingVolRef = useRef<number | null>(null)
+
+  // 组件卸载时清理音量节流定时器
+  useEffect(() => {
+    return () => {
+      if (volThrottleRef.current) clearTimeout(volThrottleRef.current)
+    }
+  }, [])
 
   const trackRef = useRef<HTMLDivElement>(null)
   const volTrackRef = useRef<HTMLDivElement>(null)
@@ -255,7 +265,7 @@ export default function StatusBar({
     return Math.max(0, Math.min(1, offsetX / rect.width))
   }, [])
 
-  // 音量滑块按下与拖拽
+  // 音量滑块按下与拖拽 (move 只刷本地 thumb, 16ms 节流推 MPD, mouseup 保底终值不断流)
   const handleVolMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
     e.preventDefault()
@@ -265,17 +275,35 @@ export default function StatusBar({
     setDragVolPercent(initialP)
     onVolumeChange?.(Math.round(initialP * 100))
 
+    const flushPendingVol = (): void => {
+      volThrottleRef.current = null
+      if (pendingVolRef.current === null) return
+      const p = pendingVolRef.current
+      pendingVolRef.current = null
+      onVolumeChange?.(Math.round(p * 100))
+    }
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const p = calcVolPercentFromEvent(moveEvent)
       setDragVolPercent(p)
-      onVolumeChange?.(Math.round(p * 100))
+      // 节流: 首次 move 立刻排一次 16ms, 窗口内后续 move 只更新 pending, 不堆定时器
+      pendingVolRef.current = p
+      if (!volThrottleRef.current) {
+        volThrottleRef.current = setTimeout(flushPendingVol, 16)
+      }
     }
 
     const handleMouseUp = (upEvent: MouseEvent) => {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
       setIsVolDragging(false)
+      if (volThrottleRef.current) {
+        clearTimeout(volThrottleRef.current)
+        volThrottleRef.current = null
+      }
+      pendingVolRef.current = null
       const finalP = calcVolPercentFromEvent(upEvent)
+      setDragVolPercent(finalP)
       onVolumeChange?.(Math.round(finalP * 100))
     }
 
@@ -429,11 +457,20 @@ export default function StatusBar({
             {currentSong?.title || 'lpip-player'}
           </div>
           <div className="status-bar-meta-sub">
-            {currentSong && (
-              <span className={`status-bar-quality-badge badge-${currentSong.quality.toLowerCase()}`}>
-                {currentSong.quality}
-              </span>
-            )}
+            {currentSong && (() => {
+              // 音质徽标兜底: 未知 quality 统一落 STD 灰徽标, 拒绝裸 badge-undefined
+              const rawQuality = currentSong.quality ?? 'STD'
+              const normalized = String(rawQuality).toLowerCase()
+              const known = normalized === 'sq' || normalized === 'hi-res' || normalized === 'hq' || normalized === 'std'
+                ? normalized
+                : 'std'
+              const label = known === 'std' && normalized !== 'std' ? 'STD' : String(rawQuality)
+              return (
+                <span className={`status-bar-quality-badge badge-${known}`}>
+                  {label}
+                </span>
+              )
+            })()}
             <span className="status-bar-meta-artist">
               {currentSong?.artist || '本地音乐播放器'}
             </span>

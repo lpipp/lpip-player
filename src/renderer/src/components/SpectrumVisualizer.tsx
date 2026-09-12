@@ -98,6 +98,10 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
   const isRafActiveRef = useRef<boolean>(false)
   const silenceCounterRef = useRef<number>(0)
   const silenceProbeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 播放态实时引用 (供 RAF 循环与静音探测读取, 避免闭包陈旧导致暂停不眠)
+  const isPlayingRef = useRef<boolean>(isPlaying)
+  // 2D 上下文缓存 (避免逐帧 getContext 开销)
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
 
   // 5. 尺寸与分辨率缓存
   const sizeRef = useRef<{ width: number; height: number; dpr: number }>({
@@ -122,6 +126,11 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
       style: config?.style ?? 'blueprint'
     }
   }, [config])
+
+  // 播放态实时同步 (RAF 闭包一律读 ref, 暂停后不再走 80 帧慢路)
+  useEffect(() => {
+    isPlayingRef.current = isPlaying
+  }, [isPlaying])
 
   // 生成粒子辅助函数 (从预分配对象池中唤醒)
   const spawnParticle = (x: number, y: number, intensity: number): void => {
@@ -167,7 +176,7 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
     ctx.stroke()
   }
 
-  // 核心渲染循环函数
+  // 核心渲染循环函数 (播放态一律读 isPlayingRef, 拒绝闭包陈旧)
   const renderLoop = (): void => {
     const canvas = canvasRef.current
     if (!canvas) {
@@ -175,11 +184,19 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
       return
     }
 
-    const ctx = canvas.getContext('2d', { alpha: true })
-    if (!ctx) {
-      isRafActiveRef.current = false
-      return
+    // 2D 上下文缓存命中, 画布重置导致丢失时才重新获取 (避免逐帧 getContext 开销)
+    let ctx = ctxRef.current
+    if (!ctx || ctx.canvas !== canvas) {
+      const fresh = canvas.getContext('2d', { alpha: true })
+      if (!fresh) {
+        isRafActiveRef.current = false
+        return
+      }
+      ctxRef.current = fresh
+      ctx = fresh
     }
+    // 播放态一律读实时引用, 拒绝闭包陈旧 (暂停后直接走阻尼收敛, 不进 80 帧慢路)
+    const playing = isPlayingRef.current
 
     const { width, height, dpr } = sizeRef.current
     if (width <= 0 || height <= 0) {
@@ -207,8 +224,8 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
     const analyser = pcmPlayer.getAnalyserNode()
     let hasSoundEnergy = false
 
-    // 获取当前音频 FFT 频域或时域真实采样
-    if (isPlaying && analyser) {
+    // 获取当前音频 FFT 频域或时域真实采样 (播放态读实时引用)
+    if (playing && analyser) {
       if (curConfig.style === 'wave') {
         analyser.getByteTimeDomainData(timeData)
         // 检测时域振幅偏移
@@ -231,7 +248,7 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
 
     // 自适应音频衰减计算 (若处于暂停/停止或静音段, 平滑渐退至基线)
     let maxSpectralAmplitude = 0
-    if (isPlaying && hasSoundEnergy) {
+    if (playing && hasSoundEnergy) {
       silenceCounterRef.current = 0
       for (let i = 0; i < FREQ_BINS; i++) {
         const rawNormalized = freqData[i] / 255.0
@@ -269,14 +286,14 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
     // ============================================================
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    if (!isPlaying && maxSpectralAmplitude < 0.003 && !hasActiveParticle) {
+    if (!playing && maxSpectralAmplitude < 0.003 && !hasActiveParticle) {
       // 彻底清空并挂起 RAF
       ctx.clearRect(0, 0, width, height)
       isRafActiveRef.current = false
       return
     }
 
-    if (isPlaying && silenceCounterRef.current > 80 && maxSpectralAmplitude < 0.003 && !hasActiveParticle) {
+    if (playing && silenceCounterRef.current > 80 && maxSpectralAmplitude < 0.003 && !hasActiveParticle) {
       // 播放中遇到长静音段: 暂时挂起 RAF, 启动轻量定时轮询探测器
       ctx.clearRect(0, 0, width, height)
       isRafActiveRef.current = false
@@ -375,8 +392,8 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
             ctx.stroke()
             ctx.restore()
 
-            // 能量迸发时激活动态粒子微光扬起
-            if (isPlaying && sAmp > 0.32 && Math.random() < 0.28) {
+            // 能量迸发时激活动态粒子微光扬起 (读实时播放态)
+            if (playing && sAmp > 0.32 && Math.random() < 0.28) {
               spawnParticle(px, mainPoints[p].y, sAmp)
             }
           }
@@ -552,7 +569,8 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
 
     silenceProbeTimerRef.current = setTimeout(() => {
       const analyser = pcmPlayer.getAnalyserNode()
-      if (!analyser || !isPlaying) return
+      // 探测器读实时引用, 暂停后即停不再空转
+      if (!analyser || !isPlayingRef.current) return
 
       analyser.getByteFrequencyData(freqData)
       let detectedEnergy = false
@@ -640,6 +658,8 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.scale(dpr, dpr)
+        // 同步上下文缓存 (画布重置会丢失旧上下文, 缓存随尺寸刷新)
+        ctxRef.current = ctx
       }
     }
 

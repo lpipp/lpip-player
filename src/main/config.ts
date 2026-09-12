@@ -2,198 +2,53 @@ import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, renam
 import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 import { app } from 'electron'
-import type { DeepPartial } from '../types/config'
 
 /**
- * 云母微光色调风格预设
- * default: 品牌翡翠青绿与冷紫蓝交织 (默认)
- * cool: 纯冷夜蓝与深靛微光
- * neutral: 素雅黑白灰中性微光
- * warm: 微暖玄武岩与木炭色微光
+ * 主进程配置: 以 src/types/config.ts 为单一类型来源
+ * 窗口/音频/MPD 等接口类型全部从 types 导入, 本文件仅保留主进程专属逻辑
+ * (路径解析、JSONC 剥离、load/save 持久化); 禁止在此重复定义接口与 DEFAULT_*
  */
-export type MicaStyle = 'default' | 'cool' | 'neutral' | 'warm'
+import type {
+  DeepPartial,
+  MicaStyle,
+  BackgroundMode,
+  WallpaperFit,
+  WallpaperConfig,
+  MicaConfig,
+  BackgroundConfig,
+  SidebarConfig,
+  ThemeConfig,
+  WindowConfig,
+  FadeConfig,
+  LyricPreviewConfig,
+  AudioConfig,
+} from '../types/config'
 
 /**
- * 窗口背景效果模式
- * 'default': 经典黑曜石纯深色渐变舞台
- * 'mica': 云母矿物晶体微光材质
- * 'wallpaper': 自定义本地图片壁纸
+ * 默认值/解析器统一从 types 单一来源导入 (接口类型见上方 import type 块)
+ * 本文件禁止重复定义任何 DEFAULT_* 常量与 parse* 解析器
  */
-export type BackgroundMode = 'default' | 'mica' | 'wallpaper'
-
-/**
- * 壁纸缩放填充模式
- * 'cover': 保持宽高比填满窗口, 裁剪超出部分 (默认)
- * 'contain': 保持宽高比完整显示在窗口内
- * 'fill': 强制拉伸填满整个窗口
- */
-export type WallpaperFit = 'cover' | 'contain' | 'fill'
-
-/**
- * 自定义壁纸详细微调配置项 (支持静态图片与动态视频格式)
- */
-export interface WallpaperConfig {
-  /** 本地壁纸图片或视频绝对路径或以 ~ 开头的家目录路径 */
-  path: string
-  /** 壁纸高斯模糊半径 (px, 范围 0 ~ 50, 默认 0) */
-  blur: number
-  /** 暗色遮罩不透明度 (范围 0.0 ~ 1.0, 默认 0.5) */
-  overlayOpacity: number
-  /** 缩放填充模式 (默认 'cover') */
-  fit: WallpaperFit
-  /** 视频壁纸是否静音 (默认 true, 避免壁纸自带音频与音乐播放冲突) */
-  muted?: boolean
-  /** 视频壁纸是否循环播放 (默认 true) */
-  loop?: boolean
-  /** 视频壁纸播放速率 (范围 0.25 ~ 2.0, 默认 1.0) */
-  playbackRate?: number
-}
-
-/**
- * 云母效果详细微调配置项
- */
-export interface MicaConfig {
-  /** 是否启用云母效果 (默认 false) */
-  enabled: boolean
-  /** 矿物颗粒度强弱 (0.0 ~ 0.1, 默认 0.035) */
-  grainOpacity: number
-  /** 环境微光漫射强度 (0.0 ~ 0.2, 默认 0.05) */
-  tintOpacity: number
-  /** 云母微光色调风格预设 (默认 'default') */
-  style: MicaStyle
-  /** 顶部内高光棱线强度 (0.0 ~ 0.2, 默认 0.08) */
-  edgeHighlight: number
-  /** 是否在全周增加 1px 微弱外边框轮廓 (默认 false) */
-  border: boolean
-}
-
-/**
- * 主窗口统一背景效果配置项
- * 整合云母、自定义壁纸等多种视觉背景，便于后续横向扩充更多效果
- */
-export interface BackgroundConfig {
-  /** 当前激活的背景模式 */
-  mode: BackgroundMode
-  /** 云母微调配置 */
-  mica: MicaConfig
-  /** 自定义壁纸微调配置 */
-  wallpaper: WallpaperConfig
-}
-
-/**
- * 窗口左侧滑出气泡弹窗微调配置项
- */
-export interface SidebarConfig {
-  /** 是否启用左侧边缘悬浮抽屉/气泡弹窗 (默认 true) */
-  enabled: boolean
-  /** 是否启用左侧边缘动态微光提示 (默认 true) */
-  glowHint: boolean
-  /** 触发范围/感应热区宽度 (单位 px, 范围 4 ~ 120, 默认 30) */
-  triggerWidth: number
-  /** 关闭范围/移出抽屉的安全缓冲范围 (单位 px, 范围 0 ~ 200, 默认 30) */
-  closeBuffer: number
-  /** 鼠标悬停触发延迟 (单位 ms, 范围 0 ~ 2000, 默认 80) */
-  triggerDelay: number
-  /** 鼠标移出自动收起延迟 (单位 ms, 范围 0 ~ 3000, 默认 300) */
-  closeDelay: number
-  /** 滑出/收起动画过渡时长 (单位 ms, 范围 100 ~ 1000, 默认 280) */
-  animationDuration: number
-  /** 动画缓动函数 (默认 'cubic-bezier(0.16, 1, 0.3, 1)') */
-  animationEasing: string
-  /** 气泡弹窗展开宽度 (单位 px, 范围 160 ~ 600, 默认 460) */
-  width: number
-  /** 抽屉展开时上下各延伸的像素幅度 (单位 px, 范围 0 ~ 200, 默认 50) */
-  verticalExtension: number
-  /** 悬浮胶囊与抽屉背景不透明度 (范围 0.0 ~ 1.0, 默认 0.78) */
-  opacity: number
-}
-
-/**
- * 主题与明暗模式微调配置项
- */
-export interface ThemeConfig {
-  /** 当前主题模式: 'dark' (深色黑曜石) | 'light' (浅色白玉霜雪) */
-  mode: 'dark' | 'light'
-  /** 明暗度微调偏移量 (范围 -0.2 ~ +0.2, 默认 0, 负值更深邃, 正值更通透) */
-  brightness: number
-  /** 对比度微调系数 (范围 0.8 ~ 1.2, 默认 1.0) */
-  contrast: number
-}
-
-/**
- * 窗口相关配置项
- */
-export interface WindowConfig {
-  /**
-   * 是否启用沉浸式效果 (无边框模式)
-   * false: 传统窗口, 带有系统原生标题栏与边框
-   * true: 沉浸式窗口, 无系统边框, 不绘制最小化/最大化按钮
-   */
-  immersive: boolean
-  /**
-   * 主题与明暗模式微调配置
-   */
-  theme: ThemeConfig
-  /**
-   * 窗口背景效果 (统一承载云母、壁纸等效果)
-   */
-  background: BackgroundConfig
-  /**
-   * 左侧滑出气泡弹窗抽屉配置
-   */
-  sidebar: SidebarConfig
-  /**
-   * 向下兼容字段: 云母效果配置
-   */
-  mica: MicaConfig
-}
-
-/**
- * 切歌与歌词跳转时的音频淡出淡入过渡配置
- */
-export interface FadeConfig {
-  /** 是否开启淡出淡入平滑过渡 (默认 true; 为 false 时为瞬时硬切换) */
-  enabled: boolean
-  /** 淡入淡出时长 (毫秒, 范围 20 ~ 1000, 推荐 80 ~ 200, 默认 120) */
-  duration: number
-}
-
-/**
- * 歌词滚轮预览确认延迟配置
- */
-export interface LyricPreviewConfig {
-  /** 滚轮预览后等待单击确认的超时时长 (毫秒, 范围 500 ~ 5000, 默认 1500) */
-  timeoutMs: number
-}
-
-/**
- * 音频播放与音效微调配置项
- */
-export interface AudioConfig {
-  /** 切歌与歌词跳转淡出淡入配置 */
-  fade: FadeConfig
-  /** 歌词滚轮预览确认延迟配置 */
-  lyricPreview: LyricPreviewConfig
-}
-
-/**
- * MPD 服务端连接配置项
- */
-export interface MpdConfig {
-  host: string
-  port: number
-  streamPort: number
-}
-
 import {
+  DEFAULT_MICA_CONFIG,
+  DEFAULT_WALLPAPER_CONFIG,
+  DEFAULT_BACKGROUND_CONFIG,
+  DEFAULT_THEME_CONFIG,
+  DEFAULT_SIDEBAR_CONFIG,
+  DEFAULT_FADE_CONFIG,
+  DEFAULT_LYRIC_PREVIEW_CONFIG,
+  DEFAULT_AUDIO_CONFIG,
+  DEFAULT_CONFIG,
   DEFAULT_VISUALIZER_CONFIG,
   parseVisualizerConfig,
   parseMpdConfig,
+  parseLyricPreviewConfig,
+  stripJsonComments,
   DEFAULT_TYPOGRAPHY_CONFIG,
   parseTypographyConfig,
   sanitizeFontFamily,
   type VisualizerConfig,
   type VisualizerStyle,
+  type MpdConfig as MpdConfigValue,
   type TypographyConfig,
   type FontItemConfig,
   type LyricsTypographyConfig
@@ -205,12 +60,36 @@ export type {
   DeepPartial,
   TypographyConfig,
   FontItemConfig,
-  LyricsTypographyConfig
+  LyricsTypographyConfig,
+  MicaConfig,
+  WallpaperConfig,
+  BackgroundConfig,
+  SidebarConfig,
+  ThemeConfig,
+  WindowConfig,
+  FadeConfig,
+  LyricPreviewConfig,
+  AudioConfig,
+  MicaStyle,
+  BackgroundMode,
+  WallpaperFit,
+  MpdConfigValue as MpdConfig
 }
 export {
+  DEFAULT_MICA_CONFIG,
+  DEFAULT_WALLPAPER_CONFIG,
+  DEFAULT_BACKGROUND_CONFIG,
+  DEFAULT_THEME_CONFIG,
+  DEFAULT_SIDEBAR_CONFIG,
+  DEFAULT_FADE_CONFIG,
+  DEFAULT_LYRIC_PREVIEW_CONFIG,
+  DEFAULT_AUDIO_CONFIG,
+  DEFAULT_CONFIG,
   DEFAULT_VISUALIZER_CONFIG,
   parseVisualizerConfig,
   parseMpdConfig,
+  parseLyricPreviewConfig,
+  stripJsonComments,
   DEFAULT_TYPOGRAPHY_CONFIG,
   parseTypographyConfig,
   sanitizeFontFamily
@@ -223,116 +102,96 @@ export interface AppConfig {
   window: WindowConfig
   audio: AudioConfig
   visualizer: VisualizerConfig
-  mpd: MpdConfig
+  mpd: MpdConfigValue
   typography: TypographyConfig
 }
 
 /**
- * 默认云母配置
+ * 深拷贝默认云母配置 (禁止外泄 DEFAULT_MICA_CONFIG 单例引用)
  */
-export const DEFAULT_MICA_CONFIG: MicaConfig = {
-  enabled: false,
-  grainOpacity: 0.035,
-  tintOpacity: 0.05,
-  style: 'default',
-  edgeHighlight: 0.08,
-  border: false
+function cloneDefaultMicaConfig(): MicaConfig {
+  return { ...DEFAULT_MICA_CONFIG }
 }
 
 /**
- * 默认壁纸配置
+ * 深拷贝默认壁纸配置 (禁止外泄 DEFAULT_WALLPAPER_CONFIG 单例引用)
  */
-export const DEFAULT_WALLPAPER_CONFIG: WallpaperConfig = {
-  path: '',
-  blur: 0,
-  overlayOpacity: 0.5,
-  fit: 'cover',
-  muted: true,
-  loop: true,
-  playbackRate: 1.0
+function cloneDefaultWallpaperConfig(): WallpaperConfig {
+  return { ...DEFAULT_WALLPAPER_CONFIG }
 }
 
 /**
- * 默认背景配置
+ * 深拷贝默认背景配置 (嵌套 mica/wallpaper 逐层拷贝, 禁止共享引用)
  */
-export const DEFAULT_BACKGROUND_CONFIG: BackgroundConfig = {
-  mode: 'default',
-  mica: DEFAULT_MICA_CONFIG,
-  wallpaper: DEFAULT_WALLPAPER_CONFIG
+function cloneDefaultBackgroundConfig(): BackgroundConfig {
+  return {
+    mode: DEFAULT_BACKGROUND_CONFIG.mode,
+    mica: cloneDefaultMicaConfig(),
+    wallpaper: cloneDefaultWallpaperConfig()
+  }
 }
 
 /**
- * 默认主题与明暗模式配置
+ * 深拷贝默认侧边栏配置 (扁平结构, 浅拷贝即够)
  */
-export const DEFAULT_THEME_CONFIG: ThemeConfig = {
-  mode: 'dark',
-  brightness: 0,
-  contrast: 1.0
+function cloneDefaultSidebarConfig(): SidebarConfig {
+  return { ...DEFAULT_SIDEBAR_CONFIG }
 }
 
 /**
- * 默认侧边气泡弹窗抽屉配置
+ * 深拷贝默认主题配置 (扁平结构, 浅拷贝即够)
  */
-export const DEFAULT_SIDEBAR_CONFIG: SidebarConfig = {
-  enabled: true,
-  glowHint: true,
-  triggerWidth: 30,
-  closeBuffer: 40,
-  triggerDelay: 80,
-  closeDelay: 300,
-  animationDuration: 280,
-  animationEasing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-  width: 460,
-  verticalExtension: 50,
-  opacity: 0.78
+function cloneDefaultThemeConfig(): ThemeConfig {
+  return { ...DEFAULT_THEME_CONFIG }
 }
 
 /**
- * 默认音频淡出淡入配置
+ * 深拷贝默认淡入淡出配置 (扁平结构, 浅拷贝即够)
  */
-export const DEFAULT_FADE_CONFIG: FadeConfig = {
-  enabled: true,
-  duration: 120
+function cloneDefaultFadeConfig(): FadeConfig {
+  return { ...DEFAULT_FADE_CONFIG }
 }
 
 /**
- * 默认歌词滚轮预览确认延迟配置
+ * 深拷贝默认音频配置 (嵌套 fade/lyricPreview 逐层拷贝)
  */
-export const DEFAULT_LYRIC_PREVIEW_CONFIG: LyricPreviewConfig = {
-  timeoutMs: 1500
+function cloneDefaultAudioConfig(): AudioConfig {
+  return {
+    fade: cloneDefaultFadeConfig(),
+    lyricPreview: { ...DEFAULT_LYRIC_PREVIEW_CONFIG }
+  }
 }
 
 /**
- * 默认音频配置
+ * 深拷贝整份默认配置 (所有嵌套分支逐层拷贝, 永不外泄单例引用)
  */
-export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
-  fade: DEFAULT_FADE_CONFIG,
-  lyricPreview: DEFAULT_LYRIC_PREVIEW_CONFIG
+function cloneDefaultConfig(): AppConfig {
+  return {
+    window: {
+      immersive: DEFAULT_CONFIG.window.immersive,
+      theme: cloneDefaultThemeConfig(),
+      background: cloneDefaultBackgroundConfig(),
+      sidebar: cloneDefaultSidebarConfig(),
+      mica: cloneDefaultMicaConfig()
+    },
+    audio: cloneDefaultAudioConfig(),
+    visualizer: { ...DEFAULT_CONFIG.visualizer },
+    mpd: { ...DEFAULT_CONFIG.mpd },
+    typography: {
+      ...DEFAULT_CONFIG.typography,
+      ui: { ...DEFAULT_CONFIG.typography.ui },
+      hint: { ...DEFAULT_CONFIG.typography.hint },
+      lyrics: {
+        body: { ...DEFAULT_CONFIG.typography.lyrics.body },
+        translation: { ...DEFAULT_CONFIG.typography.lyrics.translation },
+        showTranslation: DEFAULT_CONFIG.typography.lyrics.showTranslation
+      }
+    }
+  }
 }
 
 /**
- * 默认配置 (当配置文件不存在或缺省字段时使用)
- */
-export const DEFAULT_CONFIG: AppConfig = {
-  window: {
-    immersive: false,
-    theme: DEFAULT_THEME_CONFIG,
-    background: DEFAULT_BACKGROUND_CONFIG,
-    sidebar: DEFAULT_SIDEBAR_CONFIG,
-    mica: DEFAULT_MICA_CONFIG
-  },
-  audio: DEFAULT_AUDIO_CONFIG,
-  visualizer: DEFAULT_VISUALIZER_CONFIG,
-  mpd: {
-    host: '127.0.0.1',
-    port: 6600,
-    streamPort: 8000
-  },
-  typography: DEFAULT_TYPOGRAPHY_CONFIG
-}
-
-/**
- * 数值区间钳位辅助函数
+ * 数值区间钳位辅助函数 (主进程本地小工具; types/config.ts 另有一份同名函数供渲染层使用)
  */
 function clamp(val: number, min: number, max: number): number {
   if (Number.isNaN(val)) return min
@@ -359,7 +218,7 @@ export function parseThemeConfig(rawTheme: unknown): ThemeConfig {
     }
   }
 
-  return DEFAULT_THEME_CONFIG
+  return cloneDefaultThemeConfig()
 }
 
 /**
@@ -397,7 +256,7 @@ export function parseMicaConfig(rawMica: unknown): MicaConfig {
     }
   }
 
-  return DEFAULT_MICA_CONFIG
+  return cloneDefaultMicaConfig()
 }
 
 /**
@@ -443,7 +302,7 @@ export function parseWallpaperConfig(rawWallpaper: unknown): WallpaperConfig {
     }
   }
 
-  return DEFAULT_WALLPAPER_CONFIG
+  return cloneDefaultWallpaperConfig()
 }
 
 /**
@@ -483,12 +342,12 @@ export function parseBackgroundConfig(rawBackground: unknown, legacyMica: unknow
     return {
       mode,
       mica,
-      wallpaper: DEFAULT_WALLPAPER_CONFIG
+      wallpaper: cloneDefaultWallpaperConfig()
     }
   }
 
-  // 场景 3: 缺省回退
-  return DEFAULT_BACKGROUND_CONFIG
+  // 场景 3: 缺省回退 (返回深拷贝, 禁止外泄单例)
+  return cloneDefaultBackgroundConfig()
 }
 
 /**
@@ -547,7 +406,7 @@ export function parseSidebarConfig(rawSidebar: unknown): SidebarConfig {
     }
   }
 
-  return DEFAULT_SIDEBAR_CONFIG
+  return cloneDefaultSidebarConfig()
 }
 
 /**
@@ -571,43 +430,7 @@ export function parseFadeConfig(rawFade: unknown): FadeConfig {
     }
   }
 
-  return DEFAULT_FADE_CONFIG
-}
-
-/**
- * 解析并校验歌词滚轮预览确认延迟配置
- * 兼容毫秒整数/数字字符串; 秒级小数输入 (<10) 按秒换算为毫秒
- */
-export function parseLyricPreviewConfig(rawPreview: unknown): LyricPreviewConfig {
-  if (typeof rawPreview === 'object' && rawPreview !== null) {
-    const obj = rawPreview as Record<string, unknown>
-    const rawTimeout = obj['timeoutMs'] ?? obj['timeout'] ?? obj['delayMs']
-    let parsed: number = NaN
-    if (typeof rawTimeout === 'number') {
-      parsed = rawTimeout
-    } else if (typeof rawTimeout === 'string') {
-      const num = parseFloat(rawTimeout)
-      if (Number.isFinite(num)) parsed = num
-    }
-    if (Number.isFinite(parsed)) {
-      if (parsed > 0 && parsed < 10 && !Number.isInteger(parsed)) parsed = parsed * 1000
-      return { timeoutMs: Math.round(clamp(parsed, 500, 5000)) }
-    }
-  }
-  if (typeof rawPreview === 'number' && Number.isFinite(rawPreview)) {
-    let parsed = rawPreview
-    if (parsed > 0 && parsed < 10 && !Number.isInteger(parsed)) parsed = parsed * 1000
-    return { timeoutMs: Math.round(clamp(parsed, 500, 5000)) }
-  }
-  if (typeof rawPreview === 'string') {
-    const num = parseFloat(rawPreview)
-    if (Number.isFinite(num)) {
-      let parsed = num
-      if (parsed > 0 && parsed < 10 && !Number.isInteger(parsed)) parsed = parsed * 1000
-      return { timeoutMs: Math.round(clamp(parsed, 500, 5000)) }
-    }
-  }
-  return { ...DEFAULT_LYRIC_PREVIEW_CONFIG }
+  return cloneDefaultFadeConfig()
 }
 
 /**
@@ -622,79 +445,7 @@ export function parseAudioConfig(rawAudio: unknown): AudioConfig {
     }
   }
 
-  return DEFAULT_AUDIO_CONFIG
-}
-
-/**
- * 剥除 JSON 文本中的单行与多行注释 (支持 JSONC)
- * 严格保护字符串字面量内的斜杠与转义符 (例如 "http://..." 不会被破坏)
- */
-export function stripJsonComments(text: string): string {
-  let result = ''
-  let inString = false
-  let isEscaped = false
-  let inSingleComment = false
-  let inBlockComment = false
-  let i = 0
-
-  while (i < text.length) {
-    const char = text[i]
-    const nextChar = text[i + 1]
-
-    if (inSingleComment) {
-      if (char === '\n' || char === '\r') {
-        inSingleComment = false
-        result += char
-      }
-      i++
-      continue
-    }
-
-    if (inBlockComment) {
-      if (char === '*' && nextChar === '/') {
-        inBlockComment = false
-        i += 2
-        continue
-      }
-      i++
-      continue
-    }
-
-    if (inString) {
-      result += char
-      if (isEscaped) {
-        isEscaped = false
-      } else if (char === '\\') {
-        isEscaped = true
-      } else if (char === '"') {
-        inString = false
-      }
-      i++
-      continue
-    }
-
-    // 不在字符串内, 检查是否进入注释
-    if (char === '/' && nextChar === '/') {
-      inSingleComment = true
-      i += 2
-      continue
-    }
-
-    if (char === '/' && nextChar === '*') {
-      inBlockComment = true
-      i += 2
-      continue
-    }
-
-    if (char === '"') {
-      inString = true
-    }
-
-    result += char
-    i++
-  }
-
-  return result
+  return cloneDefaultAudioConfig()
 }
 
 /**
@@ -716,7 +467,8 @@ export function loadConfig(customPath?: string): AppConfig {
   const configPath = customPath || process.env['LPIP_CONFIG_PATH'] || getDefaultConfigPath()
 
   if (!existsSync(configPath)) {
-    return DEFAULT_CONFIG
+    // 文件缺失回退: 返回深拷贝, 调用方改写不污染 DEFAULT 单例
+    return cloneDefaultConfig()
   }
 
   try {
@@ -746,19 +498,28 @@ export function loadConfig(customPath?: string): AppConfig {
       mpd: parseMpdConfig(parsed.mpd),
       typography
     }
-  } catch {
-    // 遇到解析异常或无权限时, 安全使用默认配置
-    return DEFAULT_CONFIG
+  } catch (err) {
+    // 遇到解析异常或无权限时, 先保留损坏现场再安全回退默认配置
+    console.error('[lpip-player:config] 配置文件解析失败, 已保留损坏现场并回退默认配置:', err)
+    try {
+      const corruptPath = `${configPath}.corrupt`
+      copyFileSync(configPath, corruptPath)
+    } catch (preserveErr) {
+      console.error('[lpip-player:config] 保留损坏配置文件失败:', preserveErr)
+    }
+    return cloneDefaultConfig()
   }
 }
 
 /**
  * 递归深度合并对象
+ * 安全约束: 跳过 __proto__/constructor/prototype 键, 阻断 IPC/JSON 输入的原型污染
  */
 export function deepMerge<T extends Record<string, unknown>>(target: T, source: Record<string, unknown>): T {
   const output = { ...target } as Record<string, unknown>
   if (!source || typeof source !== 'object') return output as T
   for (const key of Object.keys(source)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue
     const srcVal = source[key]
     if (srcVal === undefined) continue
     const targetVal = output[key]
@@ -777,6 +538,14 @@ export function deepMerge<T extends Record<string, unknown>>(target: T, source: 
   }
   return output as T
 }
+
+/**
+ * saveConfig 串行化互斥链 (模块级 promise 链)
+ * 目的: 并发 CONFIG_UPDATE 时 load→merge→write 按序执行, 杜绝 RMW 交错覆盖
+ * 说明: 当前持久化段为同步写盘 (单线程天然互斥); 此互斥链记录串行语义,
+ * 后续若持久化段异步化, 写任务挂入此链即可串行, 调用方无需改动
+ */
+let saveConfigMutex: Promise<void> = Promise.resolve()
 
 /**
  * 安全保存并持久化运行时配置
@@ -848,6 +617,32 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
     typography
   }
 
+  persistConfigFileQueued(configPath, finalConfig)
+
+  return finalConfig
+}
+
+/**
+ * 配置文件落盘入队 (串行化语义)
+ * 同步执行本次写盘保证调用契约不变; 同时把同内容幂等复写挂入互斥链,
+ * 使并发 saveConfig 的持久化段在语义上可串行化, 杜绝 RMW 交错覆盖
+ */
+function persistConfigFileQueued(configPath: string, finalConfig: AppConfig): void {
+  const formattedJson = JSON.stringify(finalConfig, null, 2)
+  const queuedJson = formattedJson
+  const writeTask = saveConfigMutex.then(() => {
+    persistConfigFile(configPath, queuedJson)
+  })
+  saveConfigMutex = writeTask.catch(() => {
+    // 吞掉链上异常, 防止一次写盘失败永久卡死后续任务
+  })
+  persistConfigFile(configPath, formattedJson)
+}
+
+/**
+ * 配置文件落盘 (备份 .bak + 临时文件原子 rename)
+ */
+function persistConfigFile(configPath: string, formattedJson: string): void {
   const dir = dirname(configPath)
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
@@ -862,7 +657,6 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
     }
   }
 
-  const formattedJson = JSON.stringify(finalConfig, null, 2)
   const tempPath = `${configPath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
   try {
     writeFileSync(tempPath, formattedJson, 'utf-8')
@@ -878,5 +672,4 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
     throw err
   }
 
-  return finalConfig
 }
