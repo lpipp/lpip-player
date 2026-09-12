@@ -63,6 +63,8 @@ export default function App() {
   const [lyricPreviewTimeoutMs, setLyricPreviewTimeoutMs] = useState(1500)
 
   const lastFileRef = useRef<string | null>(null)
+  // 歌词拉取世代号 (快切 A→B→C 时旧慢响应到达即丢弃, 只认最新一次拉取)
+  const lyricsSeqRef = useRef(0)
   const isSeekingRef = useRef(false)
   const isVolDraggingRef = useRef(false)
   // PCM 音频流基地址 (跟随配置 mpd.host/streamPort, 默认与 DEFAULT_MPD_CONFIG 一致)
@@ -89,10 +91,13 @@ export default function App() {
         setDuration(Math.round(status.duration || status.currentSong.duration))
       }
 
-      // 切歌时重新提取歌词
+      // 切歌时重新提取歌词 (带世代守卫: 慢响应若已过时则丢弃, 避免错词钉死)
       if (status.currentSong.file !== lastFileRef.current) {
         lastFileRef.current = status.currentSong.file
+        lyricsSeqRef.current += 1
+        const seq = lyricsSeqRef.current
         window.electronAPI?.mpd.getLyrics(status.currentSong.file).then((lines) => {
+          if (seq !== lyricsSeqRef.current) return
           setLyrics(lines && lines.length > 0 ? lines : null)
         })
       }
@@ -328,7 +333,11 @@ export default function App() {
     setDuration(Math.round(song.duration || 248))
     lastFileRef.current = song.file
 
+    // 点播拉取歌词同样带世代守卫, 与轮询分支共用同一序号源
+    lyricsSeqRef.current += 1
+    const lyricsSeq = lyricsSeqRef.current
     window.electronAPI?.mpd.getLyrics(song.file).then((lines) => {
+      if (lyricsSeq !== lyricsSeqRef.current) return
       setLyrics(lines && lines.length > 0 ? lines : null)
     })
 
