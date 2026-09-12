@@ -668,13 +668,20 @@ export async function removeQueueItem(pos: number, queueId?: number, file?: stri
     if (file) {
       const queue = await getQueue()
       let found = false
+      // 单条删除失败仅记数并继续，避免一条失败导致已删条目被报成整体失败
+      let failures = 0
       for (const item of queue) {
         if (item.file === file && typeof item.queueId === 'number' && !Number.isNaN(item.queueId)) {
-          await sendMpdCommand(`deleteid ${item.queueId}`)
-          found = true
+          try {
+            await sendMpdCommand(`deleteid ${item.queueId}`)
+            found = true
+          } catch (err) {
+            failures += 1
+            console.error(`[lpip-player:mpd] 移除队列单条失败 (queueId: ${item.queueId}):`, err)
+          }
         }
       }
-      return found
+      return found && failures === 0
     }
 
     // 场景 2: 按 queueId 删除指定单项 (如 QueueDrawer 中按队列 ID 移除)
