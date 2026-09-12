@@ -357,10 +357,16 @@ app.whenReady().then(() => {
     })
   })
 
-  // 统计信息抽屉: 连续播放会话追踪 (跨越阈值 max(30s, 时长×50%) 即 playCount +1, 单曲循环不重复计数)
+  // 统计信息抽屉: 连续播放会话追踪 (跨越阈值 max(30s, 时长×50%) 即 playCount +1, 单曲循环/手动重播视为新会话允许再次计数)
   let playSession: PlaySessionState | null = null
 
+  // 轮询在途守卫: 500ms 节拍内上一轮 getStatus 未返回时跳过本轮, 避免慢查询重叠导致旧结果后到覆盖新状态
+  let isBroadcastingInFlight = false
+
   const broadcastStatus = async (): Promise<void> => {
+    // 上一轮仍在途中则丢弃本轮节拍 (保新状态不被旧结果回写)
+    if (isBroadcastingInFlight) return
+    isBroadcastingInFlight = true
     try {
       const windows = BrowserWindow.getAllWindows()
       if (windows.length > 0 && !windows[0].isDestroyed()) {
@@ -373,8 +379,12 @@ app.whenReady().then(() => {
       }
     } catch {
       // 忽略广播异常
+    } finally {
+      // 无论成功失败都必须复位, 否则守卫永久锁死导致轮询停摆
+      isBroadcastingInFlight = false
     }
   }
+
 
   // 注册 MPD 相关 IPC 通信处理程序
   ipcMain.handle(IPC_CHANNELS.MPD_GET_LIBRARY, async () => {
