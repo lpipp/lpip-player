@@ -1,4 +1,4 @@
-import { execFile, execSync } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
@@ -828,9 +828,12 @@ export function getSongLyrics(relPath: string): LyricLine[] {
   }
 
   // 2. 检查 FLAC 内嵌 LYRICS 标签
+  // 安全说明：audioPath 源自 MPD 上报的文件名，不可信；命令与参数分离走 argv 数组，
+  // 不经过 shell（双引号挡不住 $() 与反引号，故禁用字符串拼接），stderr 直接丢弃。
   if (!lrcRaw && audioPath.toLowerCase().endsWith('.flac')) {
     try {
-      const tag = execSync(`metaflac --show-tag=LYRICS "${audioPath}" 2>/dev/null`).toString('utf-8')
+      // execFileSync 不起 shell，恶意文件名仅被当作普通参数，无注入风险
+      const tag = execFileSync('metaflac', ['--show-tag=LYRICS', audioPath], { stdio: ['ignore', 'pipe', 'ignore'] }).toString('utf-8')
       if (tag.startsWith('LYRICS=')) {
         lrcRaw = tag.slice(7)
       } else if (tag.trim()) {
@@ -842,10 +845,13 @@ export function getSongLyrics(relPath: string): LyricLine[] {
   }
 
   // 3. 通用 ffprobe 提取 lyrics / unsyncedlyrics
+  // 安全说明：同上，argv 数组直传、不走 shell，杜绝 MPD 上报文件名引发的命令注入。
   if (!lrcRaw) {
     try {
-      const out = execSync(
-        `ffprobe -v error -show_entries format_tags=LYRICS:format_tags=lyrics:format_tags=unsyncedlyrics -of default=noprint_wrappers=1:nokey=1 "${audioPath}" 2>/dev/null`
+      const out = execFileSync(
+        'ffprobe',
+        ['-v', 'error', '-show_entries', 'format_tags=LYRICS:format_tags=lyrics:format_tags=unsyncedlyrics', '-of', 'default=noprint_wrappers=1:nokey=1', audioPath],
+        { stdio: ['ignore', 'pipe', 'ignore'] }
       ).toString('utf-8')
       if (out.trim()) {
         lrcRaw = out.trim()
