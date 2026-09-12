@@ -211,6 +211,9 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
 // 追踪当前窗口的沉浸式形态以及是否处于平滑重建过程中
 let currentWindowImmersive = false
 let isRecreatingWindow = false
+// 窗口重建保护标志的安全超时 (毫秒): 若新窗口既不 ready-to-show 也不 did-fail-load
+// (如加载挂起), 强制释放保护标志, 避免后续切换被永久拒绝
+const RECREATE_SAFETY_TIMEOUT_MS = 8000
 
 /**
  * 根据沉浸式配置重建窗口
@@ -248,7 +251,14 @@ export function recreateWindow(oldWin: BrowserWindow, isImmersive: boolean): Bro
     applyConfigToWindow(newWin, loadConfig())
   })
 
+  // 安全超时: 加载挂起导致既无 ready-to-show 也无 did-fail-load 时兜底释放
+  const safetyTimer = setTimeout(() => {
+    isRecreatingWindow = false
+  }, RECREATE_SAFETY_TIMEOUT_MS)
+
   newWin.once('ready-to-show', () => {
+    // 成功分支: 清除安全超时, 后续按正常流程释放标志
+    clearTimeout(safetyTimer)
     if (isFullScreen) {
       newWin.setFullScreen(true)
     } else if (isMaximized) {
@@ -269,8 +279,16 @@ export function recreateWindow(oldWin: BrowserWindow, isImmersive: boolean): Bro
   })
 
   newWin.webContents.on('did-fail-load', () => {
+    clearTimeout(safetyTimer)
     isRecreatingWindow = false
   })
+
+  // 新窗口被用户或系统直接关闭时同样释放保护标志, 避免卡死后续切换
+  newWin.on('closed', () => {
+    clearTimeout(safetyTimer)
+    isRecreatingWindow = false
+  })
+
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     newWin.loadURL(process.env['ELECTRON_RENDERER_URL'])
