@@ -24,6 +24,13 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 歌词翻译显隐开关 (2026-09-12):
+  配置 typography.lyrics.showTranslation（默认 true，严格布尔解析，缺省回退不写盘）；设置歌词排印加「显示歌词翻译」ToggleSwitch（translation 字形前，updateConfigImmediate 即时生效）；
+  LyricsOrbit 新增 showTranslation prop（关闭不挂载 secondary），App 由 config.get/onChange 双路径同步；CSS 宿主 data 属性兜底 display:none，主行零影响；
+  单测 4/4 + typography 11/11 + lyrics 11/11 + typecheck 0 + build 三产物，CDP 实页探针 4/4（开可见/关全隐/主行不动/重开恢复），config.json 零漂移（提交 3300ec0）。
+- [已修复] 歌词行内双语拆分 U+2009 THIN SPACE (2026-09-12):
+  实曲 LYRICS 标签为同时间戳单行、原文与译文由 U+2009 隔开；parseLrc 按 THIN SPACE 切分（首段 primary、余段拼 secondary，双侧判定防误拆，同戳编组保留）；
+  Close Your Eyes 实曲 61 行中 58 行落 secondary，制作信息行保持单行；重启 Electron 后 CDP 实页 9 节点 6 译文 below=true（提交 ccc5ba7）。
 - [已完备] 悬浮胶囊第五按键统计信息抽屉 (2026-09-11):
   第 5 键由占位外观主题重构为统计信息（StatsIcon 三柱条形图）；单级展示：摘要卡（累计播放时长/总播放次数/已统计曲目）+ playCount 降序排行（38px 圆角封面 + 标题>歌手 + 右侧 N 次徽标 + 前三翡翠高亮 + 空态暂无播放记录）；
   MPD sticker playCount 为真源（stats.playtime 累计时长），主进程 broadcastStatus 500ms 轮询 observePlaySession 状态机计数（max(30s, 时长×50%)，暂停冻结/seek 不清/stop 清空/单循环不重复计）；
