@@ -891,6 +891,27 @@ const MAX_CONCURRENT_EXTRACT = 2
 let activeExtractCount = 0
 const pendingExtracts: Array<() => void> = []
 
+// 同一封面哈希的在途提取任务去重表：后来者直接 await 同一个 promise，
+// 避免并发 ffmpeg 往同一输出文件写造成损坏或互相覆盖；结算后删除键。
+const inflightCoverExtracts = new Map<string, Promise<string | null>>()
+
+/**
+ * 计算封面缓存键：路径 + 文件 mtimeMs + size，避免换文件不换图
+ *
+ * 为什么拼 mtime 与 size: 同路径重新打标签/换音频后内容变了但路径不变，
+ * 纯路径哈希会命中旧图；stat 失败时回退纯路径，保证存量老缓存仍可命中迁移。
+ */
+function computeCoverHash(relPath: string, audioPath: string): string {
+  try {
+    const stat = statSync(audioPath)
+    return createHash('sha1').update([relPath, String(stat.mtimeMs), String(stat.size)].join('|')).digest('hex')
+  } catch {
+    // 文件瞬时不可读时回退纯路径哈希，走老缓存语义
+    return createHash('sha1').update(relPath).digest('hex')
+  }
+}
+
+
 /**
  * 手写 promise 并发队列 (零依赖)。并发达到上限时新任务排队，某个任务完成后依次唤醒下一个。
  */
@@ -1022,7 +1043,8 @@ export function getOrExtractAlbumCover(relPath: string, tier: 'thumb' | 'full' =
   }
 
   const cacheDir = getCoverCacheDir()
-  const hash = createHash('sha1').update(relPath).digest('hex')
+  // 缓存键含 mtimeMs+size：同路径换文件后旧图自然失效；stat 失败回退纯路径命中老缓存
+  const hash = computeCoverHash(relPath, audioPath)
   const coverPath = join(cacheDir, `${hash}.jpg`)
   const thumbPath = join(cacheDir, `${hash}.thumb.jpg`)
   const noCoverPath = join(cacheDir, `${hash}.nocover`)
@@ -1046,22 +1068,47 @@ export function getOrExtractAlbumCover(relPath: string, tier: 'thumb' | 'full' =
     return generateThumbFromCover(coverPath, thumbPath).then((ok) => (ok ? thumbPath : coverPath))
   }
 
-  // 需要从音频文件提取原图 (昂贵步骤 → 并发队列)，成功后按需生成缩略图
-  return runExtract(() => extractCoverFromAudio(audioPath, coverPath)).then(async (ok) => {
-    if (!ok) {
-      try {
-        writeFileSync(noCoverPath, '')
-      } catch {
-        // 忽略写入错误
-      }
-      return null
-    }
+  // 在途去重：同哈希已有提取在跑时复用原图产出，再按本调用 tier 派生，
+  // 避免首调用者 tier 决定后来者返回档 (full/thumb 混调错档) 与并发写同一输出
+  const inflight = inflightCoverExtracts.get(hash)
+  if (inflight) {
+    return inflight.then((cover) => {
+      if (!cover) return null
+      if (!wantThumb) return cover
+      return existsSync(thumbPath) ? thumbPath : cover
+    })
+  }
 
-    if (wantThumb) {
-      const thumbOk = await generateThumbFromCover(coverPath, thumbPath)
-      return thumbOk ? thumbPath : coverPath
+  // 需要从音频文件提取原图 (昂贵步骤 → 并发队列)：共享任务只负责产出原图
+  // 并顺手补齐缩略图 (失败也不影响原图)，resolve 恒为原图路径或 null；
+  // 各调用者 await 后再按自身 tier 选档，彻底消除跨 tier 写竞争。
+  const task: Promise<string | null> = runExtract(() => extractCoverFromAudio(audioPath, coverPath)).then(
+    async (ok) => {
+      if (!ok) {
+        try {
+          writeFileSync(noCoverPath, '')
+        } catch {
+          // 忽略写入错误
+        }
+        return null
+      }
+
+      // 统一补缩略图：thumb 调用直接命中，full 调用忽略；失败回退原图
+      await generateThumbFromCover(coverPath, thumbPath)
+      return coverPath
     }
-    return coverPath
+  )
+  inflightCoverExtracts.set(hash, task)
+  // 结算后删键：成功与失败都清理，避免泄漏与过期复用
+  const cleanup = (): void => {
+    if (inflightCoverExtracts.get(hash) === task) inflightCoverExtracts.delete(hash)
+  }
+  task.then(cleanup, cleanup)
+  // 首调用者同样走统一派生路径 (thumb 命中刚补好的缩略图)
+  return task.then((cover) => {
+    if (!cover) return null
+    if (!wantThumb) return cover
+    return existsSync(thumbPath) ? thumbPath : cover
   })
 }
 
