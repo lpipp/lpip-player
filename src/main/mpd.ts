@@ -1616,39 +1616,55 @@ export async function getPlayStats(): Promise<PlayStats> {
  *
  * 语义: file 变更开启新会话; 暂停冻结累计; seek 不清零; stop 清空会话;
  *        达到 max(30s, 时长×50%) 且未计过则 incrementPlayCount 一次。
+ * 重播判定: 同一 file 下若 currentTime 大幅回退 (比上一轮倒退超 5 秒且本轮
+ *        elapsed < 10 秒), 视为单曲循环或手动重播, 重置累计并允许再次计数。
+ * 注意: 手动把进度条拖回开头同样满足双条件, 会被当作重播丢弃已累计时长。
+ * 纯 currentTime 无法区分自动循环与手动拖回, 方向取保守 (只会少计不会多计)。
  * nowMs 由调用方传入 (生产取 Date.now, 单测可注入虚拟时间)。
  *
  * @returns 更新后的会话状态 (null 表示无活跃会话)
  */
 export function observePlaySession(
   prev: PlaySessionState | null,
-  status: Pick<MpdStatus, 'state' | 'currentSong'>,
+  status: Pick<MpdStatus, 'state' | 'currentSong' | 'currentTime'>,
   nowMs: number,
   onCount: (file: string) => void
 ): PlaySessionState | null {
   const song = status.currentSong
   if (status.state !== 'play' || !song || !song.file) {
-    // 暂停冻结: 保留 file 与 accumulatedMs, 仅冻结时间推进; 停止清空会话
+    // 暂停冻结: 保留 file、累计与上轮进度, 仅冻结时间推进; 停止清空会话
     if (!prev) return null
     if (status.state === 'stop') return null
     return { ...prev, lastTickMs: null }
   }
 
   const file = song.file
+  const elapsed = typeof status.currentTime === 'number' && Number.isFinite(status.currentTime)
+    ? Math.max(0, status.currentTime)
+    : 0
   const durationSec = typeof song.duration === 'number' ? song.duration : 0
   if (!prev || prev.file !== file) {
     // 新歌开始: 若上一首没来得及达标则直接丢弃 (不计数), 开启新会话
-    return { file, accumulatedMs: 0, counted: false, lastTickMs: nowMs }
+    return { file, accumulatedMs: 0, counted: false, lastTickMs: nowMs, prevElapsed: elapsed }
+  }
+
+  // 同文件重播判定: 进度大幅回退视为曲目重起, 重置累计并允许再次计数
+  // (单曲循环 natural 切回 0 / 手动重播拖回开头; 普通 seek 回退不满足双条件故不清零)
+  let accumulatedMs = prev.accumulatedMs
+  let counted = prev.counted
+  if (prev.prevElapsed - elapsed > 5 && elapsed < 10) {
+    accumulatedMs = 0
+    counted = false
   }
 
   const lastTick = prev.lastTickMs ?? nowMs
   const delta = Math.max(0, nowMs - lastTick)
-  const accumulatedMs = prev.accumulatedMs + delta
-  if (!prev.counted && accumulatedMs >= calcPlayCountThresholdMs(durationSec)) {
+  accumulatedMs += delta
+  if (!counted && accumulatedMs >= calcPlayCountThresholdMs(durationSec)) {
     onCount(file)
-    return { file, accumulatedMs, counted: true, lastTickMs: nowMs }
+    return { file, accumulatedMs, counted: true, lastTickMs: nowMs, prevElapsed: elapsed }
   }
-  return { file, accumulatedMs, counted: prev.counted, lastTickMs: nowMs }
+  return { file, accumulatedMs, counted, lastTickMs: nowMs, prevElapsed: elapsed }
 }
 
 

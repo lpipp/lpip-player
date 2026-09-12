@@ -49,9 +49,10 @@ assert.equal(parseStickerPlayCounts('ACK [50@0] {sticker} no such sticker\n').si
 console.log('✓ 3. parseStickerPlayCounts passed');
 
 // --- Test 4: observePlaySession 状态机 ---
-const mkStatus = (state, file, duration = 300) => ({
+const mkStatus = (state, file, duration = 300, currentTime = 0) => ({
   state,
-  currentSong: file ? { file, duration } : null
+  currentSong: file ? { file, duration } : null,
+  currentTime
 });
 const fired = [];
 const onCount = (f) => { fired.push(f); };
@@ -62,7 +63,7 @@ s = observePlaySession(s, mkStatus('pause', null), 1500, onCount);
 assert.equal(s, null, 'pause 无歌无会话');
 // 新歌开始
 s = observePlaySession(s, mkStatus('play', 'music_1/X.flac'), 2000, onCount);
-assert.deepEqual(s, { file: 'music_1/X.flac', accumulatedMs: 0, counted: false, lastTickMs: 2000 });
+assert.deepEqual(s, { file: 'music_1/X.flac', accumulatedMs: 0, counted: false, lastTickMs: 2000, prevElapsed: 0 });
 assert.equal(fired.length, 0);
 // 推进 20s (未达 300s 曲的 150s 阈值, 不计数)
 s = observePlaySession(s, mkStatus('play', 'music_1/X.flac'), 22000, onCount);
@@ -93,11 +94,34 @@ assert.equal(s.counted, true, '30s 达标');
 assert.deepEqual(fired, ['music_1/X.flac', 'music_1/Y.flac']);
 // 切歌重置 (未达标旧会话直接丢弃)
 s = observePlaySession(s, mkStatus('play', 'music_1/Z.flac'), 340000, onCount);
-assert.deepEqual(s, { file: 'music_1/Z.flac', accumulatedMs: 0, counted: false, lastTickMs: 340000 });
+assert.deepEqual(s, { file: 'music_1/Z.flac', accumulatedMs: 0, counted: false, lastTickMs: 340000, prevElapsed: 0 });
 // stop 清空
 s = observePlaySession(s, mkStatus('stop', null), 350000, onCount);
 assert.equal(s, null);
 assert.equal(fired.length, 2, '未达标切歌/stop 不补计数');
 console.log('✓ 4. observePlaySession state machine passed');
+// --- Test 5: 同文件重播判定 (大幅回退视为曲目重起) ---
+// 已 counted 会话 + elapsed 从大值回到开头 (<10s): 重置累计并允许再次计数
+s = observePlaySession(null, mkStatus('play', 'music_1/R.flac', 300, 250), 400000, onCount);
+s = observePlaySession(s, mkStatus('play', 'music_1/R.flac', 300, 251), 430000, onCount);
+assert.equal(s.accumulatedMs, 30000);
+s = observePlaySession(s, mkStatus('play', 'music_1/R.flac', 300, 1), 430500, onCount);
+assert.equal(s.accumulatedMs, 500, '重播重置后仅累计本轮 delta');
+assert.equal(s.counted, false, '重播重置 counted');
+assert.equal(s.prevElapsed, 1);
+assert.equal(fired.length, 2, '重置本身不误触发');
+// 小幅回退 (100s→97s): 普通 seek, 不清零不清 counted
+s = observePlaySession(null, mkStatus('play', 'music_1/S.flac', 300, 100), 500000, onCount);
+s = observePlaySession(s, mkStatus('play', 'music_1/S.flac', 300, 101), 501000, onCount);
+assert.equal(s.accumulatedMs, 1000);
+s = observePlaySession(s, mkStatus('play', 'music_1/S.flac', 300, 97), 502000, onCount);
+assert.equal(s.accumulatedMs, 2000, '小幅回退不清零');
+// 前进 seek (10s→120s): 不清零
+s = observePlaySession(null, mkStatus('play', 'music_1/T.flac', 300, 10), 600000, onCount);
+s = observePlaySession(s, mkStatus('play', 'music_1/T.flac', 300, 11), 601000, onCount);
+assert.equal(s.accumulatedMs, 1000);
+s = observePlaySession(s, mkStatus('play', 'music_1/T.flac', 300, 120), 602000, onCount);
+assert.equal(s.accumulatedMs, 2000, '前进 seek 不清零');
+console.log('✓ 5. observePlaySession replay/seek passed');
 
-console.log('=== All 4 PlayStats Unit Groups Passed Successfully ===');
+console.log('=== All 5 PlayStats Unit Groups Passed Successfully ===');

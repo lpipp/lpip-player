@@ -127,6 +127,8 @@ export interface PlaySessionState {
   counted: boolean
   /** 上一次推进时间戳 (毫秒); 暂停/停止时置 null 表示冻结 */
   lastTickMs: number | null
+  /** 上一轮 MPD 上报的 currentTime (秒); 同文件大幅回退即视为曲目重起 */
+  prevElapsed: number
 }
 
 /**

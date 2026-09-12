@@ -133,7 +133,7 @@ async function main() {
   assert.ok(emptyText.indexOf('暂无播放记录') !== -1, '空态文案: ' + emptyText);
   console.log('✓ 5. 空态: 暂无播放记录');
 
-  // --- Step 6: observePlaySession 单曲循环不重复计数 (main 轮询语义, 此处用 preload 状态侧写) ---
+  // --- Step 6: observePlaySession 单曲循环/手动重播允许再次计数 (main 轮询语义, 此处用 preload 状态侧写) ---
   // 回放验证: sticker 无残留, getPlayStats 空排行
   const after = await cdp.eval(`(async function(){
     var s = await window.electronAPI.mpd.getPlayStats();
