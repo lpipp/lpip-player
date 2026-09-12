@@ -807,13 +807,29 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
 
   const rawTypoCandidate = (partialConfig as Record<string, unknown>)?.typography ?? (partialConfig as Record<string, unknown>)?.font
   const currentTypo = currentConfig.typography || DEFAULT_TYPOGRAPHY_CONFIG
+  // 缺省回退不写盘: partial 未携带的标量开关 (如 showTranslation) 只从 currentTypo 继承,
+  // 不从 deepMerge 后的 merged 取, 避免 DEFAULT 回填污染用户 config.json
   const mergedTypoObj = rawTypoCandidate !== undefined
     ? deepMerge(
         currentTypo as unknown as Record<string, unknown>,
         rawTypoCandidate as Record<string, unknown>
       )
     : (merged.typography ?? (merged as Record<string, unknown>).font)
-  const typography = parseTypographyConfig(mergedTypoObj)
+  const fullTypo = parseTypographyConfig(mergedTypoObj)
+  const typography: TypographyConfig = rawTypoCandidate !== undefined
+    ? {
+        ...fullTypo,
+        lyrics: {
+          ...fullTypo.lyrics,
+          showTranslation:
+            (rawTypoCandidate as Record<string, unknown>)?.lyrics !== null &&
+            typeof (rawTypoCandidate as Record<string, unknown>)?.lyrics === 'object' &&
+            'showTranslation' in ((rawTypoCandidate as Record<string, unknown>).lyrics as Record<string, unknown>)
+              ? fullTypo.lyrics.showTranslation
+              : (currentTypo.lyrics?.showTranslation ?? DEFAULT_TYPOGRAPHY_CONFIG.lyrics.showTranslation)
+        }
+      }
+    : fullTypo
 
   const finalConfig: AppConfig = {
     window: {
