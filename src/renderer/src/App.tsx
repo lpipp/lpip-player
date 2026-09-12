@@ -342,28 +342,47 @@ export default function App() {
     })
 
     if (window.electronAPI?.mpd) {
-      if (typeof song.queueId === 'number' || typeof song.pos === 'number') {
-        await window.electronAPI.mpd.playQueueItem(song.pos ?? 0, song.queueId)
-      } else {
-        // 从曲库直接点播：先检查是否已在队列中，不在则精准追加后跳播该曲，避免老版本 playSong 触发全目录预载
-        const queue = await window.electronAPI.mpd.getQueue()
-        const existing = queue.find((item) => item.file === song.file)
-        if (existing) {
-          await window.electronAPI.mpd.playQueueItem(existing.pos ?? 0, existing.queueId)
+      // 成功门控: 仅当任一起播指令真正成功才重连 PCM, 避免 MPD 离线时标题已切新歌、耳朵仍听旧流
+      let succeeded = false
+      try {
+        if (typeof song.queueId === 'number' || typeof song.pos === 'number') {
+          succeeded = await window.electronAPI.mpd.playQueueItem(song.pos ?? 0, song.queueId)
         } else {
-          await window.electronAPI.mpd.addToQueue(song.file)
-          window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
-          const updatedQueue = await window.electronAPI.mpd.getQueue()
-          const newlyAdded = updatedQueue.find((item) => item.file === song.file)
-          if (newlyAdded) {
-            await window.electronAPI.mpd.playQueueItem(newlyAdded.pos ?? 0, newlyAdded.queueId)
+          // 从曲库直接点播：先检查是否已在队列中，不在则精准追加后跳播该曲，避免老版本 playSong 触发全目录预载
+          const queue = await window.electronAPI.mpd.getQueue()
+          const existing = queue.find((item) => item.file === song.file)
+          if (existing) {
+            succeeded = await window.electronAPI.mpd.playQueueItem(existing.pos ?? 0, existing.queueId)
           } else {
-            await window.electronAPI.mpd.play(song.file)
+            const addRes = await window.electronAPI.mpd.addToQueue(song.file)
+            // 追加成功才继续跳播; 追加本身不算起播成功, 以后续 play 结果为准
+            if (addRes.success) {
+              window.dispatchEvent(new CustomEvent('lpip:queue-changed'))
+              const updatedQueue = await window.electronAPI.mpd.getQueue()
+              const newlyAdded = updatedQueue.find((item) => item.file === song.file)
+              if (newlyAdded) {
+                succeeded = await window.electronAPI.mpd.playQueueItem(newlyAdded.pos ?? 0, newlyAdded.queueId)
+              } else {
+                succeeded = await window.electronAPI.mpd.play(song.file)
+              }
+            }
           }
         }
+      } catch {
+        // MPD 通信异常视为整体失败, 保持 succeeded=false 走回滚分支
+        succeeded = false
       }
-      // 方案 C: 点播切歌瞬间排空旧音频, 零延迟起播新曲
-      pcmPlayer.flushAndReconnect(getStreamUrl())
+      if (succeeded) {
+        // 方案 C: 点播切歌瞬间排空旧音频, 零延迟起播新曲
+        pcmPlayer.flushAndReconnect(getStreamUrl())
+      } else {
+        // 全部失败时回滚乐观更新, 并用真实状态重同步 (恢复旧曲显示与播放态)
+        setCurrentSong(null)
+        lastFileRef.current = null
+        window.electronAPI.mpd.getStatus().then((status) => {
+          if (status) syncFromMpdStatus(status)
+        })
+      }
     }
   }
 
