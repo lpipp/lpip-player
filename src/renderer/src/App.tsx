@@ -8,7 +8,9 @@ import LyricsOrbit from './components/LyricsOrbit'
 import SpectrumVisualizer from './components/SpectrumVisualizer'
 import { pcmPlayer } from './services/pcmPlayer'
 import {
+  DEFAULT_MPD_CONFIG,
   DEFAULT_VISUALIZER_CONFIG,
+  parseMpdConfig,
   parseVisualizerConfig,
   stripJsonComments,
   type VisualizerConfig
@@ -20,7 +22,22 @@ if (typeof window !== 'undefined') {
   ;(window as unknown as { __pcmPlayer: typeof pcmPlayer }).__pcmPlayer = pcmPlayer
 }
 
-const STREAM_URL = 'http://127.0.0.1:8000'
+/**
+ * 由 MPD 主机与流端口拼出 PCM 音频流基地址
+ *
+ * 为什么需要这个辅助: 用户可在设置页修改 mpd.host/streamPort, 写死地址会导致
+ * 控制走了新端口、音频还连旧地址; 裸 IPv6 必须加方括号否则 URL 非法。
+ */
+function buildStreamUrl(host: string, streamPort: number): string {
+  const trimmed = typeof host === 'string' ? host.trim() : ''
+  const safeHost = trimmed.length > 0 ? trimmed : DEFAULT_MPD_CONFIG.host
+  // 裸 IPv6 地址含冒号且未被方括号包裹时补上方括号
+  const bracketed = safeHost.includes(':') && !safeHost.startsWith('[') ? `[${safeHost}]` : safeHost
+  const safePort = Number.isFinite(streamPort)
+    ? Math.max(1, Math.min(65535, Math.round(streamPort)))
+    : DEFAULT_MPD_CONFIG.streamPort
+  return `http://${bracketed}:${safePort}`
+}
 
 /**
  * lpip-player 主舞台应用组件
@@ -48,6 +65,21 @@ export default function App() {
   const lastFileRef = useRef<string | null>(null)
   const isSeekingRef = useRef(false)
   const isVolDraggingRef = useRef(false)
+  // PCM 音频流基地址 (跟随配置 mpd.host/streamPort, 默认与 DEFAULT_MPD_CONFIG 一致)
+  const streamUrlRef = useRef<string>(buildStreamUrl(DEFAULT_MPD_CONFIG.host, DEFAULT_MPD_CONFIG.streamPort))
+
+  // 由配置同步流地址: 用 parseMpdConfig 规范化后更新 ref, 返回更新后的基地址
+  const syncStreamUrlFromConfig = (mpd: unknown): string => {
+    const parsed = parseMpdConfig(mpd ?? {})
+    const next = buildStreamUrl(parsed.host, parsed.streamPort)
+    streamUrlRef.current = next
+    return next
+  }
+
+  // 取带防缓存时间戳的完整流地址 (每次拉流唯一, 避免 httpd 复用旧连接)
+  const getStreamUrl = (): string => {
+    return `${streamUrlRef.current}/?t=${Date.now()}`
+  }
 
   // 同步 MPD 实时状态数据模型
   const syncFromMpdStatus = (status: MpdStatus): void => {
@@ -91,7 +123,7 @@ export default function App() {
     // 方案 C: WebAudio PCM 流式管道保持出声
     if (isPlay) {
       if (!pcmPlayer.isPlaying()) {
-        pcmPlayer.play(`${STREAM_URL}/?t=${Date.now()}`)
+        pcmPlayer.play(getStreamUrl())
       }
     } else if (status.state === 'pause') {
       if (pcmPlayer.isPlaying()) {
@@ -125,6 +157,8 @@ export default function App() {
     // 读取并应用运行时配置 (如切歌/寻道淡出淡入过渡、频谱律动配置、全局字体排印、歌词预览确认延迟)
     window.electronAPI?.config.get().then((cfg) => {
       if (!isMounted || !cfg) return
+      // PCM 流地址跟随 MPD 配置 (host/streamPort), 避免改端口后音频还连旧地址
+      syncStreamUrlFromConfig(cfg.mpd)
       if (cfg.typography) {
         applyTypographyToDOM(cfg.typography)
       }
@@ -144,6 +178,12 @@ export default function App() {
     // 监听运行时配置热更新 (用户编辑 config.json 后即时生效)
     const unsubConfig = window.electronAPI?.config.onChange((cfg) => {
       if (!isMounted || !cfg) return
+      // 流地址变更且正在播放时立刻跟过去; 先比对新旧地址, 避免切字体/调音量等无关变更时断流
+      const prevUrl = streamUrlRef.current
+      const nextUrl = syncStreamUrlFromConfig(cfg.mpd)
+      if (nextUrl !== prevUrl && pcmPlayer.isPlaying()) {
+        pcmPlayer.flushAndReconnect(`${nextUrl}/?t=${Date.now()}`)
+      }
       if (cfg.typography) {
         applyTypographyToDOM(cfg.typography)
       }
@@ -185,7 +225,7 @@ export default function App() {
       const isPlay = nextState === 'play'
       setIsPlaying(isPlay)
       if (isPlay) {
-        pcmPlayer.resume(`${STREAM_URL}/?t=${Date.now()}`)
+        pcmPlayer.resume(getStreamUrl())
       } else {
         pcmPlayer.pause()
       }
@@ -200,7 +240,7 @@ export default function App() {
       const ok = await window.electronAPI.mpd.next()
       if (ok) {
         // 方案 C: 毫秒级硬截断旧曲声音并立即拉取新曲，杜绝 3~4 秒旧曲残留
-        pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+        pcmPlayer.flushAndReconnect(getStreamUrl())
       }
     }
   }
@@ -210,7 +250,7 @@ export default function App() {
     if (window.electronAPI?.mpd) {
       const ok = await window.electronAPI.mpd.prev()
       if (ok) {
-        pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+        pcmPlayer.flushAndReconnect(getStreamUrl())
       }
     }
   }
@@ -224,12 +264,12 @@ export default function App() {
       const ok = await window.electronAPI.mpd.seek(timeSeconds)
       if (ok) {
         // 方案 C: 寻道时瞬间排空旧缓冲, ~40ms 启动新落点播放
-        pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+        pcmPlayer.flushAndReconnect(getStreamUrl())
         // 暂停态下确认跳转: seek 落点稳定后自动恢复播放
         if (wasPaused) {
           const resumed = await window.electronAPI.mpd.resume()
           if (resumed) {
-            pcmPlayer.resume(`${STREAM_URL}/?t=${Date.now()}`)
+            pcmPlayer.resume(getStreamUrl())
             setIsPlaying(true)
           }
         }
@@ -314,7 +354,7 @@ export default function App() {
         }
       }
       // 方案 C: 点播切歌瞬间排空旧音频, 零延迟起播新曲
-      pcmPlayer.flushAndReconnect(`${STREAM_URL}/?t=${Date.now()}`)
+      pcmPlayer.flushAndReconnect(getStreamUrl())
     }
   }
 
