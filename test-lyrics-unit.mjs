@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { parseLrc } from './src/main/lyrics.ts';
 
 console.log('=== Lyrics LRC Bilingual Merge Unit Tests ===');
@@ -61,4 +62,38 @@ assert.equal(t7[0].primary, 'Chorus');
 assert.equal(t7[1].primary, 'Chorus');
 console.log('✓ 7. Multi-tag line expands to independent rows passed');
 
-console.log('ALL LYRIC MERGE UNIT TESTS PASS (7/7)');
+// Test 8: 行内双语 (同行原文 <U+2009> 译文) → primary + secondary
+const t8 = parseLrc('[00:06.74]やがては海に出るから\u2009不久将重回大海');
+assert.equal(t8.length, 1);
+assert.equal(t8[0].primary, 'やがては海に出るから');
+assert.equal(t8[0].secondary, '不久将重回大海');
+console.log('✓ 8. Inline bilingual (thin-space) splits to primary + secondary passed');
+
+// Test 9: 纯中文行内普通空格不断行 (无 THIN SPACE)
+const t9 = parseLrc('[00:24.80]仍然没有 遇到 那位跟我绝配的恋人');
+assert.equal(t9.length, 1);
+assert.equal(t9[0].primary, '仍然没有 遇到 那位跟我绝配的恋人');
+assert.equal(t9[0].secondary, undefined);
+console.log('✓ 9. Pure-Chinese line with ASCII spaces stays single passed');
+
+// Test 10: 日文行内普通空格 + THIN SPACE 纯原文侧不断行 (右侧无 CJK)
+const t10 = parseLrc('[00:00.99]雪が溶ければ 川へと流れ\u2009flow');
+assert.equal(t10.length, 1);
+assert.equal(t10[0].secondary, undefined);
+console.log('✓ 10. Non-CJK tail does not split passed');
+
+// Test 11: 实曲 LYRICS 标签端到端 (Close Your Eyes): 全 64 行归并后译文落 secondary
+const lrcRaw = execFileSync('metaflac', ['--show-tag=LYRICS', '/home/lpipwei/Music/music_4/Close Your Eyes - 彩音.flac']).toString('utf-8').replace(/^LYRICS=/, '');
+const t11 = parseLrc(lrcRaw);
+assert.equal(t11.length, 61);
+const withSec = t11.filter((l) => l.secondary !== undefined);
+assert.ok(withSec.length > 50, `expected >50 bilingual lines, got ${withSec.length}`);
+const sample = t11.find((l) => l.time === 6.74);
+assert.equal(sample?.primary, 'やがては海に出るから');
+assert.equal(sample?.secondary, '不久将重回大海');
+// 纯中文制作信息行保持单行
+const credit = t11.find((l) => l.time === 0);
+assert.equal(credit?.secondary, undefined);
+console.log(`✓ 11. Real-song LYRICS end-to-end passed (${withSec.length}/61 lines have secondary)`);
+
+console.log('ALL LYRIC MERGE UNIT TESTS PASS (11/11)');
