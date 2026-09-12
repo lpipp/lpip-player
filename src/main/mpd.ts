@@ -6,6 +6,7 @@ import { join, resolve, sep } from 'node:path'
 import { app } from 'electron'
 
 import { loadConfig } from './config'
+import { parseLrc } from './lyrics'
 import type { AddToQueueResult, LyricLine, MpdPlaylist, MpdSong, MpdStatus, PlaybackMode, PlaySessionState, PlayStats, PlayStatsEntry } from '../types/music'
 
 /**
@@ -766,46 +767,9 @@ export async function setPlaybackMode(mode: PlaybackMode): Promise<boolean> {
 }
 
 /**
- * 解析 LRC 纯文本歌词为带时间戳的结构化行
+ * 解析 LRC 纯文本歌词为带时间戳的结构化行 (实现见 ./lyrics, 此处 re-export 保持外部引用不断)
  */
-export function parseLrc(lrcText: string): LyricLine[] {
-  const lines = lrcText.split('\n')
-  const result: { time: number; text: string }[] = []
-  const timeRegex = /\[(\d{1,2}):(\d{2}(?:\.\d+)?)\]/g
-
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
-
-    const timestamps: number[] = []
-    let match: RegExpExecArray | null
-    timeRegex.lastIndex = 0
-
-    while ((match = timeRegex.exec(trimmed)) !== null) {
-      const mins = Number.parseInt(match[1], 10)
-      const secs = Number.parseFloat(match[2])
-      timestamps.push(mins * 60 + secs)
-    }
-
-    const text = trimmed.replace(timeRegex, '').trim()
-    if (timestamps.length > 0 && text) {
-      for (const t of timestamps) {
-        result.push({
-          time: Math.round(t * 100) / 100,
-          text
-        })
-      }
-    }
-  }
-
-  result.sort((a, b) => a.time - b.time)
-
-  return result.map((item, idx) => ({
-    id: idx,
-    primary: item.text,
-    time: item.time
-  }))
-}
+export { parseLrc } from './lyrics'
 
 /**
  * 获取指定音频文件的歌词行数据 (优先读取 .lrc 文件，其次提取 FLAC/MP3 内嵌标签)
