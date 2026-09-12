@@ -368,7 +368,9 @@ export async function getStatus(): Promise<MpdStatus> {
           if (k === 'state') {
             result.state = v === 'play' ? 'play' : v === 'pause' ? 'pause' : 'stop'
           } else if (k === 'volume') {
-            result.volume = Number.parseInt(v, 10) || 100
+            // 音量 0 是合法的静音值（falsy），不可用 || 回退，否则静音会被误判为缺失而弹回 100
+            const parsedVol = Number.parseInt(v, 10)
+            result.volume = Number.isFinite(parsedVol) ? Math.max(0, Math.min(100, parsedVol)) : 100
           } else if (k === 'elapsed') {
             result.currentTime = Number.parseFloat(v) || 0
           } else if (k === 'duration') {
