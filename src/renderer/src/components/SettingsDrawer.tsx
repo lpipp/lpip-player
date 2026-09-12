@@ -1446,6 +1446,29 @@ export default function SettingsDrawer() {
                   {/* 分割线 */}
                   <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
 
+                  {/* 歌词翻译显隐 */}
+                  <div className="settings-control-row">
+                    <div className="settings-control-info">
+                      <span className="settings-control-label">显示歌词翻译</span>
+                    </div>
+                    <ToggleSwitch
+                      checked={config.typography?.lyrics?.showTranslation ?? true}
+                      onChange={(checked) =>
+                        updateConfigImmediate({
+                          typography: {
+                            lyrics: {
+                              showTranslation: checked
+                            }
+                          }
+                        })
+                      }
+                      label="显示歌词翻译"
+                    />
+                  </div>
+
+                  {/* 分割线 */}
+                  <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
+
                   {/* 歌词翻译 */}
                   <FontPickerControl
                     label="歌词翻译字形"

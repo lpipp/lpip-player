@@ -61,6 +61,8 @@ export default function App() {
   const [visualizerConfig, setVisualizerConfig] = useState<VisualizerConfig>(DEFAULT_VISUALIZER_CONFIG)
   // 歌词滚轮预览确认超时 (毫秒, 默认 1500, 经 audio.lyricPreview 热更新)
   const [lyricPreviewTimeoutMs, setLyricPreviewTimeoutMs] = useState(1500)
+  // 歌词翻译显隐 (默认 true, 经 typography.lyrics.showTranslation 热更新, 缺省回退不写盘)
+  const [showTranslation, setShowTranslation] = useState(true)
 
   const lastFileRef = useRef<string | null>(null)
   // 歌词拉取世代号 (快切 A→B→C 时旧慢响应到达即丢弃, 只认最新一次拉取)
@@ -168,6 +170,9 @@ export default function App() {
       syncStreamUrlFromConfig(cfg.mpd)
       if (cfg.typography) {
         applyTypographyToDOM(cfg.typography)
+        if (typeof cfg.typography.lyrics?.showTranslation === 'boolean') {
+          setShowTranslation(cfg.typography.lyrics.showTranslation)
+        }
       }
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
@@ -193,6 +198,9 @@ export default function App() {
       }
       if (cfg.typography) {
         applyTypographyToDOM(cfg.typography)
+        if (typeof cfg.typography.lyrics?.showTranslation === 'boolean') {
+          setShowTranslation(cfg.typography.lyrics.showTranslation)
+        }
       }
       if (cfg.audio?.fade) {
         pcmPlayer.setFadeConfig(cfg.audio.fade)
@@ -447,6 +455,7 @@ export default function App() {
         lyrics={effectiveLyrics}
         onSeek={handleSeek}
         isPlaying={isPlaying}
+        showTranslation={showTranslation}
         previewTimeoutMs={lyricPreviewTimeoutMs}
       />
 

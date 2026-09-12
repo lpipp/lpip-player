@@ -35,6 +35,8 @@ export interface LyricsOrbitProps {
   animated?: boolean
   /** 是否正在播放 (暂停时滚轮预览常驻不倒计时, 默认 true) */
   isPlaying?: boolean
+  /** 是否显示歌词翻译行 (默认 true; 关闭则隐藏全部 .lyric-secondary) */
+  showTranslation?: boolean
   /** 滚轮预览确认超时时长毫秒 (范围 500 ~ 5000, 默认 1500) */
   previewTimeoutMs?: number
 }
@@ -242,6 +244,7 @@ export default function LyricsOrbit({
   onSeek,
   animated = true,
   isPlaying = true,
+  showTranslation = true,
   previewTimeoutMs = 1500
 }: LyricsOrbitProps) {
   // 当前活跃行索引 (支持非受控与受控双模式)
@@ -470,6 +473,7 @@ export default function LyricsOrbit({
       aria-label="星盘歌词轨道播放区"
       data-active-index={activeIndex}
       data-preview-index={previewIndex ?? ''}
+      data-show-translation={showTranslation ? 'true' : 'false'}
     >
       {/* ------------------------------------------------------------
           背景层: 宇宙星盘几何蓝图 SVG (齿轮、同心轨道、刻度、月相与指示器)
@@ -787,8 +791,8 @@ export default function LyricsOrbit({
               {/* 主歌词行 (大号衬线字体，优雅古典) */}
               <div className="lyric-primary">{line.primary}</div>
 
-              {/* 辅歌词行 (中文译文，次级高亮无衬线) */}
-              {line.secondary && (
+              {/* 辅歌词行 (中文译文，次级高亮无衬线; showTranslation 关闭时整站隐藏, 见 CSS 宿主规则) */}
+              {showTranslation && line.secondary && (
                 <div className="lyric-secondary">{line.secondary}</div>
               )}
             </div>

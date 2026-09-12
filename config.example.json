@@ -205,6 +205,9 @@
         "fontSize": 18
       },
 
+      // 是否显示歌词翻译行 (true: 显示译文, false: 隐藏全部 .lyric-secondary, 默认 true)
+      "showTranslation": true,
+
       // 歌词翻译/次级辅助字形配置
       "translation": {
         // 歌词翻译字体族名称 (推荐清晰易读的无衬线黑体或文艺楷体)

@@ -206,6 +206,8 @@ export interface LyricsTypographyConfig {
   body: FontItemConfig
   /** 歌词翻译/次级辅助字形配置 */
   translation: FontItemConfig
+  /** 是否显示歌词翻译行 (默认 true; 关闭则全局隐藏 .lyric-secondary) */
+  showTranslation: boolean
 }
 
 /**
@@ -338,7 +340,8 @@ export const DEFAULT_TYPOGRAPHY_CONFIG: TypographyConfig = {
     translation: {
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
       fontSize: 12
-    }
+    },
+    showTranslation: true
   }
 }
 
@@ -692,7 +695,10 @@ export function parseTypographyConfig(rawTypography: unknown): TypographyConfig 
       hint: parseFontItemConfig(targetObj['hint'], DEFAULT_TYPOGRAPHY_CONFIG.hint, 12, 16),
       lyrics: {
         body: parseFontItemConfig(bodyObj, defaultBody, 14, 36),
-        translation: parseFontItemConfig(transObj, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation, 12, 22)
+        translation: parseFontItemConfig(transObj, DEFAULT_TYPOGRAPHY_CONFIG.lyrics.translation, 12, 22),
+        showTranslation: typeof lyricsObj['showTranslation'] === 'boolean'
+          ? lyricsObj['showTranslation']
+          : DEFAULT_TYPOGRAPHY_CONFIG.lyrics.showTranslation
       }
     }
   }

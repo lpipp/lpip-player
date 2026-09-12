@@ -118,4 +118,9 @@ export function applyTypographyToDOM(typography?: TypographyConfig | null): void
 
   s.setProperty('--font-family-lyrics-translation', lyricsTransFont)
   s.setProperty('--font-size-lyrics-translation', `${lyricsTransSize}px`)
+
+  // 歌词翻译显隐开关: renderer 的 LyricsOrbit 由 data-show-translation 宿主属性控制显隐,
+  // 此处同步写入 :root 的 data 属性作为兜底, 确保切歌/热更新后宿主属性与配置一致
+  const showTranslation = (t.lyrics as { showTranslation?: unknown } | undefined)?.showTranslation
+  root.setAttribute('data-show-translation', showTranslation === false ? 'false' : 'true')
 }

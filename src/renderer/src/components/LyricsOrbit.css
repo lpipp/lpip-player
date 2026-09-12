@@ -132,6 +132,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 辅歌词显隐总开关 (typography.lyrics.showTranslation)
+   关闭时隐藏全部译文行 (主渲染由 LyricsOrbit showTranslation 短路不挂载,
+   此处 data 属性规则为热更新/存量 DOM 兜底, 不占布局) */
+.lyrics-orbit-wrapper[data-show-translation='false'] .lyric-secondary,
+:root[data-show-translation='false'] .lyric-secondary {
+  display: none;
+}
+
 /* 辅歌词 (中文译文，清晰无衬线字体)
    同主歌词：放大走内层 transform 缩放，不碰排版字号 */
 .lyric-secondary {
