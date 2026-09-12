@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
-> 更新时间: 2026-09-11
-> 当前阶段: M2-2 (统计信息抽屉已落地；歌词滚轮预览+单击确认跳转已落地；UI 整洁化隐藏专辑名与冗余说明已落地；全界面文字受控分层映射联动设置已落地；悬浮面板 12px 托底已落地；封面预压缩双档缓存已落地，原图档留待 M2-3 黑胶大舞台)
-> 最新进展: 悬浮胶囊第五按键重构为统计信息抽屉（MPD sticker playCount 降序排行 + stats.playtime 累计播放时长，主进程阈值计数，会话单曲循环不重复计），单测 4 组 + 新 e2e 6 步全绿 + typography 双链路全绿 + config.json 零漂移（提交 c7cbd35），详见 §2.24 与 §4.27
+> 更新时间: 2026-09-12
+> 当前阶段: M2-2（代码全量审查修复批量落地：P0 静音×1 + P1 注入/污染/闭包等×8 + P2×20 全部修复并实机验收；翻译显隐开关、U+2009 拆分、滚轮预览、统计抽屉、整洁化均已落地，原图档留待 M2-3 黑胶大舞台）
+> 最新进展: P0/P1/P2 全量并行修复批量落地（提交 6a8af86，27 文件 +909/−607）：play-after-pause 重建增益（实机 resume 后 sources=5/leadMs=92ms、稳态 4/84ms 健康窗内）、MPD 数值注入守卫、共享默认拷贝、频谱/齿轮/滚轮/徽标/钻取/队列同批修复；tsc 零错误 + diff-check 干净 + typography 11/11 + 6+2 路复检全 PASS + config.json 零漂移，详见 §4.30
 
 ---
 
@@ -568,6 +568,15 @@
 ```
 
 ---
+
+### 4.30 P0/P1/P2 全量并行修复批量落地 + 实机验收 (2026-09-12)
+
+首轮 6 路并行只读审查挖出 P0×1 + P1×8 + P2×20（§4 独立小节沉淀方法论）；6 worker 并行修复（文件零重叠边界）→ tsc 零错误 → 6 reviewer 只读复检（4 路 OK，stage/config 2 路有尾巴）→ 2 worker 补修 → 2 reviewer 终检全 PASS → 统一批量提交 `6a8af86`（27 文件 +909/−607）。
+
+1. **P0 play-after-pause 永久静音（pcmPlayer）**：`pause()` 置 `activeFadeGainNode=null`，`play()/startStream()` 不重建，只有 `flushAndReconnect()` 建；逐块 `currentGain==null` 仍 `source.start()` 调度未连接源 —— 烧 CPU+流量零声音。修法：`ensureFadeGain()`（play/startStream 双保险）+ 空 gain 直接丢块（残留缓冲保留，下块续拼）。实机：pause 后 sources=0，resume 后 sources=5、leadMs=92ms，再 5s 稳态 sources=4、leadMs=84ms（70~110 健康窗内）。
+2. **P1 数值型 MPD 注入（mpd.ts）**：`playQueueItem/moveQueueItem/removeFromPlaylist` 三处 pos 直接插值命令；修法 `isValidMpdIndex`（`Number.isInteger && >=0`）守卫。**P1 共享默认污染（config）**：parser 失败路径返回 DEFAULT 单例引用，后续 `mica.enabled=` 写进全局；修法全部返回拷贝 + 深拷贝。**P1 频谱 stale 闭包 / 飞轮十字臂 / 滚轮阈值 / 徽标类名 / 钻取竞态 / 队列索引错位** 同批修复。
+3. **补修尾巴**：gear-2 十字臂同形斜臂（546-547）、同戳分组 secondary 重复拼接（`splitTails + rest.slice(1)` 双计数 → 逐行 `secondary ?? raw`）、package.json 3 个 `@types/*` 残留 `^` 钉死、`parseLyricPreviewConfig/stripJsonComments` 双层重复并入单源。
+4. **验收纪律复用**：构建后必须杀旧主进程重启（main 旧则 `Page.reload` 无解，§4.29 纪律）；探针前后 `cp config.json /tmp` + diff 自证零漂移（本次 ZERO_DRIFT）；稳态断言要等 5s（刚 resume 的 11 sources/223ms 是追赶期，稳态 4/84ms 才是结论）。
 
 ## 4. 关键踩坑经验与技术纪律
 
