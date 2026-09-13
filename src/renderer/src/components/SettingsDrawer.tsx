@@ -996,7 +996,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">窗口形态与标题栏</span>
-                    <span className="settings-group-badge">{config.window.immersive ? '无边框' : '原生边框'}</span>
                   </div>
                   <div className="settings-control-row">
                     <div className="settings-control-info">
@@ -1018,7 +1017,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">窗口背景渲染模式</span>
-                    <span className="settings-group-badge">{config.window.background.mode}</span>
                   </div>
                   <SegmentedControl<BackgroundMode>
                     value={config.window.background.mode}
@@ -1042,7 +1040,6 @@ export default function SettingsDrawer() {
                   <div className="settings-group-card">
                     <div className="settings-group-header">
                       <span className="settings-group-title">云母效果精细微调</span>
-                      <span className="settings-group-badge">Mica Effect</span>
                     </div>
 
                     <div className="settings-control-row">
@@ -1152,7 +1149,6 @@ export default function SettingsDrawer() {
                   <div className="settings-group-card">
                     <div className="settings-group-header">
                       <span className="settings-group-title">自定义壁纸微调 (图片/视频)</span>
-                      <span className="settings-group-badge">Wallpaper</span>
                     </div>
 
                     <div className="liquid-slider-block">
@@ -1281,7 +1277,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">悬浮胶囊与抽屉</span>
-                    <span className="settings-group-badge">Sidebar</span>
                   </div>
 
                   <SliderControl
@@ -1311,7 +1306,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">UI 界面通用字体</span>
-                    <span className="settings-group-badge">UI Font</span>
                   </div>
 
                   <FontPickerControl
@@ -1354,7 +1348,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">提示与辅助文本</span>
-                    <span className="settings-group-badge">Hint Font</span>
                   </div>
 
                   <FontPickerControl
@@ -1397,7 +1390,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">歌词排印</span>
-                    <span className="settings-group-badge">Lyrics</span>
                   </div>
 
                   {/* 歌词正文 */}
@@ -1511,7 +1503,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">配置重置与维护</span>
-                    <span className="settings-group-badge">Default</span>
                   </div>
 
                   <div className="settings-control-row">
@@ -1539,7 +1530,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">切歌与歌词跳转过渡</span>
-                    <span className="settings-group-badge">{config.audio.fade.enabled ? '已开启' : '硬切'}</span>
                   </div>
 
                   <div className="settings-control-row">
@@ -1643,7 +1633,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">音频频谱律动引擎</span>
-                    <span className="settings-group-badge">{config.visualizer.enabled ? '运行中' : '已关闭'}</span>
                   </div>
 
                   <div className="settings-control-row">
@@ -1751,7 +1740,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">服务端地址与端口</span>
-                    <span className="settings-group-badge">TCP / HTTP</span>
                   </div>
 
                   <div className="liquid-slider-block">
@@ -1826,7 +1814,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">播放器核心信息</span>
-                    <span className="settings-group-badge">v0.1.0</span>
                   </div>
 
                   <div className="liquid-spec-list">
@@ -1857,7 +1844,6 @@ export default function SettingsDrawer() {
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">全局操作与快捷键</span>
-                    <span className="settings-group-badge">Shortcuts</span>
                   </div>
 
                   <div className="liquid-shortcut-grid">
