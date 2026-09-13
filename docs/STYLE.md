@@ -77,6 +77,7 @@
 6. **只删展示，不动数据与逻辑**：删减仅限 JSX 展示分支；播放 / MPD / IPC / 配置持久化、行高与动静分离宿主一律不动。e2e 选择器（`.settings-control-label` / `.liquid-slider-value` / `.settings-group-title`）不得改名。
 7. **验收纪律**：以 computed 渲染值为准，不以 grep 声明值为准；探针先断言行数基线（曲库 436 / 队列 10 / 艺人 L1 238 / 歌单 L2 10 / 添加面板 436）再谈 `sep=0` 结论；`queue-track-grip`（absolute 覆盖序号）与 `capsule-rail <> capsule-subpanel`（裁剪宿主）系已知预期重叠，非回归。
 8. **严禁在非图标行级/背景元素上添加无意义的原生 HTML title 提示框**：原生 `title` 在 Linux/KDE 下表现为粗糙的实体方框且伴随延迟遮挡，与液态磨砂与精细线条语言格格不入；机械齿轮机芯、星盘歌词行、单曲列表行、艺人行、歌单卡片、设置分类卡片等直观交互元素严禁携带 `title` 提示；仅纯图标按钮（播放/暂停、上下曲、添加、移除、清空、返回等）保留必要的 `title` 或 `aria-label`。
+9. **卡片标题栏无多余状态与英文徽标**：设置项各卡片标题右侧一律不渲染微缩状态或英文翻译徽标（`.settings-group-badge` 全删，如 `无边框` / `wallpaper` / `Wallpaper` / `Sidebar` 等）；控件（开关/单选/滑块）自身已清晰表意，严禁标题右侧“状态回声”；仅保留硬件直通与 MPD 连接等具备真实脉冲微光的动态探针（`.liquid-status-badge`）。
 
 ---
 
@@ -110,6 +111,7 @@
 [x] M2-2 悬浮胶囊抽屉体系完备: 展开宽度460px、曲库管理 (MusicLibraryList)、播放队列 (QueueDrawer)、艺人分类画册流 (ArtistDrawer)、歌单管理 (PlaylistDrawer)、统计信息 (StatisticsDrawer: 摘要卡 + playCount 降序排行，MPD sticker 计数 + stats.playtime 累计时长，c7cbd35) 与偏好设置 (SettingsDrawer, 含外观/音频/频谱/MPD/关于/字体与字形全闭环)；UI 整洁化已落地（五处单曲行仅歌手 + 设置三级描述全删 + 胶囊底部提示全删呼吸点保留，8afd258）
 [x] 性能优化 P1: React 核心组件 memo 隔离 (MechanicalGear/WallpaperLayer/SpectrumVisualizer/SidebarCapsule)、状态心跳引用稳定化 (currentSong)、操作回调 useCallback 固化、艺人抽屉全量 GPU 视窗裁剪 (content-visibility: auto, a0204ef)
 [x] UI 纯净化: 彻底移除机械齿轮、歌词行、曲库/队列单曲行与抽屉卡片上的无意义原生 HTML title 提示框 (854ab3f)
+[x] UI 纯净化: 移除偏好设置各分组卡片标题栏冗余的徽标提示 (b909301)
 [ ] 性能优化 P2: MPD TCP Client 短连接改造为连接池 / Keep-Alive 复用套接字，结合 idle 减少轮询
 [ ] M2-3 主工作区居中液态玻璃面板 (GlassPanel) / 页面切换与黑胶大舞台
 ```

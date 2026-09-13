@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（性能优化 P1 阶段完成；界面纯净化：彻底移除机械齿轮、歌词、单曲列表行与卡片上遗留的原生 HTML title 悬浮提示框）
-> 最新进展: 彻底移除无意义原生 HTML title 悬浮提示框（提交 854ab3f）：清除 MechanicalGear(4处齿轮/飞轮)、LyricsOrbit(歌词行)、SidebarCapsule(导轨呼吸点)、StatusBar(封面框)、MusicLibraryList/QueueDrawer/ArtistDrawer/PlaylistDrawer(单曲行、艺人行、歌单卡片)及 SettingsDrawer(分类卡片)上的原生 title 提示；保留必要纯图标按键无障碍 title；CDP 9222 实机自动化验收全量通过，详见 §2.26 与 §4.32
+> 当前阶段: M2-2（界面整洁化持续推进：移除偏好设置分组卡片标题栏冗余状态与英文徽标 settings-group-badge；彻底清除机械齿轮/歌词/单曲列表行/卡片原生 HTML title 提示框；性能优化 P1 阶段完成）
+> 最新进展: 移除偏好设置分组卡片标题栏冗余徽标提示（提交 b909301）：彻底清除外观与窗口、字体排印、音频、频谱、MPD 与关于等 6 大模块共 14 处卡片顶栏右侧的 settings-group-badge（如无边框/wallpaper/Wallpaper/Sidebar/UI Font 等冗余英文或状态镜像）；保留硬件音频与 MPD 动态连接指示灯；CDP 9222 实机自动化验收全量通过，详见 §2.27 与 §4.33
 
 ---
 
@@ -560,6 +560,36 @@
   - CDP 实机探测：`gearTitles: []`（4 个齿轮 title 归零）、`lyricTitlesCount: 0`（歌词行 title 归零）、`coverTitle: null`、`railTopTitle: null`，曲库 436 行与队列 10 行单曲行 title 严格为 0，设置卡片 title 严格为 0；
   - 桌面 Electron 实例保持运行，用户核验无障碍与视觉纯净度。
 
+### 2.27 偏好设置分组卡片标题栏冗余状态徽标移除 (Settings Group Badge Declutter) - 2026-09-13 完成
+
+> **结论先行：贯彻极简设计语言，彻底清除卡片顶部的伪装饰噪音。** 用户反馈在偏好设置卡片中，各分组标题右侧带有的状态与英文标识徽标（如 `无边框`、`wallpaper`、`Wallpaper` 等）视觉杂乱、信息重复。经全面排查，将 6 大设置模块共 14 处 `.settings-group-badge` 全部移除；保留硬件音频直通与 MPD 动态连接指示灯。实机全模块 CDP 探测 `groupBadgesCount` 严格归零，界面更舒展纯净。
+
+- **问题根因与排查**:
+  - 用户提供的 Klipper 截图圈出了“外观与窗口”中各卡片顶部的 `无边框`、`wallpaper`、`Wallpaper` 徽标；
+  - 这类徽标一部分是对下方表单控件（开关、单选框）选中状态的二次镜像，另一部分则是对中文标题的英文重复翻译（如 `Wallpaper`、`Sidebar`、`UI Font`、`Hint Font`、`Lyrics`、`Default`、`Shortcuts`），不仅没有增加用户决策信息，反而给每张卡片增加了视觉噪音。
+- **清理清单 (SettingsDrawer.tsx 14 处)**:
+  1. `窗口形态与标题栏`: 移除 `{config.window.immersive ? '无边框' : '原生边框'}` 镜像徽标；
+  2. `窗口背景渲染模式`: 移除 `{config.window.background.mode}` 模式徽标；
+  3. `深色云母晶体效果 (Mica)`: 移除 `Mica Effect` 英文重复徽标；
+  4. `自定义壁纸微调 (图片/视频)`: 移除 `Wallpaper` 英文重复徽标；
+  5. `悬浮抽屉交互`: 移除 `Sidebar` 英文重复徽标；
+  6. `UI 界面通用字体`: 移除 `UI Font` 英文重复徽标；
+  7. `提示与辅助文本`: 移除 `Hint Font` 英文重复徽标；
+  8. `歌词排印`: 移除 `Lyrics` 英文重复徽标；
+  9. `恢复出厂设置`: 移除 `Default` 英文重复徽标；
+  10. `双级解耦增益平滑过渡`: 移除 `{config.audio.fade.enabled ? '已开启' : '硬切'}` 镜像徽标；
+  11. `蓝图工程律动图层`: 移除 `{config.visualizer.enabled ? '运行中' : '已关闭'}` 镜像徽标；
+  12. `原生 TCP 控制客户端与音频流`: 移除 `TCP / HTTP` 英文徽标；
+  13. `关于 lpip-player`: 移除 `v0.1.0` 徽标；
+  14. `全局快捷键`: 移除 `Shortcuts` 英文徽标。
+- **保留特例**:
+  - `硬件音频直通管道` 与 `实时连接状态检测` 中的 `liquid-status-badge`（带呼吸/脉冲微光的动态连接状态）作为真实硬件与网络探针保留，符合 STYLE.md §7 规范。
+- **自动化实机验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 报错；
+  - `pnpm build`：成功构建产出；
+  - CDP 遍历 6 大设置模块：`外观与窗口`、`字体与字形`、`音频与过渡`、`蓝图频谱`、`MPD 服务`、`关于播放器` 的 `groupBadgesCount` 全部严格为 **0**；
+  - 桌面 Electron 实例已热重载并同步至外观设置页供直接检视。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -610,6 +640,15 @@
 ```
 
 ---
+
+### 4.33 卡片标题右侧冗余状态与英文徽标的整洁化清理 (2026-09-13)
+
+1. **表单控件自明性与“状态回声”现象**:
+   - 在卡片标题右侧放置微缩状态徽标（如开/关、当前模式名），是典型的不信任控件自明性的“状态回声”设计反模式；
+   - 下方的 Toggle 开关（带薄荷绿发光激活态）或 SegmentedControl（带选中高亮胶囊）已经以极高的视觉层级呈现了当前状态，顶部的徽标纯属多余复读；
+   - 英文单词翻译型徽标（如 `Wallpaper`、`Sidebar`、`UI Font`）更是缺乏用户决策价值的界面涂鸦。
+2. **纯净标题栏带来的排版红利**:
+   - 移除 `.settings-group-badge` 后，`.settings-group-header` 仅由 `.settings-group-title` 占据主视觉线，左对齐的大写小字标题与下方控件间距呼吸感显著增强，整体更趋向专业级桌面软件的高级与克制。
 
 ### 4.32 界面元素原生 title 属性污染与 UI 纯净原则 (2026-09-13)
 

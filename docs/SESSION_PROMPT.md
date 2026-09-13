@@ -24,6 +24,9 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 偏好设置各分组卡片标题栏冗余徽标提示彻底清除 (2026-09-13):
+  清除 SettingsDrawer 6 大设置模块共 14 处卡片顶栏右侧的 settings-group-badge 冗余状态镜像与英文翻译（无边框/wallpaper/Wallpaper/Sidebar/UI Font 等）；
+  保留硬件音频直通与 MPD 连接等动态探针；CDP 9222 遍历 6 大模块 groupBadgesCount 严格为 0（提交 b909301）。
 - [已完备] 彻底移除无意义原生 HTML title 悬浮提示框 (2026-09-13):
   清除 MechanicalGear(4处齿轮/飞轮)、LyricsOrbit(歌词行)、SidebarCapsule(导轨呼吸点)、StatusBar(封面框)、MusicLibraryList/QueueDrawer/ArtistDrawer/PlaylistDrawer(单曲行、艺人行、歌单卡片)及 SettingsDrawer(分类卡片)上的原生 title 提示；
   保留必要纯图标按键无障碍 title；CDP 9222 实机自动化验收全量通过（提交 854ab3f）。
