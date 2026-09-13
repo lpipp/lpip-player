@@ -24,6 +24,11 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 彻底移除背景中漂浮的多面体晶体几何图形与动效 (2026-09-13):
+  根据用户提供的 Klipper 截图，准确定位并彻底删除了 LyricsOrbit.tsx 中作为全屏背景装饰的 .astrolabe-ambient-svg 及漂浮几何图形组（右上方透视菱形、右中侧立体三角面、右下方轴测微立方体）；
+  同步从 LyricsOrbit.css 中彻底清理 .astrolabe-ambient-svg 样式规则与 @keyframes floatingCrystals 16s 无限循环动画，切断无谓的 GPU 合成与重绘消耗；
+  严格保留保障文字与壁纸对比度的 .lyrics-orbit-wrapper::before 径向柔和暗角伪元素；
+  CDP 9222 实机自动化全量探测 ambientSvg=false、floatingCrystals=false，机芯齿轮与歌词轨道运作平稳，背景壁纸与制表机芯纯净通透（提交 a4875cf）。
 - [已完备] 修复歌词滚轮滑动反向滞后与动量积压 Bug (2026-09-13):
   彻底根治滚轮滑动歌词时“上划一段距离后无论上划还是下划都被视作上划，下划同理”的核心缺陷；
   原实现使用 wheelRemainderRef.current > 0 判定方向，导致历史累积残量劫持相反方向事件，且离散大步进未归零导致巨额残量债务；
