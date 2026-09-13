@@ -2,7 +2,7 @@
 
 > 更新时间: 2026-09-13
 > 当前阶段: M2-2（界面交互与操控体验深度优化：当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后；背景漂浮几何多面体晶体彻底清除；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
-> 最新进展: 设计并落地 lpip-player 官方软件图标资产并打通全端集成（提交 961fb6a）：根据用户指令绘制两套软件图标提案，经 ask_question 对齐采纳【方案 B：极简液态玻璃播放棱镜 × 表盘同心光环】（透光折射播放三角 + 翡翠绿同心声浪光环 + 腕表 12 小时刻度）；通过精工级透明通道遮罩提取 Squircle 超椭圆平滑轮廓，在 resources/ 目录下构建 1024/512/256/128/64/48/32/16 全阶 PNG 与 Windows multi-size ICO 资产集；注入 Electron 主进程 BrowserWindow (icon) 及前端渲染层 public/ 与 index.html (link rel="icon")，CDP 抓轨重载实测验证全绿，详见 §2.40 与 §4.46。
+> 最新进展: 构建 Arch Linux pacman 安装包并正式发布 GitHub Release v0.0.1（提交 d90d31e 与 Release 标签 v0.0.1）：编写原生 packaging/PKGBUILD 与 lpip-player.desktop，通过 makepkg 与 @electron/asar 将 Electron 44 独立运行时、app.asar、全阶 hicolor 图标序列与启动器无缝封装为标准 Arch Linux 安装包（lpip-player-0.0.1-1-x86_64.pkg.tar.zst，102.77MB）；通过 GitHub CLI (gh) 创建 v0.0.1 正式发布版本并挂载 pacman 附件包，支持用户一键 sudo pacman -U 安装运行，详见 §2.41 与 §4.47。
 
 ---
 
@@ -941,6 +941,24 @@
   - `pnpm build`：成功构建，静态资源与 chunks 完整无缺；
   - CDP 9222 真实运行时采样：`Page.reload` 后 `document.querySelector("link[rel='icon']").href` 严格解析为 `file:///.../out/renderer/icon.png`。
 
+### 2.41 Arch Linux pacman 软件包构建与 GitHub Release v0.0.1 正式发布 (Arch Linux pacman Packaging & GitHub Release v0.0.1) - 2026-09-13 完成
+
+> **结论先行：独立自包含架构，打通 Arch 原生包管理，v0.0.1 正式版全网发布。** 响应用户“再编译一个pacman包并发布”指令，构建了符合 Arch Linux 规范的原生打包体系与 Release 发布链路。通过 `packaging/PKGBUILD`、`packaging/lpip-player.desktop` 与 `@electron/asar`，将应用全栈（Electron 运行时、asar 压缩包、可执行启动器、全分辨率 `hicolor` 图标序列）组装打包为 `lpip-player-0.0.1-1-x86_64.pkg.tar.zst`（102.77 MB，zstd 压缩）。通过 GitHub CLI (`gh release create`) 成功创建 `v0.0.1` 初始正式版并将安装包挂载至 GitHub Release 资产库，实现用户通过 `sudo pacman -U` 即可一键完成系统级安装与菜单启动。
+
+- **Arch Linux 原生规范打包体系 (`packaging/`)**:
+  - `packaging/lpip-player.desktop`: 配置 XDG 桌面项（Name, GenericName, Comment, Exec, Icon, StartupWMClass, Categories: AudioVideo;Audio;Player;Music;）；
+  - `packaging/PKGBUILD`: 声明 `pkgname=lpip-player`, `pkgver=0.0.1`, `pkgrel=1`, `arch=('x86_64')`, `license=('MIT')`, `depends=('gtk3' 'nss' 'alsa-lib')`；
+  - 运行时自包含（Self-contained）：将 Electron 44 二进制及其动态链接库注入 `/usr/lib/lpip-player/`，摆脱系统 Electron 版本冲突；
+  - 核心资产 asar 化：使用 `@electron/asar` 将 `out/`（编译后代码）、`resources/`（图标资源）以及 `package.json` 极速压缩至 `resources/app.asar`（仅 3.0MB）；
+  - 全分辨率图标注入：覆盖 `/usr/share/icons/hicolor/{16,32,48,64,128,256,512,1024}x.../apps/lpip-player.png` 与 `/usr/share/pixmaps/lpip-player.png`。
+- **打包执行与完整性校验**:
+  - 运行 `makepkg -f` 完成环境检查、fakeroot 组装、元数据生成（`.PKGINFO`, `.BUILDINFO`, `.MTREE`）与 zstd 压缩；
+  - `pacman -Qlp` 深度验轨：确认可执行启动器、动态库、pak 语言包、asar 资源与桌面快捷方式无一遗漏。
+- **GitHub Release 发布**:
+  - 标签版本：`v0.0.1`（Release 标题：`v0.0.1 - 初始发布版 (Initial Release)`）；
+  - 发布链接：`https://github.com/lpipp/lpip-player/releases/tag/v0.0.1`；
+  - 挂载附件：`lpip-player-0.0.1-1-x86_64.pkg.tar.zst`（SHA256 校验和自动生成，大小 102.77 MiB）。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 
@@ -993,6 +1011,23 @@
 ```
 
 ---
+
+### 4.47 跨平台桌面客户端自包含打包与发行版包管理工程纪律：独立运行时隔离 × 完整桌面规范 × 单一指令发布闭环 (2026-09-13)
+
+在为 Linux 构建 pacman 安装包并实现 GitHub Release 发布中沉淀的工程纪律：
+
+1. **运行时独立隔离与免依赖破坏原则（Self-Contained Runtime Isolation）**:
+   - 依赖系统级全局 `electron` 包经常面临版本裂解（如发行版更新导致 Node ABI 不兼容、V8 特性差异、VA-API 硬件解码标志失效）；
+   - 纪律：为发行版打包桌面客户端时，优先采纳独立自包含（Self-contained）模式，将经过严格验证的 Electron 运行时同捆封装至 `/usr/lib/<pkgname>/`；使安装包具备“开箱即用、系统升级零损毁”的工业级可靠性。
+2. **Linux 桌面规范的严谨完整性（Desktop Integration Specification）**:
+   - 很多自制安装包往往遗漏了图标或窗口类配置，导致在 GNOME/KDE 启动器中显示为通用齿轮图标，或在 Wayland 下无法关联任务栏图标；
+   - 纪律：桌面应用包必须包含：
+     1. 完整的多阶 `hicolor` 图标体系（覆盖 16px 至 1024px）；
+     2. 规范的 `.desktop` 文件，且其 `StartupWMClass` 必须与 Electron `BrowserWindow` 的应用名严格一致；
+     3. `/usr/bin/` 独立启动脚本，保证在终端直接输入程序名即可唤起。
+3. **大文件产物隔离与源码仓库纯净性（Binary Artifact Exclusion）**:
+   - 编译出的安装包（如 `*.pkg.tar.zst` 动辄上百兆），如果误被 Git 暂存追踪，将永久污染 `.git` 历史造成仓库体积膨胀；
+   - 纪律：在执行打包之前，必须首先将 `*.pkg.tar.zst`、`packaging/pkg/`、`packaging/src/` 加入 `.gitignore`；源码仓库只管理构建脚本（`PKGBUILD`, `.desktop`），二进制分发完全交由 GitHub Release 资产库承载。
 
 ### 4.46 应用软件图标设计与全阶跨平台工程集成纪律：核心语义聚焦 × 小尺寸辨识度 × 全栈资源闭环 (2026-09-13)
 

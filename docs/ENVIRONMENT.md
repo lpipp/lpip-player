@@ -39,9 +39,12 @@
 
 ---
 
-## 2. git 状态（截至 961fb6a）
+## 2. git 状态（截至 d90d31e 与 Release v0.0.1）
 
 ```
+d90d31e build(packaging): 增加 Arch Linux pacman 打包支持 (PKGBUILD & desktop)
+6fda868 docs: 记录 GitHub 远程仓库 origin 映射与状态
+a359f9d docs: 更新 官方软件图标设计与跨平台全阶应用资产工程落地 全量文档
 961fb6a feat(assets): 引入官方软件图标并完成主进程与前端渲染层全栈集成
 d8cc847 docs: 更新 频谱效果内嵌至状态栏右侧留白插槽 全量文档
 af10905 feat(ui): 将音频频谱律动组件迁移内嵌至状态栏右侧留白插槽

@@ -24,6 +24,9 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] Arch Linux pacman 软件包构建与 GitHub Release v0.0.1 正式发布 (2026-09-13):
+  响应用户指令编写 packaging/PKGBUILD 与 lpip-player.desktop，通过 makepkg 将 Electron 44 独立运行时、app.asar、启动器与全阶 hicolor 图标无缝封装为标准 Arch Linux 安装包（lpip-player-0.0.1-1-x86_64.pkg.tar.zst，102.77MB）；
+  通过 gh release create 发布 v0.0.1 初始正式版并挂载安装包，支持用户通过 sudo pacman -U 一键安装与系统菜单唤起（提交 d90d31e 与 Release 标签 v0.0.1）。
 - [已完备] 官方软件图标设计与全尺寸跨平台资产工程落地 (2026-09-13):
   根据用户指令绘制软件图标提案，经 ask_question 对齐采纳【方案 B：极简液态玻璃播放棱镜 × 表盘同心光环】；
   在 resources/ 目录下构建 16px 至 1024px 全规格透明 PNG 与 Windows 多分辨率 .ico 资产集；
