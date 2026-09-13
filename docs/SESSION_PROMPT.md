@@ -24,6 +24,10 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 全量滑条两侧增加减号与加号微调按钮并支持长按连续步进 (2026-09-13):
+  在 SettingsDrawer 原生滑轨控件 SliderControl 两侧分别新增减号（MinusIcon）与加号（PlusIcon）22px 微调按钮；
+  支持鼠标单击单步精确步进与 350ms/60ms 长按平滑加速连续步进，到达 min/max 边界自动禁用并切断计时；
+  通过 stepSliderValue 算法消除 IEEE 754 浮点运算精度抖动；CDP 9222 实机扫描 5 组滑条 hasMinus=true、hasPlus=true 全绿，整数与浮点步长测试通过（提交 7b96a20）。
 - [已完备] 左侧星盘机芯齿轮与歌词轨道统一同心模块化与 XY 轴设置调节 (2026-09-13):
   将左侧星盘 60 齿机械机芯与极坐标圆弧歌词轨道合并封装进统一容器 `.astrolabe-module-container`，旋转中心绝对锁定在 `(cx=0, cy=320)`，无论窗口大小如何变化或 X/Y 轴如何微调，二者 100% 同轴共心共步进，维持 52px 安全间距；
   X 轴以左侧边框为基准（`--astrolabe-x: 0px`），Y 轴以垂直中轴线为基准（`--astrolabe-y: 0px`）；

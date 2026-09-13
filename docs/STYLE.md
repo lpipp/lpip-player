@@ -82,6 +82,7 @@
 11. **非交互读数元素纯文字化（去除外部图形边框与填充）**：艺人数量、歌单数量、各类滑动条数值读数、统计信息播放次数等不可交互读数，严禁套用带有背景和边框的图形容器（如 `.artist-count-badge`、`.playlist-count-badge`、`.liquid-slider-value`、`.stats-count-badge`）；统一去除 `background`、`border` 与 `border-radius`，保留微内边距（`0 2px`），以轻量纯文本形式融入界面；严格保留 `font-variant-numeric: tabular-nums` 防止数值刷新时产生任何横向布局抖动（Layout Shift）；保留原有 CSS 类名与 DOM 结构确保选择器兼容。
 12. **音量控制权责交还全局操作系统（纯净状态栏）**：播放器内置的软件音量调节与 Linux/KDE Plasma 全局系统音量、键盘多媒体键、外置硬件 DAC 旋钮重叠；底部状态栏彻底移除音量按键与音量滑块（`.status-bar-volume-block`），右侧扩展区仅保留曲目元数据与播放模式按键；底层 `pcmPlayer` 锁定 1.0 (unity gain) 零衰减原生输出。
 13. **左侧星盘齿轮与歌词模块绝对同心共轴（Unified Astrolabe Module）**：左侧天文钟机芯齿轮（`.astrolabe-gear-svg`）与极坐标圆弧歌词轨道（`.lyrics-orbit-wheel`）合并封装进统一容器（`.astrolabe-module-container`）；水平 X 轴以**左侧边框为绝对基准**（`left: var(--astrolabe-x, 0px)`），垂直 Y 轴以可用工作区中轴线为基准（`top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%)`）；齿轮旋转中心与歌词轮盘旋转原点在容器内绝对锁定于 `(cx=0, cy=320)`，无论窗口大小如何变化、无论 X/Y 轴在设置中如何微调，齿轮与歌词 100% 同轴共心共步进，安全间距严守 52px；在偏好设置抽屉中提供 X 轴（-300 ~ 600px）与 Y 轴（-300 ~ 300px）滑动调节与恢复默认基准操作，通过 `:root` 变量实现 60fps 零重绘延迟实时响应与防抖持久化。
+14. **滑轨控件双侧微调按键规范（Slider Stepper Controls）**：所有滑动条（`SliderControl`）两侧必须配备 `-` 与 `+` 微调按键；统一采用 22px × 22px 液态圆角方块与 11px SVG 线性图标；支持单次点击按 step 精确步进与 350ms/60ms 长按连续平滑步进；极值边界自动禁用（disabled 半透明且阻断点击）；数值计算必须经 `stepSliderValue` 浮点精度净化，阻断 IEEE 754 精度漂移。
 
 ---
 
@@ -120,6 +121,7 @@
 [x] UI 纯净化: 将艺人数量、各类滑动条数值与统计播放次数等非交互读数去除外部边框改为纯文字 (e009ee9)
 [x] UI 纯净化: 彻底删除底部状态栏音量调节控件与业务逻辑 (687920c)
 [x] UI 架构升级: 左侧星盘机芯齿轮与歌词轨道统一同心模块化并支持偏好设置 XY 轴实时调节 (33160c0)
+[x] UI 体验增强: 全量滑条两侧增加减号与加号微调按钮并支持长按连续步进 (7b96a20)
 [ ] 性能优化 P2: MPD TCP Client 短连接改造为连接池 / Keep-Alive 复用套接字，结合 idle 减少轮询
 [ ] M2-3 主工作区居中液态玻璃面板 (GlassPanel) / 页面切换与黑胶大舞台
 ```
