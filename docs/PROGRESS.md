@@ -2,7 +2,7 @@
 
 > 更新时间: 2026-09-13
 > 当前阶段: M2-2（界面交互与操控体验深度优化：当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后；背景漂浮几何多面体晶体彻底清除；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
-> 最新进展: 将当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后（提交 b929bfe）：根据用户指令将原本孤立悬挂在底栏最右侧的当前播放曲目元数据卡片（.status-bar-meta-block）移至左侧 56px 专辑封面框（.status-bar-cover）右侧（间距 14px），文本排版转为自然的左对齐（标题居上、音质 SQ 徽标与艺人居下）；播放控制按键组（.status-bar-controls: 上一曲/播放/下一曲）紧随歌曲信息右侧（间距 28px），形成 [封面 + 歌曲信息 + 播放控制] 紧凑自明的左侧核心控制集群；底栏中央保留大面积通透开阔留白，右侧仅保留 34px 播放模式切换键；CDP 9222 实机抓轨与截图断言空间坐标完美对齐，详见 §2.36 与 §4.42。
+> 最新进展: 将播放模式切换按键移至播放控制组右侧紧随下一曲排布（提交 dd301c2）：根据用户指令将原本孤立悬挂在底栏最右侧的播放模式按键（.status-bar-btn-mode）迁移至左侧核心播放控制组（.status-bar-controls）内，紧随下一曲按键右侧，形成 [封面 + 歌曲信息 + 上一曲 + 播放暂停 + 下一曲 + 播放模式] 一气呵成的高内聚左侧控制集群；底栏右侧扩展区（.status-bar-right-section）彻底移除（零 DOM 残留），释放出连续 792px 纯净空灵的液态高斯磨砂玻璃空间，详见 §2.37 与 §4.43。
 
 ---
 
@@ -851,6 +851,35 @@
     - 中央留白区间：`356px ~ 1144px`（净宽 788px），通透空灵；
   - 实机全屏截图比对：封面、歌名“孤独患者”、SQ 徽标、歌手“陈奕迅”、控制按键浑然一体，排版极为雅致平衡。
 
+### 2.37 播放模式切换按键移至播放控制组右侧与底栏右侧彻底纯净留白 (Playback Mode Button Integration & Right Side Full Frost Void) - 2026-09-13 完成
+
+> **结论先行：播放模式与播控集群浑然一体，底栏右侧彻底释放，通透美学达标。** 用户提出“将控制播放模式的按钮也移到右边”，经 `ask_question` 对齐确认其意图为将播放模式按钮紧随播放控制组右侧排布。此前重构将歌曲信息移至封面右侧后，右侧仅孤立悬挂着一枚 34px 的播放模式按钮，与主要交互区域相隔 800px，操作孤立且存在割裂感。施工团队将 `.status-bar-btn-mode` 从底栏右侧抽离，直接迁入 `.status-bar-controls` 控制组内，紧随下一曲按键右侧（间距 12px 标准弹性网格），形成 `[封面 (56px)] → (14px) → [歌曲信息] → (28px) → [上一曲 (34px)] → (12px) → [播放/暂停 (50px)] → (12px) → [下一曲 (34px)] → (12px) → [播放模式 (34px)]` 一气呵成的高内聚核心集群。底栏右侧扩展区（`.status-bar-right-section`）彻底物理注销，右侧产生整整 792px 连贯通透的高斯磨砂玻璃留白区，让底层动态水波壁纸与星盘机芯完全舒展呈现。
+
+- **组件结构重构 (`StatusBar.tsx`)**:
+  - 将 `<button className="status-bar-btn status-bar-btn-mode ...">` 从独立右侧扩展容器剪切移入 `<div className="status-bar-controls">`，直接位于下一曲按键（`status-bar-btn-next`）之后；
+  - 彻底注销 `<div className="status-bar-right-section">` 容器，状态栏顶层直接子节点纯净收敛至 3 个（`.status-bar-cover`、`.status-bar-meta-block`、`.status-bar-controls`）；
+  - 保留循环模式说明与 `title`、无障碍 `aria-label` 及所有点击切换逻辑。
+- **样式流与空间组织 (`StatusBar.css`)**:
+  - 彻底清理 `.status-bar-right-section` 冗余样式规则；
+  - 将 `.status-bar-quality-badge` 与 `.status-bar-meta-artist` 规范内聚归入歌曲元数据卡片区域；
+  - `.status-bar-btn-mode` 融入 `.status-bar-controls` 的 12px Flex gap 网格，保持 34px × 34px 标准按键几何，并在深浅双主题下维持微光边框与动态缩放手感。
+- **实机自动化验收 (CDP 9222 硬件抓轨与 E2E 测试)**:
+  - `pnpm typecheck`：0 错误通过；
+  - `pnpm build`：成功构建产出（55 模块，JS 911.04 kB，CSS 163.30 kB）；
+  - CDP 实机硬件空间坐标（BoundingClientRect）物理采样：
+    - `statusBarChildrenCount`: **3**（仅封面、歌曲卡片、控制组）；
+    - `controlsChildrenCount`: **4**（上一曲、播放/暂停、下一曲、播放模式）；
+    - `status-bar-cover`: left: 16px, right: 72px (width: 56px)；
+    - `status-bar-meta-block`: left: 86px, right: 186px (width: 100px)；
+    - `status-bar-btn-prev`: left: 214px, right: 248px (width: 34px)；
+    - `status-bar-btn-play`: left: 260px, right: 310px (width: 50px)；
+    - `status-bar-btn-next`: left: 322px, right: 356px (width: 34px)；
+    - `status-bar-btn-mode`: left: 368px, right: 402px (width: 34px)；
+    - `status-bar-right-section`: **null**（零残余）；
+    - 物理单调递增断言：`16px → 72px < 86px → 186px < 214px → 248px < 260px → 310px < 322px → 356px < 368px → 402px` 全绿；
+    - 右侧纯净高斯磨砂留白宽度：**792px**（`402px ~ 1194px`）；
+  - 异步轮播交互验证：点击模式按键触发 IPC 与 MPD 循环，`mode-single` → `mode-sequence` → `mode-shuffle` 循环状态切换毫秒级响应。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 
@@ -903,6 +932,22 @@
 ```
 
 ---
+
+### 4.43 播放控制流向聚合与极简底栏通透工程纪律：操作集群一气呵成 × 消除孤立碎片 × 纯净留白呼吸感 (2026-09-13)
+
+在重构播放模式切换按键并完全净化底栏右侧区域中沉淀的工程纪律：
+
+1. **核心控制流向的天然聚合（Action Cohesion & Eliminating Island Controls）**:
+   - 在底栏设计中，切歌、播放、暂停与播放模式（列表/随机/单曲）属于用户在听歌时的“连贯性心智模型”（Continuous Mental Model）；
+   - 将播放模式按键单独孤立在 1200px 屏幕的最右侧不仅让用户的鼠标跨越整个屏幕大幅度移动，而且在视觉上形成了一个悬空的“孤岛按键”（Island Control），打破了界面的凝聚力；
+   - 纪律：同一控制域（Control Domain）的按钮应聚合在一起，以 `[封面] → [信息] → [播放核心] → [播放辅助]` 的单向逻辑流排布，拒绝无谓的碎片化分布。
+2. **底栏彻底留白与视觉呼吸感（The Power of Unbroken Glass Void）**:
+   - 当右侧孤岛按键被移走后，底部磨砂玻璃栏右侧产生了从 402px 到 1194px（接近 800px）的连续无打扰视觉区域；
+   - 这种连续性让底部的高斯漫射磨砂玻璃与背景中的动态水波壁纸无缝融为一体，消除了零碎按键对壁纸动态流光的切割与遮挡；
+   - 纪律：不要为了“两端对齐”而强行在右侧摆放元素，极简的留白本身就是顶级的设计语言。
+3. **微弹性间距与按钮层级秩序**:
+   - 播控组内上一曲、播放、下一曲属于播放行进（Transport Controls），模式切换属于播放策略（Playback Strategy）；
+   - 在统一放入 `.status-bar-controls` 后，保持统一的 12px Flex gap 网格，所有按键均继承统一的 34px/50px 物理几何尺寸与交互反馈动画，保证键盘与触控体验完全一致。
 
 ### 4.42 状态栏元数据与控制流排布工程纪律：视线天然汇聚 × 左对齐信息层叠 × 宽裕留白通透 (2026-09-13)
 
