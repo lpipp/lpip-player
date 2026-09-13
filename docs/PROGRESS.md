@@ -2,7 +2,7 @@
 
 > 更新时间: 2026-09-13
 > 当前阶段: M2-2（界面交互与操控体验深度优化：当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后；背景漂浮几何多面体晶体彻底清除；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
-> 最新进展: 将播放模式切换按键移至播放控制组右侧紧随下一曲排布（提交 dd301c2）：根据用户指令将原本孤立悬挂在底栏最右侧的播放模式按键（.status-bar-btn-mode）迁移至左侧核心播放控制组（.status-bar-controls）内，紧随下一曲按键右侧，形成 [封面 + 歌曲信息 + 上一曲 + 播放暂停 + 下一曲 + 播放模式] 一气呵成的高内聚左侧控制集群；底栏右侧扩展区（.status-bar-right-section）彻底移除（零 DOM 残留），释放出连续 792px 纯净空灵的液态高斯磨砂玻璃空间，详见 §2.37 与 §4.43。
+> 最新进展: 锁定状态栏当前曲目信息卡片为 140px 宽度并平滑省略截断，杜绝控制按键移位（提交 3bfda2c）：为根除因歌曲名或艺人名长短不一导致右侧播放控制按键（上一曲/播放/下一曲/模式）左右漂移位移的体验问题，通过 ask_question 对齐将 .status-bar-meta-block 锁死为 140px 规整宽度（约 10 个中文字符，flex-shrink: 0）；标题与副文本（音质徽标 + 艺人名）统一施加 min-width: 0、white-space: nowrap 与 text-overflow: ellipsis 防御性截断；CDP 9222 实机自动化抓轨长文本注入测试：无论歌曲名是一字、四字还是数十字超长交响乐，播控组 left 坐标严格恒定在 254px（位移量严格为 0px），详见 §2.38 与 §4.44。
 
 ---
 
@@ -880,6 +880,25 @@
     - 右侧纯净高斯磨砂留白宽度：**792px**（`402px ~ 1194px`）；
   - 异步轮播交互验证：点击模式按键触发 IPC 与 MPD 循环，`mode-single` → `mode-sequence` → `mode-shuffle` 循环状态切换毫秒级响应。
 
+### 2.38 状态栏歌曲信息卡片 140px 宽度物理锁定与控制按键零位移防御 (140px Track Meta Width Locking & Zero-Displacement Transport Stability) - 2026-09-13 完成
+
+> **结论先行：歌曲信息卡片尺寸恒定锁死，控制按键物理网格坚如磐石，切歌连击零脱靶。** 用户反馈“给当前播放信息中的歌曲名和艺人名设置一个最大显示长度，避免歌名太长导致控制按键移位”。经 `ask_question` 对齐确认，采用了锁定 140px 固定宽度的最佳实践方案。此前由于 `.status-bar-meta-block` 为弹性宽度（`min-width: 100px; max-width: 220px`），当播放两字短歌名与数十个字超长交响乐名称切换时，右侧紧随的播控按键组（上一曲/播放/下一曲/模式）会在水平方向产生高达 120px 的剧烈位移，严重破坏连续点击上一曲/下一曲的手感。工程团队将 `.status-bar-meta-block` 严格重构为 `width: 140px; min-width: 140px; max-width: 140px; flex-shrink: 0;`；内部歌名与艺人名文本在 `140px` 处平滑以省略号（`ellipsis`）截断；通过 CDP 9222 实机长文本注入实测，无论歌曲名有多长，播控组 `left` 坐标始终恒定在 `254px`，位移严格为 **0px**。
+
+- **样式与盒模型加固 (`StatusBar.css`)**:
+  - `.status-bar-meta-block`: 明确设定 `width: 140px; min-width: 140px; max-width: 140px; flex-shrink: 0; overflow: hidden;`，阻断任何文本挤占或收缩；
+  - `.status-bar-meta-title`: 明确 `width: 100%; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`，超长歌名平滑优雅截断；
+  - `.status-bar-meta-sub`: 明确 `width: 100%; max-width: 100%; overflow: hidden;`；
+  - `.status-bar-quality-badge`: 赋予 `flex-shrink: 0;`，确保音质徽标（SQ/Hi-Res/HQ/STD）在任何极端长文本下绝不变形；
+  - `.status-bar-meta-artist`: 配置 `min-width: 0; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`，彻底修复 Flexbox 规范下子元素默认 `min-width: auto` 导致 `text-overflow: ellipsis` 失效的潜在顽疾。
+- **实机自动化验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 错误通过；
+  - `pnpm build`：成功构建产出（55 模块，JS 911.04 kB，CSS 163.51 kB）；
+  - CDP 实机硬件空间坐标（BoundingClientRect）物理采样：
+    - 短歌名状态（“Close Your Eyes” / “孤独患者”）：`meta.width = 140px`，`controls.left = 254px`；
+    - 超长交响乐名称注入（“这是一个长达几十个字的大型管弦乐协奏曲特别加长纪念版第三乐章”，字符宽度 420px）：`meta.width = 140px`，`controls.left = 254px`；
+    - 空间位移差值检验：`deltaMetaWidth = 0px`，`deltaControlsLeft = 0px`；
+    - 文本截断检验：`titleScrollWidth (420px) > titleWidth (140px)`，`artistScrollWidth (390px) > artistWidth (109px)`，省略号正常生效无溢出。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 
@@ -932,6 +951,22 @@
 ```
 
 ---
+
+### 4.44 交互控制区网格绝对锁定与零位移防御工程纪律：点击目标稳定 × 弹性与刚性边界 × Flexbox 文本截断加固 (2026-09-13)
+
+在锁定状态栏歌曲信息卡片宽度与杜绝播放控制按键位移中沉淀的工程纪律：
+
+1. **点击目标的绝对稳定性（Fitts's Law & Spatial Stability）**:
+   - 在高频交互控件（如上一曲、播放/暂停、下一曲）前面放置动态文本内容时，如果文本容器采用弹性宽度（`min-width ~ max-width`），每一次切歌都会导致后续所有按钮发生不可预期的像素偏移；
+   - 费茨法则（Fitts's Law）与肌肉记忆：用户快速连击“下一曲”寻找心仪曲目时，鼠标通常停留在固定物理坐标；若按钮因前序歌名变长而右移数十像素，用户的下一次点击就会瞬间点空或误触其他按钮；
+   - 纪律：所有前置于高频交互按键的动态文本容器，其外部网格必须具备刚性宽度（`width: 140px; min-width: 140px; max-width: 140px; flex-shrink: 0;`），确保交互按键的物理坐标永远绝对锁死（0px 位移）。
+2. **Flexbox 内部文本截断防御（Flex Item Min-Width Zero Rule）**:
+   - CSS Flexbox 规范中，flex 子元素的默认 `min-width` 为 `auto`，而非 `0`；
+   - 当在 flex item 上设置 `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` 时，若未显式指定 `min-width: 0`，该子元素在某些浏览环境下仍会计算其内容的 intrinsic width，导致卡片被长文本撑爆或截断失效；
+   - 纪律：任何处于 Flexbox 容器内的可截断文本元素（如 `.status-bar-meta-artist`），必须显式声明 `min-width: 0;`，并给固定宽度容器赋予 `overflow: hidden`，形成绝对密封的防御性截断边界。
+3. **固定宽度与信息密度的黄金折中**:
+   - 140px 宽度在 13.5px 字体下可完整容纳 10 个中文字符或 18~20 个英文字符，覆盖了绝大部分华语流行音乐和常规单曲的完整标题；
+   - 对于超长标题与联合艺人，依靠平滑的省略号截断（Tooltip 可查看全称），既保障了视觉界面的整洁度，又赋予了核心播控按键绝对静止的操作手感。
 
 ### 4.43 播放控制流向聚合与极简底栏通透工程纪律：操作集群一气呵成 × 消除孤立碎片 × 纯净留白呼吸感 (2026-09-13)
 
