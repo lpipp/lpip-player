@@ -24,6 +24,9 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 彻底移除无意义原生 HTML title 悬浮提示框 (2026-09-13):
+  清除 MechanicalGear(4处齿轮/飞轮)、LyricsOrbit(歌词行)、SidebarCapsule(导轨呼吸点)、StatusBar(封面框)、MusicLibraryList/QueueDrawer/ArtistDrawer/PlaylistDrawer(单曲行、艺人行、歌单卡片)及 SettingsDrawer(分类卡片)上的原生 title 提示；
+  保留必要纯图标按键无障碍 title；CDP 9222 实机自动化验收全量通过（提交 854ab3f）。
 - [已完备] React 组件重渲染阻断隔离与艺人抽屉 GPU 视窗裁剪 (2026-09-13):
   MechanicalGear / WallpaperLayer / SpectrumVisualizer / SidebarCapsule 四大核心组件全量 React.memo 隔离；
   App.tsx 在 syncFromMpdStatus 中对 currentSong 实施同曲对象引用稳定化（若 file/id 未变复用既有对象引用），彻底切断自上而下的无谓属性失效；

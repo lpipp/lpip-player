@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（性能优化 P1 阶段完成：React 核心展示组件 memo 隔离、状态心跳引用稳定化、回调 useCallback 持久化、艺人抽屉 GPU 视窗裁剪 content-visibility）
-> 最新进展: P1 性能优化全套落地实机验收（提交 a0204ef）：MechanicalGear / WallpaperLayer / SpectrumVisualizer / SidebarCapsule 全量 memo 隔离；App.tsx 同曲引用稳定化阻断无谓 re-render；handlePlaySong 与 handleAddToQueue useCallback 固化；ArtistDrawer 补齐 content-visibility: auto (0 60px/0 56px)；实测 3s 播放窗齿轮与 436 首曲库列表 DOM 突变严格为 0，activeSources=4，leadMs=78ms 健康窗内，详见 §2.25 与 §4.31
+> 当前阶段: M2-2（性能优化 P1 阶段完成；界面纯净化：彻底移除机械齿轮、歌词、单曲列表行与卡片上遗留的原生 HTML title 悬浮提示框）
+> 最新进展: 彻底移除无意义原生 HTML title 悬浮提示框（提交 854ab3f）：清除 MechanicalGear(4处齿轮/飞轮)、LyricsOrbit(歌词行)、SidebarCapsule(导轨呼吸点)、StatusBar(封面框)、MusicLibraryList/QueueDrawer/ArtistDrawer/PlaylistDrawer(单曲行、艺人行、歌单卡片)及 SettingsDrawer(分类卡片)上的原生 title 提示；保留必要纯图标按键无障碍 title；CDP 9222 实机自动化验收全量通过，详见 §2.26 与 §4.32
 
 ---
 
@@ -535,6 +535,31 @@
   - 音频管道健康度：`isPlaying=true`，`activeSources=4`，`leadMs=78ms`（严格在 70~110ms 黄金抗抖区间内），采样率 48000Hz 自适应；
   - 艺人抽屉 computed 扫描：238 位艺人卡片全部成功挂载 `content-visibility: auto`。
 
+### 2.26 彻底移除机械齿轮、歌词与列表行上的无意义原生悬浮提示框 (UI Tooltip Declutter) - 2026-09-13 完成
+
+> **结论先行：还界面纯净通透，彻底铲除粗糙的 HTML 原生 title 悬浮框。** 用户反馈鼠标悬停在背景机械齿轮上会弹出“1号齿轮”等原生黑色/灰色小方框，破坏桌面质感与沉浸氛围。全面审查并移除了机械齿轮、星盘歌词、状态栏封面、曲库单曲行、队列单曲行、艺人行/单曲行、歌单卡片/单曲行及设置分类卡片上的无意义 `title` 提示；仅对纯图标按键保留必要的无障碍 `title`。通过 CDP 实机自动化验证全量清理达标，零视觉杂质。
+
+- **问题根因与排查**:
+  - 用户提供的 Klipper 剪贴板路径为 KDE Spectacle 局部截图，经像素与文字轮廓分析确认为背景齿轮触发的 HTML 原生 `title="1号齿轮"` 提示框；
+  - 原生 `title` 提示框在 Linux/KDE 下表现为沉重的纯色矩形，不仅延迟弹出会遮挡精密线条，且对背景装饰、长行歌词、曲库单曲等本就直观的视觉与行级元素毫无信息增量。
+- **清理规范与施工矩阵**:
+  1. `MechanicalGear.tsx`: 移除 4 处齿轮与飞轮的 `title="1号齿轮"`、`2号齿轮`、`3号齿轮`、`4号齿轮`（纯视觉背景元素禁止带 title）；
+  2. `LyricsOrbit.tsx`: 移除歌词行 `title={"点击跳转至第 ${originalIndex + 1} 行歌词"}`（歌词交互直观，悬浮框遮挡后文）；
+  3. `SidebarCapsule.tsx`: 移除顶部微光呼吸点 `title="lpip 播放器"`；
+  4. `StatusBar.tsx`: 移除封面卡片容器 `title={currentSong ? ... : 'lpip-player'}`；
+  5. `MusicLibraryList.tsx`: 移除曲库单曲行 `title={"点击播放: ${song.title} - ${song.artist}"}`；
+  6. `QueueDrawer.tsx`: 移除播放队列单曲行 `title={"点击播放: ${song.title} - ${song.artist}"}`；
+  7. `ArtistDrawer.tsx`: 移除艺人列表项 `title={artist.artist}` 与钻取后单曲行 `title`；
+  8. `PlaylistDrawer.tsx`: 移除歌单卡片 `title={playlist.name}`、已在歌单提示与单曲行 `title`；
+  9. `SettingsDrawer.tsx`: 移除分类总览卡片 `title={`点击进入【${meta.label}】设置`}`。
+- **特例保留与无障碍准则**:
+  - 纯图标按钮（如播放/暂停、上一曲/下一曲、音量、添加至队列、移除、清空、返回等无文字标签控件）保留必要的 `title` 与 `aria-label`，兼顾可访问性与极简交互。
+- **自动化实机验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck` 0 错误；
+  - `pnpm build` 成功通过；
+  - CDP 实机探测：`gearTitles: []`（4 个齿轮 title 归零）、`lyricTitlesCount: 0`（歌词行 title 归零）、`coverTitle: null`、`railTopTitle: null`，曲库 436 行与队列 10 行单曲行 title 严格为 0，设置卡片 title 严格为 0；
+  - 桌面 Electron 实例保持运行，用户核验无障碍与视觉纯净度。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -585,6 +610,19 @@
 ```
 
 ---
+
+### 4.32 界面元素原生 title 属性污染与 UI 纯净原则 (2026-09-13)
+
+1. **原生 HTML title 属性的视觉断层与噪音污染**:
+   - 浏览器原生的 `title` 属性由操作系统/浏览器内核绘制（在 Linux/KDE 环境下为不透明纯色方框），通常伴随 500ms~1000ms 的悬停延迟且在移动鼠标时容易残留遮挡后方内容；
+   - 播放器的视觉基调是液态磨砂玻璃、黑曜石与高精密度纯线条（如 800+ 行渐开线机械机芯与极坐标星盘歌词），这种原生小黑框与精细打磨的界面质感形成强烈的视觉割裂；
+   - 背景机芯、全屏壁纸、歌词行、单曲列表行等属于大面积内容/装饰层，添加 `title` 不仅毫无信息增益，反而在用户光标划过时频繁弹出视觉牛皮癣。
+2. **纯图标按钮与行级/卡片容器的权责边界**:
+   - **纯图标按钮放行**: 仅在按键自身没有伴随文字标签（如播放/暂停、切歌、关闭、移除、返回、刷新）时保留精炼的 `title` 或 `aria-label`，方便新用户或无障碍读屏理解操作含义；
+   - **行级/卡片容器严禁携带**: 单曲行、艺人项、歌单卡片、设置分类卡片等已有清晰的加粗标题、副标题歌手或操作手势暗示，严禁挂载 `title` 属性。
+3. **Klipper 剪贴板文件与截图线索分析**:
+   - 用户反馈的问题若提供形如 `/home/lpipwei/.local/share/klipper/data/<hash>/<hash>` 的路径，是 KDE Plasma 剪贴板管理工具（Klipper）缓存的 Spectacle 截图文件；
+   - 本次通过分析其 103x49 PNG 图像特征快速定位到了悬停在齿轮上触发的 `1号齿轮` 原生 tooltip，实现零沟通成本精准闭环。
 
 ### 4.31 React 状态心跳引发的子树连带重渲染与 IPC 引用稳定化 (2026-09-13)
 

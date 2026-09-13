@@ -38,9 +38,11 @@
 
 ---
 
-## 2. git 状态（截至 a0204ef）
+## 2. git 状态（截至 854ab3f）
 
 ```
+854ab3f fix(ui): 彻底移除机械齿轮、歌词、列表单曲行与卡片上的无意义悬浮提示框
+6fcfb70 docs: 更新 P1 性能优化 项目全量文档
 a0204ef perf(renderer): React 组件重渲染阻断隔离与艺人抽屉 GPU 视窗裁剪 (P1)
 c3d03b5 chore(lock): package.json 钉死精确版本后的锁文件 specifier 同步
 d56e64d docs: P0/P1/P2 全量并行修复批量落地实机验收文档同步 (PROGRESS §4.30, SESSION_PROMPT 置顶)
