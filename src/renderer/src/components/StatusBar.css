@@ -151,6 +151,50 @@
   line-height: 1;
 }
 
+.status-bar-quality-badge {
+  font-family: var(--font-family-hint);
+  font-size: var(--font-size-hint, 12px);
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.status-bar-quality-badge.badge-sq {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.status-bar-quality-badge.badge-hi-res {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.status-bar-quality-badge.badge-hq {
+  color: #6ee7b7;
+  background: rgba(110, 231, 183, 0.12);
+  border: 1px solid rgba(110, 231, 183, 0.35);
+}
+
+.status-bar-quality-badge.badge-std {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.status-bar-meta-artist {
+  font-family: var(--font-family-hint);
+  font-size: var(--font-size-hint, 12px);
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ------------------------------------------------------------
    播放控制按键区 (紧随歌曲信息右侧 28px 处)
    ------------------------------------------------------------ */
@@ -375,61 +419,8 @@
 }
 
 /* ------------------------------------------------------------
-   右侧扩展区 (Mode Toggle)
+   播放模式切换按键 (34px × 34px 圆角方块，紧随下一曲按键右侧)
    ------------------------------------------------------------ */
-.status-bar-right-section {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-left: auto;
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.status-bar-quality-badge {
-  font-family: var(--font-family-hint);
-  font-size: var(--font-size-hint, 12px);
-  font-weight: 700;
-  padding: 1px 4px;
-  border-radius: 4px;
-  letter-spacing: 0.5px;
-  line-height: 1.1;
-  flex-shrink: 0;
-}
-
-.status-bar-quality-badge.badge-sq {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-}
-
-.status-bar-quality-badge.badge-hi-res {
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.35);
-}
-
-.status-bar-quality-badge.badge-hq {
-  color: #6ee7b7;
-  background: rgba(110, 231, 183, 0.12);
-  border: 1px solid rgba(110, 231, 183, 0.35);
-}
-
-.status-bar-quality-badge.badge-std {
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.status-bar-meta-artist {
-  font-family: var(--font-family-hint);
-  font-size: var(--font-size-hint, 12px);
-  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* 模式按键: 34px × 34px 圆角方块 (与上一曲/下一曲一致) */
 .status-bar-btn-mode {

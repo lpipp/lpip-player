@@ -225,10 +225,7 @@ export default function StatusBar({
             <path d="M6 6.5L14.5 12 6 17.5v-11zm10-1.5h2v14h-2V5z" />
           </svg>
         </button>
-      </div>
 
-      {/* 右侧扩展区: 播放模式切换 */}
-      <div className="status-bar-right-section" aria-label="播放辅助控制">
         {/* 播放模式切换按键 (列表循环 / 随机播放 / 单曲循环) */}
         <button
           type="button"
