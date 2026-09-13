@@ -6,6 +6,12 @@
      - 水平准星指针瞄准当前行 (Precision Pointer)
      - 歌词切线辐射与景深平滑衰减 (Angular Depth of Field)
    ============================================================ */
+:root {
+  --astrolabe-x: 0px;
+  --astrolabe-y: 0px;
+  --astrolabe-cx: 0px;
+  --astrolabe-cy: 320px;
+}
 
 .lyrics-orbit-wrapper {
   position: absolute;
@@ -30,14 +36,48 @@
 }
 
 /* ------------------------------------------------------------
-   背景层: 宇宙星盘几何蓝图 SVG
+   背景层: 漂浮多面体全屏背景 SVG
    ------------------------------------------------------------ */
-.astrolabe-svg-bg {
+.astrolabe-ambient-svg {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* ------------------------------------------------------------
+   左侧星盘机芯齿轮与歌词轨道统一模块容器 (Unified Astrolabe Module Container)
+   - 左侧边框为基准 (left: var(--astrolabe-x, 0px))
+   - 垂直中轴线为基准 (top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%))
+   - 严格固定物理尺寸: 720px × 640px (1:1 绝对物理像素，彻底断绝比例失真拉伸)
+   - 齿轮中心与歌词旋转原点同轴锁定于容器 (cx=0px, cy=320px)
+   ------------------------------------------------------------ */
+.astrolabe-module-container {
+  position: absolute;
+  left: var(--astrolabe-x, 0px);
+  top: calc(50% + var(--astrolabe-y, 0px));
+  transform: translateY(-50%);
+  width: 720px;
+  height: 640px;
+  min-width: 720px;
+  min-height: 640px;
+  max-width: 720px;
+  max-height: 640px;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.astrolabe-gear-svg {
+  width: 720px;
+  height: 640px;
+  min-width: 720px;
+  min-height: 640px;
+  max-width: 720px;
+  max-height: 640px;
+  display: block;
   pointer-events: none;
   overflow: visible;
   filter: drop-shadow(0 0 8px rgba(110, 231, 183, 0.16))
@@ -243,7 +283,7 @@
 /* ------------------------------------------------------------
    浅色模式适配 (Light Theme)
    ------------------------------------------------------------ */
-[data-theme='light'] .astrolabe-svg-bg {
+[data-theme='light'] .astrolabe-gear-svg {
   filter: drop-shadow(0 0 6px rgba(5, 150, 105, 0.2))
           drop-shadow(0 2px 8px rgba(0, 0, 0, 0.12));
 }

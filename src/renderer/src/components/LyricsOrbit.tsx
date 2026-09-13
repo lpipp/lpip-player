@@ -39,6 +39,8 @@ export interface LyricsOrbitProps {
   showTranslation?: boolean
   /** 滚轮预览确认超时时长毫秒 (范围 500 ~ 5000, 默认 1500) */
   previewTimeoutMs?: number
+  /** 星盘齿轮与歌词模块位置微调 (x: 距左边框 px, y: 距垂直中线 px) */
+  astrolabePosition?: { x: number; y: number }
 }
 
 /**
@@ -245,7 +247,8 @@ export default function LyricsOrbit({
   animated = true,
   isPlaying = true,
   showTranslation = true,
-  previewTimeoutMs = 1500
+  previewTimeoutMs = 1500,
+  astrolabePosition
 }: LyricsOrbitProps) {
   // 当前活跃行索引 (支持非受控与受控双模式)
   const [internalIndex, setInternalIndex] = useState(4) // 默认定格在第4行《Luna domina》
@@ -318,6 +321,14 @@ export default function LyricsOrbit({
     clearPreview()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lyrics])
+
+  // 星盘机芯与歌词模块位置同步 (若外部传入则应用到 :root 保证 60fps 响应)
+  useEffect(() => {
+    if (astrolabePosition) {
+      document.documentElement.style.setProperty('--astrolabe-x', `${astrolabePosition.x}px`)
+      document.documentElement.style.setProperty('--astrolabe-y', `${astrolabePosition.y}px`)
+    }
+  }, [astrolabePosition])
 
   // 轨道几何参数配置 (左侧齿轮半径增加 100px: rIn 295, rOut 308，对齐右侧 60 齿制表风格)
   const cx = 0 // 星盘圆心 X 坐标定格在左边缘，半圆优雅凸出
@@ -498,273 +509,15 @@ export default function LyricsOrbit({
       data-show-translation={showTranslation ? 'true' : 'false'}
     >
       {/* ------------------------------------------------------------
-          背景层: 宇宙星盘几何蓝图 SVG (齿轮、同心轨道、刻度、月相与指示器)
+          背景层: 空间中漂浮的空灵几何多面体晶体 (全屏背景装饰)
           ------------------------------------------------------------ */}
       <svg
-        className="astrolabe-svg-bg"
+        className="astrolabe-ambient-svg"
         viewBox="0 0 1100 640"
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
+        preserveAspectRatio="xMidYMid slice"
       >
-        {/* 1. 星盘同心参考规线群 (静态外层蓝图工程基准) */}
-        <g className="astrolabe-rings">
-          <circle cx={cx} cy={cy} r={330} fill="none" stroke="rgba(110, 231, 183, 0.18)" strokeWidth="0.8" strokeDasharray="3 5" />
-          <circle cx={cx} cy={cy} r={318} fill="none" stroke="rgba(255, 255, 255, 0.12)" strokeWidth="0.8" />
-        </g>
-
-        {/* 2. 主表盘 60 齿精密机械表机芯总成 (与右侧 1号主齿轮完全同模数、同制表工艺体系) */}
-        <g
-          className="astrolabe-main-gear"
-          style={{
-            '--gear-rotation': `${gearRotation}deg`
-          } as React.CSSProperties}
-        >
-          {/* 2.1 外圈 60 齿纯线框齿圈 (半径 295px ~ 308px) 与齿根基圆 */}
-          <path
-            d={gearOuterPath}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.75)"
-            strokeWidth="1.2"
-            strokeLinejoin="round"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={295}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.3)"
-            strokeWidth="0.8"
-          />
-
-          {/* 2.2 三级同心游标刻度圈 (120/60/12 分度体系，完全对齐右侧 1号齿轮) */}
-          <circle
-            cx={cx}
-            cy={cy}
-            r={288}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.6)"
-            strokeWidth="1"
-          />
-          {gearMinorTicks.map((t, i) => (
-            <line
-              key={`g-minor-${i}`}
-              x1={t.x1}
-              y1={t.y1}
-              x2={t.x2}
-              y2={t.y2}
-              stroke="rgba(255, 255, 255, 0.25)"
-              strokeWidth="0.7"
-            />
-          ))}
-          {gearMajorTicks.map((t, i) => (
-            <line
-              key={`g-major-${i}`}
-              x1={t.x1}
-              y1={t.y1}
-              x2={t.x2}
-              y2={t.y2}
-              stroke="#6ee7b7"
-              strokeWidth="1"
-              strokeOpacity="0.8"
-            />
-          ))}
-          {gearLongTicks.map((t, i) => (
-            <line
-              key={`g-long-${i}`}
-              x1={t.x1}
-              y1={t.y1}
-              x2={t.x2}
-              y2={t.y2}
-              stroke="#ffffff"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          ))}
-
-          {/* 2.3 多层精密工程规线圈 (点状微环、虚线环与内基准圈) */}
-          <circle
-            cx={cx}
-            cy={cy}
-            r={272}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.45)"
-            strokeWidth="0.8"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={263}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.65)"
-            strokeWidth="1.2"
-            strokeDasharray="1.5 5"
-            strokeLinecap="round"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={253}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.25)"
-            strokeWidth="0.8"
-            strokeDasharray="6 3"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={243}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.55)"
-            strokeWidth="1"
-          />
-
-          {/* 2.4 双级轻量化工程射线轮辐 */}
-          {/* 12 根纤细主工程射线 (自中心分轮外缘 r=78 延展至内基圆 r=243，端点缀以翡翠微圈) */}
-          {gearRadialLines.map((l, i) => (
-            <g key={`g-radial-${i}`}>
-              <line
-                x1={l.x1}
-                y1={l.y1}
-                x2={l.x2}
-                y2={l.y2}
-                stroke="rgba(110, 231, 183, 0.35)"
-                strokeWidth="0.9"
-              />
-              <circle
-                cx={l.x1}
-                cy={l.y1}
-                r={1.5}
-                fill="none"
-                stroke="#6ee7b7"
-                strokeWidth="0.8"
-              />
-            </g>
-          ))}
-          {/* 24 根外缘错位半虚线子射线 (从 r=175 至 r=243，偏转 7.5° 呈现精湛镂空层次) */}
-          {gearSubRadialLines.map((l, i) => (
-            <line
-              key={`g-subradial-${i}`}
-              x1={l.x1}
-              y1={l.y1}
-              x2={l.x2}
-              y2={l.y2}
-              stroke="rgba(255, 255, 255, 0.15)"
-              strokeWidth="0.6"
-              strokeDasharray="3 3"
-            />
-          ))}
-
-          {/* 2.5 中继同心规线 */}
-          <circle
-            cx={cx}
-            cy={cy}
-            r={210}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.16)"
-            strokeWidth="0.8"
-            strokeDasharray="8 6"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={190}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.22)"
-            strokeWidth="0.8"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={120}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.25)"
-            strokeWidth="0.8"
-            strokeDasharray="5 5"
-          />
-
-          {/* 2.6 中心 18 齿微型分轮小齿轮与轴套系统 */}
-          <path
-            d={gearHubPath}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.65)"
-            strokeWidth="1"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={66}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.55)"
-            strokeWidth="1"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={54}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.35)"
-            strokeWidth="0.8"
-            strokeDasharray="2 2"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={30}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.75)"
-            strokeWidth="1"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={18}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.5)"
-            strokeWidth="0.8"
-          />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={7}
-            fill="none"
-            stroke="#6ee7b7"
-            strokeWidth="1"
-          />
-          {/* 中心十字瞄准准线与红宝石轴心 */}
-          <line x1={cx - 40} y1={cy} x2={cx - 10} y2={cy} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
-          <line x1={cx + 10} y1={cy} x2={cx + 40} y2={cy} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
-          <line x1={cx} y1={cy - 40} x2={cx} y2={cy - 10} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
-          <line x1={cx} y1={cy + 10} x2={cx} y2={cy + 40} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
-          <circle cx={cx} cy={cy} r={2} fill="#6ee7b7" />
-        </g>
-
-        {/* 4. 歌词圆弧同心导轨线 (半径 260px，虚线引导线) */}
-        <path
-          d={`M ${cx + Math.cos((-58 * Math.PI) / 180) * orbitRadius} ${cy + Math.sin((-58 * Math.PI) / 180) * orbitRadius}
-              A ${orbitRadius} ${orbitRadius} 0 0 1 ${cx + Math.cos((58 * Math.PI) / 180) * orbitRadius} ${cy + Math.sin((58 * Math.PI) / 180) * orbitRadius}`}
-          fill="none"
-          stroke="rgba(110, 231, 183, 0.45)"
-          strokeWidth="1.1"
-          strokeDasharray="3 4"
-        />
-
-        {/* 5. 轨道精密微细刻度线 (沿歌词轨道分布) */}
-        <g className="orbit-ticks-group">
-          {orbitTicks.map((t, idx) => (
-            <line
-              key={`otick-${idx}`}
-              x1={t.x1}
-              y1={t.y1}
-              x2={t.x2}
-              y2={t.y2}
-              stroke={t.isMajor ? '#6ee7b7' : 'rgba(255, 255, 255, 0.35)'}
-              strokeWidth={t.isMajor ? '1.2' : '0.8'}
-              strokeOpacity={t.isMajor ? 0.85 : 0.4}
-            />
-          ))}
-        </g>
-
-        {/* 6. 空间中漂浮的空灵几何多面体晶体 (Blueprint Floating Polyhedra) */}
         <g className="astrolabe-floating-crystals" opacity="0.25">
           {/* 右上方透视菱形 */}
           <polygon points="780,110 820,90 840,130 800,150" fill="none" stroke="#6ee7b7" strokeWidth="0.8" strokeDasharray="3 3" />
@@ -780,45 +533,318 @@ export default function LyricsOrbit({
       </svg>
 
       {/* ------------------------------------------------------------
-          歌词轨道渲染层: 极坐标旋转流转架构
-          外层容器以 (cx, cy) 为旋转原点，随 activeIndex 发生整体平滑旋转归位
+          左侧星盘机芯齿轮与歌词轨道统一模块容器 (Unified Astrolabe Module)
+          - 左侧边框为基准 (left: var(--astrolabe-x, 0px))
+          - 垂直中线为基准 (top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%))
+          - 齿轮与歌词 100% 同轴共心锁定于容器 (cx=0px, cy=320px)
           ------------------------------------------------------------ */}
-      <div
-        className="lyrics-orbit-wheel"
-        style={{
-          '--astrolabe-cx': `${cx}px`,
-          '--astrolabe-cy': `${cy}px`,
-          '--wheel-rotation': `${currentRotation}deg`,
-          '--orbit-radius': `${orbitRadius}px`,
-          '--step-angle': `${stepAngle}deg`
-        } as React.CSSProperties}
-      >
-        {visibleWindow.map(({ line, index, distance }) => {
-          const isCurrent = distance === 0
-          const itemAngle = index * stepAngle
+      <div className="astrolabe-module-container">
+        <svg
+          className="astrolabe-gear-svg"
+          viewBox="0 0 720 640"
+          width="720"
+          height="640"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          {/* 1. 星盘同心参考规线群 (静态外层蓝图工程基准) */}
+          <g className="astrolabe-rings">
+            <circle cx={cx} cy={cy} r={330} fill="none" stroke="rgba(110, 231, 183, 0.18)" strokeWidth="0.8" strokeDasharray="3 5" />
+            <circle cx={cx} cy={cy} r={318} fill="none" stroke="rgba(255, 255, 255, 0.12)" strokeWidth="0.8" />
+          </g>
 
-          return (
-            <div
-              key={`${songKey}-line-${index}`}
-              className={`lyric-node ${isCurrent ? 'is-active' : ''}`}
-              data-distance={distance}
-              data-lyric-index={index}
-              style={{
-                '--item-angle': `${itemAngle}deg`,
-                '--item-distance': distance
-              } as React.CSSProperties}
-              onClick={() => handleDirectJump(index)}
-            >
-              {/* 主歌词行 (大号衬线字体，优雅古典) */}
-              <div className="lyric-primary">{line.primary}</div>
+          {/* 2. 主表盘 60 齿精密机械表机芯总成 (与右侧 1号主齿轮完全同模数、同制表工艺体系) */}
+          <g
+            className="astrolabe-main-gear"
+            style={{
+              '--gear-rotation': `${gearRotation}deg`
+            } as React.CSSProperties}
+          >
+            {/* 2.1 外圈 60 齿纯线框齿圈 (半径 295px ~ 308px) 与齿根基圆 */}
+            <path
+              d={gearOuterPath}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.75)"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={295}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.3)"
+              strokeWidth="0.8"
+            />
 
-              {/* 辅歌词行 (中文译文，次级高亮无衬线; showTranslation 关闭时整站隐藏, 见 CSS 宿主规则) */}
-              {showTranslation && line.secondary && (
-                <div className="lyric-secondary">{line.secondary}</div>
-              )}
-            </div>
-          )
-        })}
+            {/* 2.2 三级同心游标刻度圈 (120/60/12 分度体系，完全对齐右侧 1号齿轮) */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={288}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.6)"
+              strokeWidth="1"
+            />
+            {gearMinorTicks.map((t, i) => (
+              <line
+                key={`g-minor-${i}`}
+                x1={t.x1}
+                y1={t.y1}
+                x2={t.x2}
+                y2={t.y2}
+                stroke="rgba(255, 255, 255, 0.25)"
+                strokeWidth="0.7"
+              />
+            ))}
+            {gearMajorTicks.map((t, i) => (
+              <line
+                key={`g-major-${i}`}
+                x1={t.x1}
+                y1={t.y1}
+                x2={t.x2}
+                y2={t.y2}
+                stroke="#6ee7b7"
+                strokeWidth="1"
+                strokeOpacity="0.8"
+              />
+            ))}
+            {gearLongTicks.map((t, i) => (
+              <line
+                key={`g-long-${i}`}
+                x1={t.x1}
+                y1={t.y1}
+                x2={t.x2}
+                y2={t.y2}
+                stroke="#ffffff"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            ))}
+
+            {/* 2.3 多层精密工程规线圈 (点状微环、虚线环与内基准圈) */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={272}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.45)"
+              strokeWidth="0.8"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={263}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.65)"
+              strokeWidth="1.2"
+              strokeDasharray="1.5 5"
+              strokeLinecap="round"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={253}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.25)"
+              strokeWidth="0.8"
+              strokeDasharray="6 3"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={243}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.55)"
+              strokeWidth="1"
+            />
+
+            {/* 2.4 双级轻量化工程射线轮辐 */}
+            {gearRadialLines.map((l, i) => (
+              <g key={`g-radial-${i}`}>
+                <line
+                  x1={l.x1}
+                  y1={l.y1}
+                  x2={l.x2}
+                  y2={l.y2}
+                  stroke="rgba(110, 231, 183, 0.35)"
+                  strokeWidth="0.9"
+                />
+                <circle
+                  cx={l.x1}
+                  cy={l.y1}
+                  r={1.5}
+                  fill="none"
+                  stroke="#6ee7b7"
+                  strokeWidth="0.8"
+                />
+              </g>
+            ))}
+            {gearSubRadialLines.map((l, i) => (
+              <line
+                key={`g-subradial-${i}`}
+                x1={l.x1}
+                y1={l.y1}
+                x2={l.x2}
+                y2={l.y2}
+                stroke="rgba(255, 255, 255, 0.15)"
+                strokeWidth="0.6"
+                strokeDasharray="3 3"
+              />
+            ))}
+
+            {/* 2.5 中继同心规线 */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={210}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.16)"
+              strokeWidth="0.8"
+              strokeDasharray="8 6"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={190}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.22)"
+              strokeWidth="0.8"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={120}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.25)"
+              strokeWidth="0.8"
+              strokeDasharray="5 5"
+            />
+
+            {/* 2.6 中心 18 齿微型分轮小齿轮与轴套系统 */}
+            <path
+              d={gearHubPath}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.65)"
+              strokeWidth="1"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={66}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth="1"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={54}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.35)"
+              strokeWidth="0.8"
+              strokeDasharray="2 2"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={30}
+              fill="none"
+              stroke="rgba(110, 231, 183, 0.75)"
+              strokeWidth="1"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={18}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.5)"
+              strokeWidth="0.8"
+            />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={7}
+              fill="none"
+              stroke="#6ee7b7"
+              strokeWidth="1"
+            />
+            {/* 中心十字瞄准准线与红宝石轴心 */}
+            <line x1={cx - 40} y1={cy} x2={cx - 10} y2={cy} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
+            <line x1={cx + 10} y1={cy} x2={cx + 40} y2={cy} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
+            <line x1={cx} y1={cy - 40} x2={cx} y2={cy - 10} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
+            <line x1={cx} y1={cy + 10} x2={cx} y2={cy + 40} stroke="#6ee7b7" strokeWidth="0.8" strokeOpacity="0.75" />
+            <circle cx={cx} cy={cy} r={2} fill="#6ee7b7" />
+          </g>
+
+          {/* 3. 歌词圆弧同心导轨线 (半径 360px，虚线引导线) */}
+          <path
+            d={`M ${cx + Math.cos((-58 * Math.PI) / 180) * orbitRadius} ${cy + Math.sin((-58 * Math.PI) / 180) * orbitRadius}
+                A ${orbitRadius} ${orbitRadius} 0 0 1 ${cx + Math.cos((58 * Math.PI) / 180) * orbitRadius} ${cy + Math.sin((58 * Math.PI) / 180) * orbitRadius}`}
+            fill="none"
+            stroke="rgba(110, 231, 183, 0.45)"
+            strokeWidth="1.1"
+            strokeDasharray="3 4"
+          />
+
+          {/* 4. 轨道精密微细刻度线 (沿歌词轨道分布) */}
+          <g className="orbit-ticks-group">
+            {orbitTicks.map((t, idx) => (
+              <line
+                key={`otick-${idx}`}
+                x1={t.x1}
+                y1={t.y1}
+                x2={t.x2}
+                y2={t.y2}
+                stroke={t.isMajor ? '#6ee7b7' : 'rgba(255, 255, 255, 0.35)'}
+                strokeWidth={t.isMajor ? '1.2' : '0.8'}
+                strokeOpacity={t.isMajor ? 0.85 : 0.4}
+              />
+            ))}
+          </g>
+        </svg>
+
+        {/* ------------------------------------------------------------
+            歌词轨道渲染层: 极坐标旋转流转架构
+            外层容器以 (cx, cy) 为旋转原点，随 activeIndex 发生整体平滑旋转归位
+            ------------------------------------------------------------ */}
+        <div
+          className="lyrics-orbit-wheel"
+          style={{
+            '--astrolabe-cx': `${cx}px`,
+            '--astrolabe-cy': `${cy}px`,
+            '--wheel-rotation': `${currentRotation}deg`,
+            '--orbit-radius': `${orbitRadius}px`,
+            '--step-angle': `${stepAngle}deg`
+          } as React.CSSProperties}
+        >
+          {visibleWindow.map(({ line, index, distance }) => {
+            const isCurrent = distance === 0
+            const itemAngle = index * stepAngle
+
+            return (
+              <div
+                key={`${songKey}-line-${index}`}
+                className={`lyric-node ${isCurrent ? 'is-active' : ''}`}
+                data-distance={distance}
+                data-lyric-index={index}
+                style={{
+                  '--item-angle': `${itemAngle}deg`,
+                  '--item-distance': distance
+                } as React.CSSProperties}
+                onClick={() => handleDirectJump(index)}
+              >
+                {/* 主歌词行 (大号衬线字体，优雅古典) */}
+                <div className="lyric-primary">{line.primary}</div>
+
+                {/* 辅歌词行 (中文译文，次级高亮无衬线; showTranslation 关闭时整站隐藏, 见 CSS 宿主规则) */}
+                {showTranslation && line.secondary && (
+                  <div className="lyric-secondary">{line.secondary}</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

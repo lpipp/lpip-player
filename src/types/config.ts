@@ -136,6 +136,17 @@ export interface ThemeConfig {
 }
 
 /**
+ * 星盘机芯齿轮与歌词轨道统一模块位置微调配置项
+ * 以左侧边框为 X 轴基准 (left: 0)，垂直居中中轴线为 Y 轴基准
+ */
+export interface AstrolabeConfig {
+  /** 星盘齿轮与歌词模块 X 轴位置 (相对于左侧边框, px, 默认 0) */
+  x: number
+  /** 星盘齿轮与歌词模块 Y 轴位置 (相对于垂直中心中轴线偏移, px, 默认 0) */
+  y: number
+}
+
+/**
  * 窗口相关配置项
  */
 export interface WindowConfig {
@@ -149,6 +160,8 @@ export interface WindowConfig {
   sidebar: SidebarConfig
   /** 向下兼容字段: 云母效果配置 */
   mica: MicaConfig
+  /** 左侧星盘齿轮与歌词模块位置微调 */
+  astrolabe: AstrolabeConfig
 }
 
 /**
@@ -315,12 +328,18 @@ export const DEFAULT_MPD_CONFIG: MpdConfig = {
   streamPort: 8000
 }
 
+export const DEFAULT_ASTROLABE_CONFIG: AstrolabeConfig = {
+  x: 0,
+  y: 0
+}
+
 export const DEFAULT_WINDOW_CONFIG: WindowConfig = {
   immersive: false,
   theme: DEFAULT_THEME_CONFIG,
   background: DEFAULT_BACKGROUND_CONFIG,
   sidebar: DEFAULT_SIDEBAR_CONFIG,
-  mica: DEFAULT_MICA_CONFIG
+  mica: DEFAULT_MICA_CONFIG,
+  astrolabe: DEFAULT_ASTROLABE_CONFIG
 }
 
 export const DEFAULT_TYPOGRAPHY_CONFIG: TypographyConfig = {
@@ -529,6 +548,33 @@ export function parseMpdConfig(rawMpd: unknown): MpdConfig {
 
   // 缺省回退返回拷贝, 禁止外泄 DEFAULT 单例引用 (调用方可能直接改写)
   return { ...DEFAULT_MPD_CONFIG }
+}
+
+/**
+ * 解析并校验星盘机芯齿轮与歌词模块位置配置
+ * 以左侧边框为 X 轴基准 (left: 0)，垂直居中中轴线为 Y 轴基准
+ */
+export function parseAstrolabeConfig(rawAstrolabe: unknown): AstrolabeConfig {
+  if (typeof rawAstrolabe === 'object' && rawAstrolabe !== null) {
+    const obj = rawAstrolabe as Record<string, unknown>
+    const rawX = obj['x'] ?? obj['xOffset']
+    const rawY = obj['y'] ?? obj['yOffset']
+    let parsedX: number = NaN
+    let parsedY: number = NaN
+
+    if (typeof rawX === 'number') parsedX = rawX
+    else if (typeof rawX === 'string') parsedX = parseFloat(rawX)
+
+    if (typeof rawY === 'number') parsedY = rawY
+    else if (typeof rawY === 'string') parsedY = parseFloat(rawY)
+
+    return {
+      x: Number.isFinite(parsedX) ? Math.round(clamp(parsedX, -300, 600)) : DEFAULT_ASTROLABE_CONFIG.x,
+      y: Number.isFinite(parsedY) ? Math.round(clamp(parsedY, -300, 300)) : DEFAULT_ASTROLABE_CONFIG.y
+    }
+  }
+
+  return { ...DEFAULT_ASTROLABE_CONFIG }
 }
 
 /**

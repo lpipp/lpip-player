@@ -22,6 +22,7 @@ import type {
   FadeConfig,
   LyricPreviewConfig,
   AudioConfig,
+  AstrolabeConfig
 } from '../types/config'
 
 /**
@@ -39,9 +40,11 @@ import {
   DEFAULT_AUDIO_CONFIG,
   DEFAULT_CONFIG,
   DEFAULT_VISUALIZER_CONFIG,
+  DEFAULT_ASTROLABE_CONFIG,
   parseVisualizerConfig,
   parseMpdConfig,
   parseLyricPreviewConfig,
+  parseAstrolabeConfig,
   stripJsonComments,
   DEFAULT_TYPOGRAPHY_CONFIG,
   parseTypographyConfig,
@@ -73,6 +76,7 @@ export type {
   MicaStyle,
   BackgroundMode,
   WallpaperFit,
+  AstrolabeConfig,
   MpdConfigValue as MpdConfig
 }
 export {
@@ -86,9 +90,11 @@ export {
   DEFAULT_AUDIO_CONFIG,
   DEFAULT_CONFIG,
   DEFAULT_VISUALIZER_CONFIG,
+  DEFAULT_ASTROLABE_CONFIG,
   parseVisualizerConfig,
   parseMpdConfig,
   parseLyricPreviewConfig,
+  parseAstrolabeConfig,
   stripJsonComments,
   DEFAULT_TYPOGRAPHY_CONFIG,
   parseTypographyConfig,
@@ -172,7 +178,8 @@ function cloneDefaultConfig(): AppConfig {
       theme: cloneDefaultThemeConfig(),
       background: cloneDefaultBackgroundConfig(),
       sidebar: cloneDefaultSidebarConfig(),
-      mica: cloneDefaultMicaConfig()
+      mica: cloneDefaultMicaConfig(),
+      astrolabe: { ...DEFAULT_ASTROLABE_CONFIG }
     },
     audio: cloneDefaultAudioConfig(),
     visualizer: { ...DEFAULT_CONFIG.visualizer },
@@ -479,6 +486,7 @@ export function loadConfig(customPath?: string): AppConfig {
     const theme = parseThemeConfig(parsed.window?.theme)
     const background = parseBackgroundConfig(parsed.window?.background, parsed.window?.mica)
     const sidebar = parseSidebarConfig(parsed.window?.sidebar)
+    const astrolabe = parseAstrolabeConfig(parsed.window?.astrolabe ?? (parsed as Record<string, unknown>)['astrolabe'])
     const audio = parseAudioConfig(parsed.audio)
     const visualizer = parseVisualizerConfig(parsed.visualizer)
     const typography = parseTypographyConfig(parsed.typography ?? (parsed as Record<string, unknown>).font)
@@ -491,7 +499,8 @@ export function loadConfig(customPath?: string): AppConfig {
         theme,
         background,
         sidebar,
-        mica: background.mica
+        mica: background.mica,
+        astrolabe
       },
       audio,
       visualizer,
@@ -570,6 +579,7 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
   const theme = parseThemeConfig(merged.window?.theme)
   const background = parseBackgroundConfig(merged.window?.background, merged.window?.mica)
   const sidebar = parseSidebarConfig(merged.window?.sidebar)
+  const astrolabe = parseAstrolabeConfig(merged.window?.astrolabe ?? (merged as Record<string, unknown>)['astrolabe'])
   const audio = parseAudioConfig(merged.audio)
   const visualizer = parseVisualizerConfig(merged.visualizer)
   const mpd = parseMpdConfig(merged.mpd)
@@ -609,7 +619,8 @@ export function saveConfig(partialConfig: DeepPartial<AppConfig>, customPath?: s
       theme,
       background,
       sidebar,
-      mica: background.mica
+      mica: background.mica,
+      astrolabe
     },
     audio,
     visualizer,

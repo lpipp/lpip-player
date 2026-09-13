@@ -10,10 +10,12 @@ import { pcmPlayer } from './services/pcmPlayer'
 import {
   DEFAULT_MPD_CONFIG,
   DEFAULT_VISUALIZER_CONFIG,
+  DEFAULT_ASTROLABE_CONFIG,
   parseMpdConfig,
   parseVisualizerConfig,
   stripJsonComments,
-  type VisualizerConfig
+  type VisualizerConfig,
+  type AstrolabeConfig
 } from '../../types/config'
 import { applyTypographyToDOM } from './utils/typography'
 
@@ -61,6 +63,8 @@ export default function App() {
   const [lyricPreviewTimeoutMs, setLyricPreviewTimeoutMs] = useState(1500)
   // 歌词翻译显隐 (默认 true, 经 typography.lyrics.showTranslation 热更新, 缺省回退不写盘)
   const [showTranslation, setShowTranslation] = useState(true)
+  // 星盘机芯与歌词模块位置微调 (左侧边框基准 X 轴与垂直中轴线 Y 轴)
+  const [astrolabeConfig, setAstrolabeConfig] = useState<AstrolabeConfig>(DEFAULT_ASTROLABE_CONFIG)
 
   const lastFileRef = useRef<string | null>(null)
   // 歌词拉取世代号 (快切 A→B→C 时旧慢响应到达即丢弃, 只认最新一次拉取)
@@ -195,6 +199,10 @@ export default function App() {
       } else {
         syncVisualizerFromFile()
       }
+      const astro = cfg.window?.astrolabe ?? DEFAULT_ASTROLABE_CONFIG
+      setAstrolabeConfig(astro)
+      document.documentElement.style.setProperty('--astrolabe-x', `${astro.x}px`)
+      document.documentElement.style.setProperty('--astrolabe-y', `${astro.y}px`)
     })
 
     // 监听运行时配置热更新 (用户编辑 config.json 后即时生效)
@@ -223,6 +231,10 @@ export default function App() {
       } else {
         syncVisualizerFromFile()
       }
+      const astro = cfg.window?.astrolabe ?? DEFAULT_ASTROLABE_CONFIG
+      setAstrolabeConfig(astro)
+      document.documentElement.style.setProperty('--astrolabe-x', `${astro.x}px`)
+      document.documentElement.style.setProperty('--astrolabe-y', `${astro.y}px`)
     })
 
     window.electronAPI?.mpd.getStatus().then((status) => {
@@ -442,6 +454,7 @@ export default function App() {
         isPlaying={isPlaying}
         showTranslation={showTranslation}
         previewTimeoutMs={lyricPreviewTimeoutMs}
+        astrolabePosition={astrolabeConfig}
       />
 
       {/* 悬浮长条形胶囊伸缩抽屉 (曲库中心与播放队列管理抽屉) */}

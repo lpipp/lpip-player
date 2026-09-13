@@ -1286,6 +1286,72 @@ export default function SettingsDrawer() {
                     }
                   />
                 </div>
+
+                {/* 星盘机芯与歌词模块布局 */}
+                <div className="settings-group-card">
+                  <div className="settings-group-header">
+                    <span className="settings-group-title">星盘机芯与歌词模块布局</span>
+                  </div>
+
+                  <SliderControl
+                    label="X 轴位置 (左侧边框基准)"
+                    desc="以左侧边框为基准调节齿轮与歌词模块水平坐标 (-300 ~ 600px)"
+                    value={config.window.astrolabe?.x ?? 0}
+                    min={-300}
+                    max={600}
+                    step={1}
+                    displayValue={`${config.window.astrolabe?.x ?? 0}px`}
+                    onChange={(val) => {
+                      document.documentElement.style.setProperty('--astrolabe-x', `${val}px`)
+                      updateConfigDebounced({
+                        window: {
+                          astrolabe: { x: val }
+                        }
+                      }, 50)
+                    }}
+                  />
+
+                  <SliderControl
+                    label="Y 轴位置 (垂直中线微调)"
+                    desc="调节齿轮与歌词模块相对于可用区域垂直中轴线的偏移 (-300 ~ 300px)"
+                    value={config.window.astrolabe?.y ?? 0}
+                    min={-300}
+                    max={300}
+                    step={1}
+                    displayValue={`${config.window.astrolabe?.y ?? 0}px`}
+                    onChange={(val) => {
+                      document.documentElement.style.setProperty('--astrolabe-y', `${val}px`)
+                      updateConfigDebounced({
+                        window: {
+                          astrolabe: { y: val }
+                        }
+                      }, 50)
+                    }}
+                  />
+
+                  <div className="settings-control-row">
+                    <div className="settings-control-info">
+                      <span className="settings-control-label">重置位置至默认基准</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="liquid-action-btn secondary"
+                      onClick={() => {
+                        document.documentElement.style.setProperty('--astrolabe-x', '0px')
+                        document.documentElement.style.setProperty('--astrolabe-y', '0px')
+                        updateConfigImmediate({
+                          window: {
+                            astrolabe: { x: 0, y: 0 }
+                          }
+                        })
+                      }}
+                      title="重置星盘机芯与歌词模块位置"
+                    >
+                      <RefreshIcon />
+                      <span>恢复居中基准</span>
+                    </button>
+                  </div>
+                </div>
               </>
             )}
 
@@ -1489,7 +1555,73 @@ export default function SettingsDrawer() {
                   />
                 </div>
 
-                {/* 4. 重置默认操作卡片 */}
+                {/* 4. 星盘机芯与歌词模块布局 */}
+                <div className="settings-group-card">
+                  <div className="settings-group-header">
+                    <span className="settings-group-title">星盘机芯与歌词模块布局</span>
+                  </div>
+
+                  <SliderControl
+                    label="X 轴位置 (左侧边框基准)"
+                    desc="以窗口左侧边框为基准调节齿轮与歌词模块水平坐标 (-300 ~ 600px)"
+                    value={config.window.astrolabe?.x ?? 0}
+                    min={-300}
+                    max={600}
+                    step={1}
+                    displayValue={`${config.window.astrolabe?.x ?? 0}px`}
+                    onChange={(val) => {
+                      document.documentElement.style.setProperty('--astrolabe-x', `${val}px`)
+                      updateConfigDebounced({
+                        window: {
+                          astrolabe: { x: val }
+                        }
+                      }, 50)
+                    }}
+                  />
+
+                  <SliderControl
+                    label="Y 轴位置 (垂直中线微调)"
+                    desc="调节齿轮与歌词模块相对于可用区域垂直中轴线的偏移 (-300 ~ 300px)"
+                    value={config.window.astrolabe?.y ?? 0}
+                    min={-300}
+                    max={300}
+                    step={1}
+                    displayValue={`${config.window.astrolabe?.y ?? 0}px`}
+                    onChange={(val) => {
+                      document.documentElement.style.setProperty('--astrolabe-y', `${val}px`)
+                      updateConfigDebounced({
+                        window: {
+                          astrolabe: { y: val }
+                        }
+                      }, 50)
+                    }}
+                  />
+
+                  <div className="settings-control-row">
+                    <div className="settings-control-info">
+                      <span className="settings-control-label">重置位置至默认基准</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="liquid-action-btn secondary"
+                      onClick={() => {
+                        document.documentElement.style.setProperty('--astrolabe-x', '0px')
+                        document.documentElement.style.setProperty('--astrolabe-y', '0px')
+                        updateConfigImmediate({
+                          window: {
+                            astrolabe: { x: 0, y: 0 }
+                          }
+                        })
+                      }}
+                      title="重置星盘机芯与歌词模块位置"
+                    >
+                      <RefreshIcon />
+                      <span>恢复居中基准</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5. 重置默认操作卡片 */}
                 <div className="settings-group-card">
                   <div className="settings-group-header">
                     <span className="settings-group-title">配置重置与维护</span>

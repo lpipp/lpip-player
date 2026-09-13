@@ -99,6 +99,8 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
   // 译文显隐与主题仅收敛为白名单字面量 (非 false 一律 true, 非 light 一律 dark)
   const showTranslationAttr = typo.lyrics?.showTranslation === false ? 'false' : 'true'
   const safeThemeMode = theme.mode === 'light' ? 'light' : 'dark'
+  const astrolabeX = typeof config.window?.astrolabe?.x === 'number' ? config.window.astrolabe.x : 0
+  const astrolabeY = typeof config.window?.astrolabe?.y === 'number' ? config.window.astrolabe.y : 0
 
   const script = `
     (() => {
@@ -196,6 +198,10 @@ export function applyConfigToWindow(win: BrowserWindow, config: AppConfig): void
         s.setProperty('--font-size-lyrics-translation', ${JSON.stringify(`${transSize}px`)});
         // 歌词翻译显隐开关: 与 renderer LyricsOrbit 宿主属性同口径, 切歌/热更新后保持一致
         root.setAttribute('data-show-translation', ${JSON.stringify(showTranslationAttr)});
+
+        // 5. 星盘机芯与歌词模块布局 (左侧边框基准 X 轴与垂直中轴线 Y 轴)
+        s.setProperty('--astrolabe-x', ${JSON.stringify(`${astrolabeX}px`)});
+        s.setProperty('--astrolabe-y', ${JSON.stringify(`${astrolabeY}px`)});
       } catch (err) {
         console.error('[lpip-player:applyConfigToWindow] 注入配置异常:', err);
       }
