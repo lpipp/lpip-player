@@ -895,15 +895,6 @@ export default function SettingsDrawer() {
       {/* 视图 1: 5 大分类总览画册流 (Overview Tier) */}
       {!selectedModuleId && (
         <div className="settings-overview-container">
-          {/* 顶部状态提示栏 */}
-          <div className="settings-overview-toolbar">
-            <div className="settings-toolbar-title-area">
-              <span className="settings-toolbar-dot" />
-              <span className="settings-toolbar-title">播放器偏好设置</span>
-            </div>
-            <span className="settings-toolbar-badge">实时热重载</span>
-          </div>
-
           {saveErrorMessage && (
             <div className="settings-error-banner" role="alert">
               <span className="settings-error-dot" />
@@ -955,8 +946,8 @@ export default function SettingsDrawer() {
                 <BackChevronIcon />
                 <span>全部设置</span>
               </button>
-              <div className="settings-hero-nav-actions">
-                {selectedModuleId === 'typography' && (
+              {selectedModuleId === 'typography' && (
+                <div className="settings-hero-nav-actions">
                   <button
                     type="button"
                     className="settings-reset-btn"
@@ -967,9 +958,8 @@ export default function SettingsDrawer() {
                     <RefreshIcon />
                     <span>重置默认</span>
                   </button>
-                )}
-                <span className="settings-toolbar-badge">{activeModuleMeta.title}</span>
-              </div>
+                </div>
+              )}
             </div>
 
             <div className="settings-hero-header">
