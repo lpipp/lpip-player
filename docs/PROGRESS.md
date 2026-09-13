@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（界面交互与操控体验深度优化：背景漂浮几何多面体晶体彻底清除与纯净视觉重构；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
-> 最新进展: 彻底移除背景中漂浮的多面体晶体几何图形与动效（提交 a4875cf）：根据用户提供的 Klipper 截图，准确定位并彻底删除了 LyricsOrbit 中作为背景装饰漂浮在全屏的多面体几何图形层（.astrolabe-ambient-svg 与 .astrolabe-floating-crystals，包含右上方透视菱形、右中侧立体三角面、右下方轴测微立方体三组线条网格）；同步清除 LyricsOrbit.css 中持续占满 GPU 合成周期的 16s 关键帧无限循环动画（@keyframes floatingCrystals）；保留文字对比度所需的径向柔和暗角伪元素；CDP 9222 实机自动化探测 ambientSvg=false、floatingCrystals=false，机芯齿轮与歌词轨道运行平稳，视觉恢复纯净空灵，详见 §2.35 与 §4.41。
+> 当前阶段: M2-2（界面交互与操控体验深度优化：当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后；背景漂浮几何多面体晶体彻底清除；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
+> 最新进展: 将当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后（提交 b929bfe）：根据用户指令将原本孤立悬挂在底栏最右侧的当前播放曲目元数据卡片（.status-bar-meta-block）移至左侧 56px 专辑封面框（.status-bar-cover）右侧（间距 14px），文本排版转为自然的左对齐（标题居上、音质 SQ 徽标与艺人居下）；播放控制按键组（.status-bar-controls: 上一曲/播放/下一曲）紧随歌曲信息右侧（间距 28px），形成 [封面 + 歌曲信息 + 播放控制] 紧凑自明的左侧核心控制集群；底栏中央保留大面积通透开阔留白，右侧仅保留 34px 播放模式切换键；CDP 9222 实机抓轨与截图断言空间坐标完美对齐，详见 §2.36 与 §4.42。
 
 ---
 
@@ -823,7 +823,36 @@
     - `gearSvg`: **true**（星盘机芯主齿轮完好无损）；
   - 实机全屏截图比对：画面背景中的所有几何微立方体与三角线框完全消失，背景壁纸与齿轮机芯、圆弧进度条相得益彰，沉浸质感达标。
 
+### 2.36 状态栏当前播放歌曲信息移至封面右侧与播放控制紧随排布 (Status Bar Cover-Adjacent Meta & Control Flow) - 2026-09-13 完成
+
+> **结论先行：封面与歌曲元数据合璧归位，控制流紧凑成团，底栏通透留白更具秩序感。** 用户反馈“将当前播放歌曲的信息移到状态栏歌曲封面的旁边”。在早期的四段式布局中，歌曲封面位于最左侧，而歌名与歌手信息却被孤立放置在最右侧，两者相隔数百像素，视觉层级割裂；工程团队通过 `ask_question` 与用户对齐了紧随排布方案，将 `.status-bar-meta-block` 从右侧扩展区移至 `.status-bar-cover` 紧邻右侧（间距 14px），排版重构为左对齐（标题上浮、音质 SQ 徽标与艺人下沉）；播放控制组（`.status-bar-controls`）紧随歌曲信息右侧（间距 28px），形成 [封面 + 歌曲信息 + 播放控制] 浑然一体的左侧核心操作集群；右侧仅保留 34px 极简播放模式按键，中央留出超 700px 的宽阔通透空间，完美呼应动态壁纸与星盘歌词机芯。
+
+- **组件结构重构 (`StatusBar.tsx`)**:
+  - 将 `.status-bar-meta-block` 从 `.status-bar-right-section` 彻底剪切并前移至 `.status-bar-cover` 与 `.status-bar-controls` 之间；
+  - 维持 DOM 的自明性与优雅契约：封面（56px） $\rightarrow$ 歌曲元信息 $\rightarrow$ 播放控制（上一曲/主按键/下一曲） $\rightarrow$ 留白 $\rightarrow$ 右侧扩展区（播放模式切换）；
+  - 保留纯文字无框体设计、`tabular-nums` 等宽防抖特性，以及音质徽标规范（SQ/Hi-Res/HQ/STD 统一着色与圆角微光）。
+- **样式流与对齐重塑 (`StatusBar.css`)**:
+  1. **元数据卡片左对齐流**:
+     - `.status-bar-meta-block`: `margin-left: 14px; text-align: left; max-width: 220px; min-width: 100px; flex-shrink: 1;`；
+     - `.status-bar-meta-title`: `text-align: left;`（标题长文本平滑 ellipsis 截断）；
+     - `.status-bar-meta-sub`: `justify-content: flex-start;`（音质徽标与歌手文字左对齐排布）；
+  2. **播放控制按键组间距自适应**:
+     - `.status-bar-controls`: `margin-left: 28px; flex-shrink: 0;`（与歌曲元数据卡片保持 28px 规整物理间距，杜绝视觉拥挤）；
+  3. **右侧扩展区极简收敛**:
+     - `.status-bar-right-section`: `margin-left: auto;`（通过 flex 自动外边距牢牢推至底栏最右侧，子节点纯净收敛至 1 个 `.status-bar-btn-mode`）。
+- **实机自动化验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 错误通过；
+  - `pnpm build`：成功构建产出（55 模块，JS 911.15 kB，CSS 163.42 kB）；
+  - CDP 实机硬件空间坐标（BoundingClientRect）采样：
+    - `status-bar-cover`: left: 16px, right: 72px, width: 56px, height: 56px（与悬浮胶囊 left 16px 绝对对齐）；
+    - `status-bar-meta-block`: left: 86px, right: 186px, width: 100px, height: 36px, `textAlign: "left"`, `justifyContent: "flex-start"`；
+    - `status-bar-controls`: left: 214px, right: 356px, width: 142px, height: 50px；
+    - `status-bar-right-section`: left: 1144px, right: 1178px, width: 34px, height: 34px, `childrenCount: 1`；
+    - 中央留白区间：`356px ~ 1144px`（净宽 788px），通透空灵；
+  - 实机全屏截图比对：封面、歌名“孤独患者”、SQ 徽标、歌手“陈奕迅”、控制按键浑然一体，排版极为雅致平衡。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
+
 
 
 ```jsonc
@@ -874,6 +903,22 @@
 ```
 
 ---
+
+### 4.42 状态栏元数据与控制流排布工程纪律：视线天然汇聚 × 左对齐信息层叠 × 宽裕留白通透 (2026-09-13)
+
+在重塑底部状态栏当前播放歌曲信息与控制流布局中沉淀的工程纪律：
+
+1. **视线汇聚与封面元数据亲缘性（Proximity & Visual Affinity）**:
+   - 传统设计中常犯将封面放在最左、歌名放在最右的“天各一方”错误，导致用户扫视封面时无法立即获知当前歌名，视线被迫在窗口两侧来回跳跃；
+   - 亲缘性法则（Law of Proximity）：封面与歌曲信息（歌名、音质徽标、歌手）构成不可分割的“曲目身份单元”（Track Identity Unit），二者物理间距应紧密控制在 12px~16px 之间；
+   - 纪律：封面卡片右侧第一顺位必须是歌曲元数据卡片，绝不将其他异构按键插入封面与标题之间。
+2. **左对齐信息层叠与文字截断优雅防御**:
+   - 当元数据位于右侧时，习惯使用 `text-align: right` 与 `justify-content: flex-end`；移至左侧后，必须彻底重构为自然的左对齐信息流；
+   - 标题与副文本（音质徽标 + 歌手）必须各自配置 `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`，并设定合理的 `max-width`（如 220px~240px）；
+   - 纪律：绝不让超长歌名或超长歌手名挤占或推移右侧紧随的播放控制按键，保障控制按键的物理点击网格稳定。
+3. **控制按键与元数据集群的黄金分隔与留白**:
+   - 播放控制组（`status-bar-controls`）紧随在歌曲信息右侧时，应保持 24px~30px 的明确功能段落间距（本次设定为 28px），形成清晰的认知边界；
+   - 留白是最高级的视觉空气：状态栏右侧通过 `margin-left: auto` 仅保留 1 枚播放模式切换键，中央保留超 700px 的纯净留白，既让界面通透舒展，又让底层的动态水波视频壁纸完全绽放。
 
 ### 4.41 背景环境装饰与内容呈现主次关系纪律：克制减法 × 零残发动效 × GPU 周期释放 (2026-09-13)
 
