@@ -657,29 +657,6 @@ export default function LyricsOrbit({
       data-preview-index={previewIndex ?? ''}
       data-show-translation={showTranslation ? 'true' : 'false'}
     >
-      {/* ------------------------------------------------------------
-          背景层: 空间中漂浮的空灵几何多面体晶体 (全屏背景装饰)
-          ------------------------------------------------------------ */}
-      <svg
-        className="astrolabe-ambient-svg"
-        viewBox="0 0 1100 640"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-        preserveAspectRatio="xMidYMid slice"
-      >
-        <g className="astrolabe-floating-crystals" opacity="0.25">
-          {/* 右上方透视菱形 */}
-          <polygon points="780,110 820,90 840,130 800,150" fill="none" stroke="#6ee7b7" strokeWidth="0.8" strokeDasharray="3 3" />
-          {/* 右中侧立体三角面 */}
-          <polygon points="860,380 920,350 890,440" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" />
-          {/* 右下方轴测微立方体 */}
-          <polygon points="630,490 655,475 680,490 655,505" fill="none" stroke="#6ee7b7" strokeWidth="0.8" />
-          <line x1="630" y1="490" x2="630" y2="515" stroke="#6ee7b7" strokeWidth="0.8" />
-          <line x1="655" y1="505" x2="655" y2="530" stroke="#6ee7b7" strokeWidth="0.8" />
-          <line x1="680" y1="490" x2="680" y2="515" stroke="#6ee7b7" strokeWidth="0.8" />
-          <polygon points="630,515 655,530 680,515 655,500" fill="none" stroke="#6ee7b7" strokeWidth="0.8" />
-        </g>
-      </svg>
 
       {/* ------------------------------------------------------------
           左侧星盘机芯齿轮与歌词轨道统一模块容器 (Unified Astrolabe Module)

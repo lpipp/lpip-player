@@ -35,18 +35,6 @@
   z-index: 1;
 }
 
-/* ------------------------------------------------------------
-   背景层: 漂浮多面体全屏背景 SVG
-   ------------------------------------------------------------ */
-.astrolabe-ambient-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-}
 
 /* ------------------------------------------------------------
    左侧星盘机芯齿轮与歌词轨道统一模块容器 (Unified Astrolabe Module Container)
@@ -99,22 +87,6 @@
   transition: transform 0.58s cubic-bezier(0.18, 1.35, 0.32, 1);
 }
 
-/* 漂浮多面体缓慢浮动动效 (静止态暂停, 减少无谓合成) */
-.lyrics-orbit-wrapper.is-animated .astrolabe-floating-crystals {
-  animation: floatingCrystals 16s ease-in-out infinite alternate;
-}
-
-@keyframes floatingCrystals {
-  0% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-8px) rotate(1.5deg);
-  }
-  100% {
-    transform: translateY(6px) rotate(-1deg);
-  }
-}
 
 /* ------------------------------------------------------------
    歌词轨道旋转容器 (Lyrics Orbit Wheel)
