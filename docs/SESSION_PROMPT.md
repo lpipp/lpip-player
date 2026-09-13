@@ -24,6 +24,10 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 偏好设置一级总览副顶栏与二级导航分类徽标彻底移除 (2026-09-13):
+  清除 SettingsDrawer 一级总览顶部的 settings-overview-toolbar（含“• 播放器偏好设置”与“实时热重载”）；
+  清除二级详情导航栏右侧的 settings-toolbar-badge（与下方 Hero 重复的分类徽标）；
+  CDP 9222 实机探测 hasOverviewToolbar=false、hasToolbarBadge=false 零残留（提交 04ef167）。
 - [已完备] 偏好设置各分组卡片标题栏冗余徽标提示彻底清除 (2026-09-13):
   清除 SettingsDrawer 6 大设置模块共 14 处卡片顶栏右侧的 settings-group-badge 冗余状态镜像与英文翻译（无边框/wallpaper/Wallpaper/Sidebar/UI Font 等）；
   保留硬件音频直通与 MPD 连接等动态探针；CDP 9222 遍历 6 大模块 groupBadgesCount 严格为 0（提交 b909301）。

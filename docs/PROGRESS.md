@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（界面整洁化持续推进：移除偏好设置分组卡片标题栏冗余状态与英文徽标 settings-group-badge；彻底清除机械齿轮/歌词/单曲列表行/卡片原生 HTML title 提示框；性能优化 P1 阶段完成）
-> 最新进展: 移除偏好设置分组卡片标题栏冗余徽标提示（提交 b909301）：彻底清除外观与窗口、字体排印、音频、频谱、MPD 与关于等 6 大模块共 14 处卡片顶栏右侧的 settings-group-badge（如无边框/wallpaper/Wallpaper/Sidebar/UI Font 等冗余英文或状态镜像）；保留硬件音频与 MPD 动态连接指示灯；CDP 9222 实机自动化验收全量通过，详见 §2.27 与 §4.33
+> 当前阶段: M2-2（界面整洁化持续推进：移除偏好设置一级总览副顶栏 settings-overview-toolbar 与二级导航分类徽标 settings-toolbar-badge；移除卡片顶栏冗余徽标 settings-group-badge；清除无意义 HTML title 悬浮框；性能优化 P1 阶段完成）
+> 最新进展: 移除偏好设置一级总览副顶栏与二级导航分类徽标（提交 04ef167）：彻底移除偏好设置一级总览顶部的 settings-overview-toolbar（包含“• 播放器偏好设置”与“实时热重载”），消除与抽屉原生大标题的冗余重复；彻底移除二级详情页导航栏右侧的 settings-toolbar-badge（与下方 Hero 大标题重复的分类徽标）；CDP 9222 实机自动化验收全量通过，详见 §2.28 与 §4.34
 
 ---
 
@@ -590,6 +590,27 @@
   - CDP 遍历 6 大设置模块：`外观与窗口`、`字体与字形`、`音频与过渡`、`蓝图频谱`、`MPD 服务`、`关于播放器` 的 `groupBadgesCount` 全部严格为 **0**；
   - 桌面 Electron 实例已热重载并同步至外观设置页供直接检视。
 
+### 2.28 偏好设置一级总览副顶栏与二级导航分类徽标彻底移除 (Settings Toolbar Declutter) - 2026-09-13 完成
+
+> **结论先行：抽屉标题唯一自明，彻底消除多层嵌套副标题与分类徽标复读。** 用户通过截图明确指出：偏好设置一级总览顶部的 `• 播放器偏好设置` + `实时热重载` 工具栏，以及二级详情页导航栏右上角的分类徽标（如 `外观与窗口`）属于无意义冗余元素。经整洁化施工，将一级总览中的 `.settings-overview-toolbar` 整段移除，并将二级详情导航中的 `.settings-toolbar-badge` 彻底清除。全量 CDP 实机验证 `hasOverviewToolbar=false`、`hasToolbarBadge=false`，界面上下呼吸感与整洁度达到极致。
+
+- **问题根因与排查**:
+  - 用户提供的两张 Klipper 截图分别明确圈出了：
+    1. 一级总览顶部的 `.settings-overview-toolbar`（左侧小绿点加粗文本 `• 播放器偏好设置` 与右侧绿色徽标 `实时热重载`）；
+    2. 二级详情页微画卷 Hero 头部导航条右侧的绿色分类徽标 `外观与窗口`；
+  - **冗余根因**: 悬浮抽屉原生顶栏已以 16px 粗体常驻显示 `偏好设置`，一级总览内部再放一条副顶栏纯属套娃复读；二级详情页中，导航栏下方 15px 处即为带有大图标与大字号的 Hero 标题（`外观与窗口`），右上角重复渲染分类徽标没有任何用户决策增益。
+- **清理范围 (SettingsDrawer.tsx)**:
+  1. 一级总览层：整段删除 `<div className="settings-overview-toolbar">...</div>`（含 `.settings-toolbar-title-area`、`.settings-toolbar-dot`、`.settings-toolbar-title` 与 `.settings-toolbar-badge`）；
+  2. 二级详情层：从 `.settings-hero-nav` 中彻底移除 `<span className="settings-toolbar-badge">{activeModuleMeta.title}</span>`，仅在排印设置下保留 `.settings-hero-nav-actions`（承载 `重置默认` 功能按钮）；
+  3. 保留 CSS 类名不动，杜绝样式重构风险。
+- **自动化实机验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 报错；
+  - `pnpm build`：成功构建产出（55 模块，JS 906.34 kB，CSS 166.56 kB）；
+  - CDP 实机探测：
+    - 一级总览页：`hasOverviewToolbar: false`、`hasToolbarTitle: false`、`hasToolbarBadge: false`、`categoryCardsCount: 6`；
+    - 二级详情页：全部 6 大模块的 `hasToolbarBadge` 均恒为 **false**；
+    - 字体排印模块的 `hasResetBtn: true` 与所有模块的 `hasBackBtn: true` 完好无损。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -640,6 +661,16 @@
 ```
 
 ---
+
+### 4.34 抽屉标题单一性与导航分类徽标的收敛纪律 (2026-09-13)
+
+1. **抽屉原生大标题与面板内副标题的冲突**:
+   - 悬浮抽屉在展开时顶部已有由 `SidebarCapsule` 统一渲染的 `subpanel-header`（带模块图标 + `偏好设置` 标题）；
+   - 子组件内部若自行再声明一条标题栏（如 `• 播放器偏好设置`），会导致界面纵向出现“标题-副标题-卡片”的三重嵌套堆叠，挤占高分屏与有限纵向视窗；
+   - 纪律：抽屉子面板顶层直接呈现内容卡片或真正具备交互行为的搜索框/工具条（如曲库搜索框、队列清空按键），严禁添加无任何控件的纯说明性副顶栏。
+2. **两级钻取导航栏与 Hero 标题的去重复读**:
+   - 在两级钻取画册流（Two-Tier Drill-Down）中，返回栏的作用是提供明确的返回动作（`‹ 全部设置`）与页面级动作（如 `重置默认`）；
+   - 当前分类名称由下方 Hero 标题（带专属矢量图标与强调字阶）权威呈现，严禁在导航栏右上角以徽标形式复读分类名。
 
 ### 4.33 卡片标题右侧冗余状态与英文徽标的整洁化清理 (2026-09-13)
 
