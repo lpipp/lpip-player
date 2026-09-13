@@ -301,12 +301,22 @@ export default function LyricsOrbit({
   previewStateRef.current.playing = isPlaying
   previewStateRef.current.timeoutMs = previewTimeoutMs
 
+  // 滚轮残量累加 (用于触控板微小行程平滑累积)
+  const wheelRemainderRef = useRef(0)
+  // 滚轮静止自动复位计时器 (停止滑动后自动清零残量, 杜绝历史动量积压)
+  const wheelResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // 清除预览态与超时计时 (确认跳转/超时回弹/取消事件共用)
   const clearPreview = useCallback(() => {
     if (previewTimerRef.current) {
       clearTimeout(previewTimerRef.current)
       previewTimerRef.current = null
     }
+    if (wheelResetTimerRef.current) {
+      clearTimeout(wheelResetTimerRef.current)
+      wheelResetTimerRef.current = null
+    }
+    wheelRemainderRef.current = 0
     setPreviewIndex(null)
   }, [])
 
@@ -344,6 +354,7 @@ export default function LyricsOrbit({
   useEffect(() => {
     return () => {
       if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
+      if (wheelResetTimerRef.current) clearTimeout(wheelResetTimerRef.current)
     }
   }, [])
 
@@ -516,28 +527,64 @@ export default function LyricsOrbit({
     [activeIndex, controlledIndex, onLineChange, lyrics, onSeek, clearPreview]
   )
 
-  // 滚轮残量累加 (触板 2~6px 步进逐次累积, 满 ±18 预算才步进一行, 拒绝小步进丢弃)
-  const wheelRemainderRef = useRef(0)
-
   // 滚轮交互: 只进入预览态 (轨道跟随预览行), 不触发 seek; 每次 tick 重置超时计时
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.stopPropagation()
-      if (lyrics.length === 0) return
-      // 触板 deltaMode=1 (行) 时折算为像素, 累积后按 ±18 预算步进 (单 tick 至多一行, 长抖动不跳行)
-      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 480 : 1
-      wheelRemainderRef.current += e.deltaY * unit
-      if (Math.abs(wheelRemainderRef.current) < 18) return
-      const dir = wheelRemainderRef.current > 0 ? 1 : -1
-      // 余量扣减 (保留超额行程, 连续滚动不丢距离; 单 tick 至多一行)
-      wheelRemainderRef.current -= dir * 18
-      // 基准钳位 (与 safeDisplayIndex 同逻辑, 越界 activeIndex 先收敛再加减 1)
+      if (lyrics.length === 0 || e.deltaY === 0) return
+
+      // 1. 明确当前物理滚轮事件的方向: deltaY > 0 为向下滚 (后一行), deltaY < 0 为向上滚 (前一行)
+      const eventDir = e.deltaY > 0 ? 1 : -1
+
+      // 2. 转向保护: 当滚轮反向时, 立即清空相反方向积压的残量, 彻底杜绝“反向仍沿旧方向走”或“债务偿还”Bug
+      if ((eventDir > 0 && wheelRemainderRef.current < 0) || (eventDir < 0 && wheelRemainderRef.current > 0)) {
+        wheelRemainderRef.current = 0
+      }
+
+      // 3. 节拍重置定时器: 停止滚动 150ms 后自动将累积残量归零
+      if (wheelResetTimerRef.current) {
+        clearTimeout(wheelResetTimerRef.current)
+      }
+      wheelResetTimerRef.current = setTimeout(() => {
+        wheelRemainderRef.current = 0
+        wheelResetTimerRef.current = null
+      }, 150)
+
+      // 4. 单位换算: 行模式 (deltaMode=1) 折算 24px, 页模式折算 240px, 像素模式 1:1
+      const STEP_THRESHOLD = 24
+      const unit = e.deltaMode === 1 ? STEP_THRESHOLD : e.deltaMode === 2 ? 240 : 1
+      const rawDelta = e.deltaY * unit
+
+      wheelRemainderRef.current += rawDelta
+
+      // 5. 判定是否达到步进预算
+      if (Math.abs(wheelRemainderRef.current) < STEP_THRESHOLD) return
+
+      // 6. 确定最终步进方向与残量处理
+      // 物理鼠标滚轮单刻度 (通常 |rawDelta| >= STEP_THRESHOLD, 如 100/120px): 一刻度走一行, 残量直接归零
+      // 触控板连续平滑微滑动: 扣减已消耗预算, 并钳位防止无限超额累加
+      if (Math.abs(rawDelta) >= STEP_THRESHOLD) {
+        wheelRemainderRef.current = 0
+      } else {
+        wheelRemainderRef.current -= eventDir * STEP_THRESHOLD
+        wheelRemainderRef.current = Math.max(-STEP_THRESHOLD, Math.min(STEP_THRESHOLD, wheelRemainderRef.current))
+      }
+
+      // 7. 基准钳位计算目标行
       const rawBase = previewStateRef.current.preview ?? activeIndex
       const base = Math.max(0, Math.min(rawBase, lyrics.length - 1))
-      const next = dir > 0
+      const next = eventDir > 0
         ? Math.min(base + 1, lyrics.length - 1)
         : Math.max(base - 1, 0)
-      if (next === base) return
+
+      // 8. 边界阻断与防穿透: 已到达最前或最后一行时, 立即清空残量并退出, 杜绝“撞墙积压动量”
+      if (next === base) {
+        wheelRemainderRef.current = 0
+        return
+      }
+
+      // 9. 同步更新 previewStateRef 与状态
+      previewStateRef.current.preview = next
       setPreviewIndex(next)
       armPreviewTimer()
     },
