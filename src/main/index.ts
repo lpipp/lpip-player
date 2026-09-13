@@ -218,6 +218,12 @@ let isRecreatingWindow = false
 // (如加载挂起), 强制释放保护标志, 避免后续切换被永久拒绝
 const RECREATE_SAFETY_TIMEOUT_MS = 8000
 
+/** 获取应用软件图标绝对路径 */
+function getAppIconPath(): string | undefined {
+  const iconPath = join(__dirname, '../../resources/icon.png')
+  return existsSync(iconPath) ? iconPath : undefined
+}
+
 /**
  * 根据沉浸式配置重建窗口
  * Electron 在 Linux/Wayland 下 frame (原生窗框/无边框) 为窗口创建时固定属性，
@@ -243,6 +249,7 @@ export function recreateWindow(oldWin: BrowserWindow, isImmersive: boolean): Bro
     frame: !isImmersive,
     backgroundColor: '#0a0a0f',
     title: 'lpip-player',
+    icon: getAppIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -318,6 +325,7 @@ function createWindow(): void {
     frame: !isImmersive,
     backgroundColor: '#0a0a0f',
     title: 'lpip-player',
+    icon: getAppIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
