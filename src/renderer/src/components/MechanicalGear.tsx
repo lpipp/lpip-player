@@ -209,7 +209,7 @@ function MechanicalGear({
       {/* ========================================================
           【1号齿轮】: 直径 500px，圆心距右边框 30px，垂直居中
           ======================================================== */}
-      <div className="gear-1-container" title="1号齿轮">
+      <div className="gear-1-container">
         <div className={`gear-1-rotator ${animated ? 'is-animated' : ''}`}>
           <svg
             className="mechanical-gear-svg"
@@ -435,7 +435,7 @@ function MechanicalGear({
       {/* ========================================================
           【2号齿轮】: 直径 180px，圆心距右边框 70px，位于1号齿轮上方 200px
           ======================================================== */}
-      <div className="gear-2-container" title="2号齿轮">
+      <div className="gear-2-container">
         <div className={`gear-2-rotator ${animated ? 'is-animated' : ''}`}>
           <svg
             className="mechanical-gear-svg"
@@ -553,7 +553,7 @@ function MechanicalGear({
       {/* ========================================================
           【3号齿轮】: 直径 200px，圆心距右边框 0px，位于1号齿轮下方 280px
           ======================================================== */}
-      <div className="gear-3-container" title="3号齿轮">
+      <div className="gear-3-container">
         <div className={`gear-3-rotator ${animated ? 'is-animated' : ''}`}>
           <svg
             className="mechanical-gear-svg"
@@ -691,7 +691,7 @@ function MechanicalGear({
           【飞轮 (摆轮)】: 直径 250px，圆心与3号齿轮水平 (top: calc(50% + 280px))，
           向左累计偏移 70px (圆心距右边框 170px)，往复谐波摆动模式
           ======================================================== */}
-      <div className="flywheel-container" title="机械表摆轮飞轮">
+      <div className="flywheel-container">
         <div className={`flywheel-rotator ${animated ? 'is-animated' : ''}`}>
           <svg
             className="mechanical-gear-svg"

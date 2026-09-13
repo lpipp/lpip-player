@@ -370,7 +370,7 @@ function SidebarCapsule({
       {/* 左侧固定图标导轨 (收起时即整只胶囊, 展开时作为左侧快速切换栏) */}
       <div className="capsule-rail">
         {/* 顶部微光呼吸指示点 */}
-        <div className="capsule-rail-top" title="lpip 播放器">
+        <div className="capsule-rail-top">
           <span className="capsule-status-dot" />
         </div>
 

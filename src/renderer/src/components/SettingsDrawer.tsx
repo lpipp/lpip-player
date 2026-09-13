@@ -919,7 +919,6 @@ export default function SettingsDrawer() {
                 type="button"
                 className="settings-category-card"
                 onClick={() => setSelectedModuleId(item.id)}
-                title={`点击进入【${item.title}】设置`}
               >
                 <div className="settings-card-icon-box">{item.icon}</div>
                 <div className="settings-card-content">

@@ -322,7 +322,7 @@ export default function StatusBar({
   return (
     <footer className="status-bar" aria-label="底部状态栏">
       {/* 封面框: 位于悬浮胶囊正下方，56px × 56px 圆角正方形 */}
-      <div className="status-bar-cover" title={currentSong ? `${currentSong.title} - ${currentSong.artist}` : '专辑封面'}>
+      <div className="status-bar-cover">
         {coverUrl && !imgError ? (
           <img
             src={coverUrl}

@@ -403,7 +403,6 @@ export default function MusicLibraryList({
                   key={song.id}
                   className={`music-track-item ${isCurrent ? 'active' : ''}`}
                   onClick={() => handleSongClick(song)}
-                  title={`点击播放: ${song.title} - ${song.artist}`}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {

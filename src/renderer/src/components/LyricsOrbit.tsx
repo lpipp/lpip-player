@@ -808,7 +808,6 @@ export default function LyricsOrbit({
                 '--item-distance': distance
               } as React.CSSProperties}
               onClick={() => handleDirectJump(index)}
-              title={`点击跳转至第 ${index + 1} 行歌词`}
             >
               {/* 主歌词行 (大号衬线字体，优雅古典) */}
               <div className="lyric-primary">{line.primary}</div>

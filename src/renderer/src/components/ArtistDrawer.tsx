@@ -494,7 +494,6 @@ export default function ArtistDrawer({
                           setSelectedArtist(group)
                         }
                       }}
-                      title={`查看 ${group.artist} 的 ${group.songs.length} 首歌曲`}
                     >
                       {/* 圆形头像 (44px) */}
                       <div className="artist-avatar-wrapper">
@@ -641,7 +640,6 @@ export default function ArtistDrawer({
                         handlePlaySong(song)
                       }
                     }}
-                    title={`点击播放: ${song.title} - ${song.artist}`}
                   >
                     {/* 序号 */}
                     <span className="artist-song-index">

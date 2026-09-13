@@ -888,7 +888,6 @@ export default function PlaylistDrawer({
                           handleSelectPlaylist(pl)
                         }
                       }}
-                      title={`进入歌单【${pl.name}】(${pl.songCount} 首曲目)`}
                     >
                       {/* 封面画册缩略图 (44px 方形微棱) */}
                       <div className="playlist-cover-wrapper">
@@ -1264,7 +1263,6 @@ export default function PlaylistDrawer({
                           handlePlaySong(song)
                         }
                       }}
-                      title={`点击播放: ${song.title} - ${song.artist}`}
                     >
                       {/* 序号 */}
                       <span className="playlist-song-index">

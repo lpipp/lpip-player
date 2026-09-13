@@ -530,7 +530,6 @@ export default function QueueDrawer({
                   onDragLeave={handleDragLeave}
                   onDragEnd={handleDragEnd}
                   onDrop={(e) => handleDrop(e, index)}
-                  title={`点击播放: ${song.title} - ${song.artist}`}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
