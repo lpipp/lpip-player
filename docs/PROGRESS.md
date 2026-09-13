@@ -2,7 +2,7 @@
 
 > 更新时间: 2026-09-13
 > 当前阶段: M2-2（界面交互与操控体验深度优化：当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后；背景漂浮几何多面体晶体彻底清除；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
-> 最新进展: 将音频频谱律动组件迁移内嵌至状态栏右侧留白插槽（提交 af10905）：根据用户指令与 ask_question 确认，将原本定位于状态栏上方绝对悬浮的音频频谱蓝图工程律动层（SpectrumVisualizer）迁移内嵌至状态栏内部；在 StatusBar.tsx 尾部挂载 .status-bar-spectrum-slot（flex: 1 1 auto, height: 100%, overflow: hidden, pointer-events: none），将频谱画布紧凑约束在状态栏右侧 686px 纯净留白区域（left: 462px ~ 1148px, bottom: 812px），波形高度自适应钳位至 80px 状态栏网格；左侧操作集群保持绝对纯粹且零遮挡，详见 §2.39 与 §4.45。
+> 最新进展: 设计并落地 lpip-player 官方软件图标资产并打通全端集成（提交 961fb6a）：根据用户指令绘制两套软件图标提案，经 ask_question 对齐采纳【方案 B：极简液态玻璃播放棱镜 × 表盘同心光环】（透光折射播放三角 + 翡翠绿同心声浪光环 + 腕表 12 小时刻度）；通过精工级透明通道遮罩提取 Squircle 超椭圆平滑轮廓，在 resources/ 目录下构建 1024/512/256/128/64/48/32/16 全阶 PNG 与 Windows multi-size ICO 资产集；注入 Electron 主进程 BrowserWindow (icon) 及前端渲染层 public/ 与 index.html (link rel="icon")，CDP 抓轨重载实测验证全绿，详见 §2.40 与 §4.46。
 
 ---
 
@@ -921,6 +921,26 @@
     - `spectrum-visualizer-container`: `left: 462px, right: 1148px, top: 752px, bottom: 812px, width: 686px, height: 60px`（底部与底栏下边缘严丝合缝）；
     - 事件穿透检验：`slot.pointerEvents = 'none'`, `viz.pointerEvents = 'none'`, `canvas.pointerEvents = 'none'` 全绿，播控按钮交互零阻碍。
 
+### 2.40 官方软件图标设计与跨平台全阶应用资产工程落地 (Official Application Icon Design & Multi-Platform Assets) - 2026-09-13 完成
+
+> **结论先行：定制高级制表与液态玻璃美学图标，全阶尺寸构建，打通原生窗口与 Web 渲染容器。** 针对用户“绘制一个软件图标”指令，基于项目“黑曜石舞台 × 液态玻璃 × 高级制表机芯 × 翡翠绿声浪”视觉基因生成两套高精度图标方案（方案 A：星盘陀飞轮机芯 × 声浪黑胶唱片；方案 B：极简液态玻璃播放棱镜 × 表盘同心光环）。经 `ask_question` 对齐，用户确认采纳**方案 B**。施工团队进一步生成纯净资产母版，依托超椭圆连续边缘检测算法与透明度羽化抗锯齿，在 `resources/` 生成 16px 至 1024px 全规格 PNG 及 Windows 多分辨率 `.ico` 资产包；在 Electron 主进程 `BrowserWindow` 中配置原生窗口图标，在 `src/renderer/public` 与 `index.html` 中挂载应用级 favicon 与 apple-touch-icon；实机 CDP 抓轨验证资源链接加载无误。
+
+- **图标设计与艺术提案 (`app_icon_proposals.md`)**:
+  - 核心意象：中央高折射率液态玻璃播放三角棱镜、外围霓虹翡翠绿同心声浪律动光环、精密腕表 12 小时（12/3/6/9）刻度与圆润黑曜石 Squircle 边框；
+  - 既传承了古典制表与黑胶唱片的同心旋转美学，又在小尺寸（16px~64px）下具备极高的几何剪影辨识度。
+- **资产工程构建 (`resources/` & `src/renderer/public/`)**:
+  - 母版提纯与透明通道合成：通过边缘种子泛洪与动态色度隔离剔除外部背景，保留圆角玻璃倒角与高光漫射；
+  - 全尺寸产出：构建 `resources/icon-1024.png`、`resources/icon-512.png`、`resources/icon-256.png`、`resources/icon-128.png`、`resources/icon-64.png`、`resources/icon-48.png`、`resources/icon-32.png`、`resources/icon-16.png`；
+  - 标准图标：根目录 `resources/icon.png` (512x512) 与 `resources/icon.ico`（内嵌 256/128/64/48/32/16 多分辨率）；
+  - Web/渲染端资源：同步部署至 `src/renderer/public/icon.png` 与 `favicon.ico`。
+- **应用链路集成 (`src/main/index.ts` & `src/renderer/index.html`)**:
+  - `src/main/index.ts`: 新增 `getAppIconPath()` 模块，在 `createWindow` 与 `recreateWindow` 中注入 `icon: getAppIconPath()`，确保原生窗框模式与 Linux Wayland/X11 任务栏、窗口管理器以及 Alt+Tab 切换卡片正确加载软件图标；
+  - `src/renderer/index.html`: 头部配置 `<link rel="icon" type="image/png" href="/icon.png" />` 与 `<link rel="apple-touch-icon" href="/icon.png" />`。
+- **实机自动化验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 错误通过；
+  - `pnpm build`：成功构建，静态资源与 chunks 完整无缺；
+  - CDP 9222 真实运行时采样：`Page.reload` 后 `document.querySelector("link[rel='icon']").href` 严格解析为 `file:///.../out/renderer/icon.png`。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 
@@ -973,6 +993,22 @@
 ```
 
 ---
+
+### 4.46 应用软件图标设计与全阶跨平台工程集成纪律：核心语义聚焦 × 小尺寸辨识度 × 全栈资源闭环 (2026-09-13)
+
+在为播放器定制官方应用图标与打通全链路集成中沉淀的工程纪律：
+
+1. **核心语义聚焦与小尺寸辨识度（Scalability & Silhouette Rule）**:
+   - 许多华丽的 3D 渲染图在 1024px 下非常震撼，但一旦缩放到系统 Dock、任务栏托盘或文件管理器（16px / 32px / 48px），过多的细小齿轮或文字会瞬间沦为模糊的视觉噪点；
+   - 纪律：优秀的桌面应用图标必须兼顾“大尺寸下的材质质感”与“微小尺寸下的几何轮廓”；中心清晰的三角播放棱镜与同心同轴声浪光环，赋予了图标在极小尺寸下依然一眼即知的特征辨识度。
+2. **纯净资产与透明通道遮罩工程（Clean Alpha & Squircle Edge Isolation）**:
+   - AI 生成的图标常常伴随微弱的桌面背景或底色渐变，绝不能直接作为透明图层的应用图标使用；
+   - 纪律：必须通过边缘追踪与背景剔除提取精确的 Squircle（超椭圆）边缘，并在外围建立干净平滑的 Alpha 遮罩；绝不把未经提纯的矩形黑框图片直接当作 App Icon。
+3. **主进程窗口与 Web 渲染容器的双重配置闭环**:
+   - 在 Electron 生态中，应用图标存在两个独立的消费端：
+     1. OS 宿主端（任务栏、窗口标题栏、Dock、窗口切换器）：依赖 `BrowserWindow({ icon })`；
+     2. Web 渲染端（DevTools 标签、页面 favicon、缓存清单）：依赖 `index.html` 的 `<link rel="icon">`；
+   - 纪律：添加图标资产时，必须同时在主进程与前端 HTML/public 中完成双重注册，避免出现“任务栏有图标但窗口网页无图标”或反向缺失的半成品状态。
 
 ### 4.45 动态频谱可视化容器从全局绝对浮动向组件化槽位收敛工程纪律：组件内聚性 × 弹性留白插槽 × 标尺基准防截断钳位 (2026-09-13)
 

@@ -24,6 +24,11 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 官方软件图标设计与全尺寸跨平台资产工程落地 (2026-09-13):
+  根据用户指令绘制软件图标提案，经 ask_question 对齐采纳【方案 B：极简液态玻璃播放棱镜 × 表盘同心光环】；
+  在 resources/ 目录下构建 16px 至 1024px 全规格透明 PNG 与 Windows 多分辨率 .ico 资产集；
+  注入 Electron 主进程 BrowserWindow (icon) 及前端渲染层 public/ 与 index.html (link rel="icon")；
+  CDP 9222 抓轨实测重载验证资源加载全绿（提交 961fb6a）。
 - [已完备] 将音频频谱律动组件迁移内嵌至状态栏右侧留白插槽 (2026-09-13):
   根据用户指令与 ask_question 确认，将原本定位于状态栏上方悬浮的音频频谱蓝图律动层（SpectrumVisualizer）迁移内嵌至状态栏内部；
   在 StatusBar.tsx 尾部挂载 .status-bar-spectrum-slot（flex: 1 1 auto, height: 100%, overflow: hidden, pointer-events: none）；
