@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（界面整洁化持续推进：将艺人数量、各类滑动条数值与统计播放次数等非交互读数去除外部边框改为纯文字；移除偏好设置一级副顶栏与二级分类徽标；移除卡片顶栏冗余徽标；清除无意义 HTML title 悬浮框；性能优化 P1 阶段完成）
-> 最新进展: 非交互读数去框转纯文字（提交 e009ee9）：彻底去除艺人分类抽屉艺人总数（.artist-count-badge）、歌单总数（.playlist-count-badge）、各类滑条数值读数（.liquid-slider-value）与统计信息播放次数（.stats-count-badge）等非交互性元素的外部图形边框与背景填充，转为轻量通透的纯文本呈现；保持 tabular-nums 等宽防抖特性；CDP 9222 实机自动化验收全量通过，详见 §2.29 与 §4.35
+> 当前阶段: M2-2（界面整洁化持续推进：彻底移除底部状态栏音量调节控件与业务逻辑；将艺人数量、各类滑动条数值与统计播放次数等非交互读数去除外部边框改为纯文字；移除偏好设置一级副顶栏与二级分类徽标；移除卡片顶栏冗余徽标；清除无意义 HTML title 悬浮框；性能优化 P1 阶段完成）
+> 最新进展: 彻底移除底部状态栏音量调节控件与业务逻辑（提交 687920c）：完全移除 StatusBar 右侧扩展区的静音按键（VolumeMuteIcon/VolumeLowIcon/VolumeHighIcon）与 72px 紧凑液态音量滑动条；完全清理 App.tsx 中 volume/isMuted 状态、isVolDraggingRef 节流防抖机制与 MPD setvol 同步；pcmPlayer 始终保持 1.0 (unity gain) 零衰减音频硬件直通；CDP 9222 实机扫描 volumeBlock=false、volumeBtn=false、volumeSlider=false 零残留，详见 §2.30 与 §4.36
 
 ---
 
@@ -634,6 +634,36 @@
     - `statsBadge`: text `"8 次"`, `borderTopWidth: "0px"`, `borderStyle: "none"`, `backgroundColor: "rgba(0, 0, 0, 0)"`, `fontVariantNumeric: "tabular-nums"`;
   - 桌面应用窗口持续保留在桌面上，呈现整洁通透的艺人抽屉界面供用户核验。
 
+### 2.30 底部状态栏音量调节功能与 UI 彻底移除 (Volume Control & UI Removal) - 2026-09-13 完成
+
+> **结论先行：剥离软件层重复音量控制，权利完全交还系统全局音频架构。** 用户明确要求“删除音量调节的功能和ui”。在现代 Linux/KDE Plasma 桌面环境（PipeWire/ALSA/WirePlumber）下，全局硬件音量快捷键、多媒体旋钮与系统托盘已提供权威的音量调控通道；且播放器底层 Model B / 方案 C 的 WebAudio 直驱架构追求最高保真度的原音透传（Bit-Perfect Passthrough），过多的播放器软件级音量调节容易引入不必要的数字衰减与界面杂质。施工团队将底部状态栏右侧的音量控制组与前端全链路音量业务逻辑彻底剥离，右侧扩展区仅保留歌曲元数据与播放模式切换，视觉极度空灵通透。
+
+- **清理范围与代码重构**:
+  1. **状态栏组件 (`StatusBar.tsx`)**:
+     - 彻底删除 `VolumeMuteIcon`、`VolumeLowIcon`、`VolumeHighIcon` 三组 SVG 矢量图标组件；
+     - 属性定义 `StatusBarProps` 与函数参数中彻底剔除 `volume`、`isMuted`、`onVolumeChange`、`onMuteToggle` 四项属性；
+     - 清除 `isVolDragging`、`dragVolPercent`、`volThrottleRef`、`pendingVolRef`、`volTrackRef` 等全部滑动拖拽、16ms 节流与卸载清理定时器；
+     - 清除 `calcVolPercentFromEvent` 与 `handleVolMouseDown` 事件处理函数；
+     - JSX 结构中彻底删除 `.status-bar-volume-block`（含 `.status-bar-btn-volume` 与 `.status-bar-volume-slider` 轨道、滑块与填充层）。
+  2. **样式重构 (`StatusBar.css`)**:
+     - 右侧扩展区标题注释更新为 `(Track Meta + Mode Toggle)`；
+     - 剥离 `.status-bar-btn-volume` 相关规则，`.status-bar-btn-mode` 独立维持 34px × 34px 规整几何网格；
+     - 彻底删除 `.status-bar-volume-block`、`.status-bar-volume-slider`、`.status-bar-volume-rail`、`.status-bar-volume-fill`、`.status-bar-volume-thumb` 及其 hover、dragging 与浅色主题适配规则（净减少 100+ 行 CSS）。
+  3. **应用根组件与业务逻辑 (`App.tsx`)**:
+     - 彻底删除 `volume` 与 `isMuted` 本地状态，删除 `isVolDraggingRef` 引用防抖守卫；
+     - `syncFromMpdStatus` 中清除对 `status.volume` 的检测、同步与 `pcmPlayer.setVolume(...)` 冗余触发；
+     - 彻底删除 `handleVolumeChange`（包含 MPD `setvol` IPC 调用）与 `handleMuteToggle` 回调；
+     - 状态栏调用处移除 `volume`、`isMuted`、`onVolumeChange`、`onMuteToggle` 传递；
+     - `pcmPlayer` 全局常驻保持默认的 `currentVolume = 1.0`（unity gain 零数字衰减原生输出）。
+- **实机自动化验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 错误；
+  - `pnpm build`：成功构建；
+  - CDP 实机探测：
+    - `volumeBlock: false`、`volumeBtn: false`、`volumeSlider: false`、`volumeRail: false`、`volumeFill: false`、`volumeThumb: false`；
+    - `modeBtn: true`、`metaBlock: true`；
+    - 右侧扩展区子节点数量从 3 缩减为 **2**（`status-bar-meta-block` 与 `status-bar-btn-mode`）；
+  - 桌面应用实机截图确认：底栏右侧空间大幅释放，与居中进度条、左侧封面播放组形成极佳的视觉留白与平衡。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -684,6 +714,19 @@
 ```
 
 ---
+
+### 4.36 桌面端系统级全局音量权责与播放器音量控件断舍离纪律 (2026-09-13)
+
+1. **操作系统全局音频与播放器软件音量的权责冲突**:
+   - 在现代桌面环境（尤其是 Linux/KDE Plasma 结合 PipeWire/ALSA）中，用户早已习惯使用键盘多媒体键、鼠标滚轮、外置 DAC 硬件物理旋钮或系统托盘托底控制全局音量；
+   - 播放器内置的软件音量往往会引发双重缩放混乱（例如“系统开 100% 播放器开 30%”导致的信噪比与动态范围损失）；
+   - 纪律：当用户明确要求剥离播放器端音量调节时，果断断舍离，不强求播放器层面的多余冗余控件。
+2. **WebAudio 直通与零数字衰减原生输出 (Unity Gain)**:
+   - 剥离播放器音量控制后，`pcmPlayer` 内部 `currentVolume` 锁定恒定为 `1.0`（0 dB 无损增益）；
+   - 使得 MPD 解码的 16bit 44.1k/48k WAV PCM 数据通过 WebAudio 直送到硬件输出，彻底杜绝软件浮点运算乘法带来的舍入误差或动态压缩，实现最高纯净度的音频原声输出。
+3. **底栏视觉平衡与右侧留白美学**:
+   - 状态栏总高度固定 80px，居中为进度条与两端时间；
+   - 移除音量滑动条与静音按钮后，右侧仅保留曲目元数据与 34px 圆角矩形播放模式键，彻底消除了右侧由于滑条宽度（72px）与间距产生的局部拥挤感，令整条状态栏的呼吸感与轻盈质感大幅提升。
 
 ### 4.35 非交互读数去框转纯文字三纪律：去框留文 × 等宽防抖 × 兼容保类 (2026-09-13)
 

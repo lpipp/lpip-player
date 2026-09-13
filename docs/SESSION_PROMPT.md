@@ -24,6 +24,10 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 彻底删除底部状态栏音量调节控件与业务逻辑 (2026-09-13):
+  完全移除 StatusBar 右侧扩展区的静音按键（VolumeMuteIcon/VolumeLowIcon/VolumeHighIcon）与 72px 紧凑液态音量滑动条；
+  清理 App.tsx 中 volume/isMuted 状态、isVolDraggingRef 节流防抖机制与 MPD setvol 同步；pcmPlayer 始终保持 1.0 (unity gain) 零衰减音频硬件直通；
+  CDP 9222 实机扫描 volumeBlock=false、volumeBtn=false、volumeSlider=false 零残留，右侧子元素减至 2 项（提交 687920c）。
 - [已完备] 非交互读数去除图形框转纯文字 (2026-09-13):
   将艺人分类抽屉艺人总数（.artist-count-badge）、歌单总数（.playlist-count-badge）、各类滑条数值读数（.liquid-slider-value）与统计信息播放次数（.stats-count-badge）等非交互性元素剥离外部背景与边框，转为轻量通透纯文字；
   严格保留 font-variant-numeric: tabular-nums 等宽防抖特性，零布局重排；CDP 9222 实机探测 computed border=0、background=rgba(0,0,0,0) 全绿（提交 e009ee9）。
