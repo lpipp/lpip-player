@@ -56,8 +56,6 @@ export default function App() {
   const [currentSong, setCurrentSong] = useState<MpdSong | null>(null)
   const [lyrics, setLyrics] = useState<LyricLine[] | null>(null)
   const [mode, setMode] = useState<PlaybackMode>('sequence')
-  const [volume, setVolume] = useState(100)
-  const [isMuted, setIsMuted] = useState(false)
   const [visualizerConfig, setVisualizerConfig] = useState<VisualizerConfig>(DEFAULT_VISUALIZER_CONFIG)
   // 歌词滚轮预览确认超时 (毫秒, 默认 1500, 经 audio.lyricPreview 热更新)
   const [lyricPreviewTimeoutMs, setLyricPreviewTimeoutMs] = useState(1500)
@@ -70,7 +68,6 @@ export default function App() {
   const isSeekingRef = useRef(false)
   // 寻道锁定时器 (连击寻道时先清旧定时, 避免第一次的 800ms 回调提前解锁第二次寻道)
   const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isVolDraggingRef = useRef(false)
   // PCM 音频流基地址 (跟随配置 mpd.host/streamPort, 默认与 DEFAULT_MPD_CONFIG 一致)
   const streamUrlRef = useRef<string>(buildStreamUrl(DEFAULT_MPD_CONFIG.host, DEFAULT_MPD_CONFIG.streamPort))
 
@@ -129,11 +126,6 @@ export default function App() {
 
     if (status.mode) {
       setMode(status.mode)
-    }
-
-    if (!isVolDraggingRef.current && typeof status.volume === 'number' && status.volume >= 0) {
-      setVolume(status.volume)
-      pcmPlayer.setVolume(status.volume / 100)
     }
 
     const isPlay = status.state === 'play'
@@ -336,34 +328,7 @@ export default function App() {
     }
   }
 
-  // 调节音量 (0 ~ 100)
-  const handleVolumeChange = (vol: number): void => {
-    isVolDraggingRef.current = true
-    const clamped = Math.max(0, Math.min(100, Math.round(vol)))
-    setVolume(clamped)
 
-    if (isMuted && clamped > 0) {
-      setIsMuted(false)
-      pcmPlayer.setMuted(false)
-    }
-
-    pcmPlayer.setVolume(clamped / 100)
-
-    if (window.electronAPI?.mpd) {
-      window.electronAPI.mpd.setVolume(clamped)
-    }
-
-    setTimeout(() => {
-      isVolDraggingRef.current = false
-    }, 500)
-  }
-
-  // 切换静音
-  const handleMuteToggle = (): void => {
-    const nextMuted = !isMuted
-    setIsMuted(nextMuted)
-    pcmPlayer.setMuted(nextMuted)
-  }
 
   // 处理曲库与队列单曲选择与播放 (useCallback 保持引用恒定, 阻断 SidebarCapsule 及其长列表重渲染)
   const handlePlaySong = useCallback(async (song: MpdSong): Promise<void> => {
@@ -495,15 +460,11 @@ export default function App() {
         duration={duration}
         currentSong={currentSong}
         mode={mode}
-        volume={volume}
-        isMuted={isMuted}
         onPrev={handlePrev}
         onPlayPause={handlePlayPause}
         onNext={handleNext}
         onSeek={handleSeek}
         onModeToggle={handleModeToggle}
-        onVolumeChange={handleVolumeChange}
-        onMuteToggle={handleMuteToggle}
       />
     </div>
   )

@@ -60,35 +60,6 @@ function ModeSingleIcon() {
   )
 }
 
-function VolumeMuteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fillOpacity="0.2" />
-      <line x1="23" y1="9" x2="17" y2="15" />
-      <line x1="17" y1="9" x2="23" y2="15" />
-    </svg>
-  )
-}
-
-function VolumeLowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fillOpacity="0.2" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-    </svg>
-  )
-}
-
-function VolumeHighIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fillOpacity="0.2" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  )
-}
-
 /**
  * 底部状态栏组件属性定义
  */
@@ -105,10 +76,6 @@ export interface StatusBarProps {
   currentSong?: MpdSong | null
   /** 当前播放模式 */
   mode?: PlaybackMode
-  /** 当前音量 (0 ~ 100) */
-  volume?: number
-  /** 是否静音 */
-  isMuted?: boolean
   /** 上一曲点击回调 */
   onPrev?: () => void
   /** 播放/暂停点击回调 */
@@ -119,10 +86,6 @@ export interface StatusBarProps {
   onSeek?: (timeSeconds: number) => void
   /** 播放模式切换回调 */
   onModeToggle?: () => void
-  /** 音量调节回调 (0 ~ 100) */
-  onVolumeChange?: (volume: number) => void
-  /** 静音切换回调 */
-  onMuteToggle?: () => void
 }
 
 /**
@@ -135,15 +98,11 @@ export default function StatusBar({
   duration: controlledDuration,
   currentSong,
   mode = 'sequence',
-  volume = 100,
-  isMuted = false,
   onPrev,
   onPlayPause,
   onNext,
   onSeek,
-  onModeToggle,
-  onVolumeChange,
-  onMuteToggle
+  onModeToggle
 }: StatusBarProps) {
   const [imgError, setImgError] = useState(false)
 
@@ -157,22 +116,7 @@ export default function StatusBar({
   const [isDragging, setIsDragging] = useState(false)
   const [dragPercent, setDragPercent] = useState(0)
 
-  // 音量滑动拖拽状态
-  const [isVolDragging, setIsVolDragging] = useState(false)
-  const [dragVolPercent, setDragVolPercent] = useState(volume / 100)
-  // 音量节流句柄 (move 只刷本地 thumb, 16ms 节流后才推 onVolumeChange; mouseup 保底终值)
-  const volThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingVolRef = useRef<number | null>(null)
-
-  // 组件卸载时清理音量节流定时器
-  useEffect(() => {
-    return () => {
-      if (volThrottleRef.current) clearTimeout(volThrottleRef.current)
-    }
-  }, [])
-
   const trackRef = useRef<HTMLDivElement>(null)
-  const volTrackRef = useRef<HTMLDivElement>(null)
 
   const isPlaying = controlledIsPlaying !== undefined ? controlledIsPlaying : localIsPlaying
   const rawDuration = controlledDuration !== undefined ? controlledDuration : 248
@@ -188,13 +132,6 @@ export default function StatusBar({
 
   // 进度百分比 (0 ~ 100)
   const effectivePercent = duration > 0 ? Math.min(100, Math.max(0, (currentSeconds / safeDuration) * 100)) : 0
-
-  // 音量有效百分比 (0 ~ 100)
-  const effectiveVolPercent = isMuted
-    ? 0
-    : isVolDragging
-      ? Math.round(dragVolPercent * 100)
-      : volume
 
   // 播放中且未受控时，开启 1 秒自增定时器
   useEffect(() => {
@@ -256,60 +193,7 @@ export default function StatusBar({
     window.addEventListener('mouseup', handleMouseUp)
   }
 
-  // 计算音量滑轨百分比 (0 ~ 1)
-  const calcVolPercentFromEvent = useCallback((e: MouseEvent | React.MouseEvent): number => {
-    if (!volTrackRef.current) return 0
-    const rect = volTrackRef.current.getBoundingClientRect()
-    if (rect.width <= 0) return 0
-    const offsetX = e.clientX - rect.left
-    return Math.max(0, Math.min(1, offsetX / rect.width))
-  }, [])
 
-  // 音量滑块按下与拖拽 (move 只刷本地 thumb, 16ms 节流推 MPD, mouseup 保底终值不断流)
-  const handleVolMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return
-    e.preventDefault()
-
-    const initialP = calcVolPercentFromEvent(e)
-    setIsVolDragging(true)
-    setDragVolPercent(initialP)
-    onVolumeChange?.(Math.round(initialP * 100))
-
-    const flushPendingVol = (): void => {
-      volThrottleRef.current = null
-      if (pendingVolRef.current === null) return
-      const p = pendingVolRef.current
-      pendingVolRef.current = null
-      onVolumeChange?.(Math.round(p * 100))
-    }
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const p = calcVolPercentFromEvent(moveEvent)
-      setDragVolPercent(p)
-      // 节流: 首次 move 立刻排一次 16ms, 窗口内后续 move 只更新 pending, 不堆定时器
-      pendingVolRef.current = p
-      if (!volThrottleRef.current) {
-        volThrottleRef.current = setTimeout(flushPendingVol, 16)
-      }
-    }
-
-    const handleMouseUp = (upEvent: MouseEvent) => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-      setIsVolDragging(false)
-      if (volThrottleRef.current) {
-        clearTimeout(volThrottleRef.current)
-        volThrottleRef.current = null
-      }
-      pendingVolRef.current = null
-      const finalP = calcVolPercentFromEvent(upEvent)
-      setDragVolPercent(finalP)
-      onVolumeChange?.(Math.round(finalP * 100))
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-  }
 
   // 模式文本说明
   const modeTitle =
@@ -493,48 +377,6 @@ export default function StatusBar({
             <ModeSequenceIcon />
           )}
         </button>
-
-        {/* 音量控制组 (静音按键 + 液态滑动条) */}
-        <div className="status-bar-volume-block" aria-label="音量调节">
-          <button
-            type="button"
-            className="status-bar-btn status-bar-btn-volume"
-            title={isMuted || effectiveVolPercent === 0 ? '解除静音' : '静音'}
-            aria-label={isMuted || effectiveVolPercent === 0 ? '解除静音' : '静音'}
-            onClick={onMuteToggle}
-          >
-            {isMuted || effectiveVolPercent === 0 ? (
-              <VolumeMuteIcon />
-            ) : effectiveVolPercent < 50 ? (
-              <VolumeLowIcon />
-            ) : (
-              <VolumeHighIcon />
-            )}
-          </button>
-
-          <div
-            ref={volTrackRef}
-            className={`status-bar-volume-slider ${isVolDragging ? 'is-dragging' : ''}`}
-            onMouseDown={handleVolMouseDown}
-            role="slider"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={effectiveVolPercent}
-            aria-label={`音量 ${effectiveVolPercent}%`}
-            tabIndex={0}
-          >
-            <div className="status-bar-volume-rail">
-              <div
-                className="status-bar-volume-fill"
-                style={{ width: `${effectiveVolPercent}%` }}
-              />
-              <div
-                className="status-bar-volume-thumb"
-                style={{ left: `${effectiveVolPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </footer>
   )
