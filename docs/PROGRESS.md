@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（界面整洁化持续推进：彻底移除底部状态栏音量调节控件与业务逻辑；将艺人数量、各类滑动条数值与统计播放次数等非交互读数去除外部边框改为纯文字；移除偏好设置一级副顶栏与二级分类徽标；移除卡片顶栏冗余徽标；清除无意义 HTML title 悬浮框；性能优化 P1 阶段完成）
-> 最新进展: 彻底移除底部状态栏音量调节控件与业务逻辑（提交 687920c）：完全移除 StatusBar 右侧扩展区的静音按键（VolumeMuteIcon/VolumeLowIcon/VolumeHighIcon）与 72px 紧凑液态音量滑动条；完全清理 App.tsx 中 volume/isMuted 状态、isVolDraggingRef 节流防抖机制与 MPD setvol 同步；pcmPlayer 始终保持 1.0 (unity gain) 零衰减音频硬件直通；CDP 9222 实机扫描 volumeBlock=false、volumeBtn=false、volumeSlider=false 零残留，详见 §2.30 与 §4.36
+> 当前阶段: M2-2（左侧星盘齿轮机芯与歌词轨道合并为统一同心模块，支持在偏好设置中实时调节 X 轴与 Y 轴位置并以左侧边框为水平基准；底部状态栏音量调节控件与业务逻辑彻底移除；界面各类非交互数值去除背景边框改为纯文字；性能优化 P1 完成）
+> 最新进展: 左侧齿轮机芯与歌词轨道统一模块化与 XY 轴设置调节（提交 33160c0）：将左侧星盘机芯齿轮与歌词轨道轮盘合并至统一容器 .astrolabe-module-container，旋转中心绝对锁定在 (cx=0, cy=320)，无论窗口如何变动或 X/Y 轴如何调节，齿轮与歌词保持 100% 同轴共心共步进；X 轴以左侧边框为基准（--astrolabe-x: 0px），Y 轴以垂直中轴线为基准（--astrolabe-y: 0px）；在设置抽屉的「外观与窗口」以及「字体与排印」两大板块中增加滑动调节条（X: -300~600px，Y: -300~300px）与恢复默认基准按钮，支持 60fps 即时响应与防抖持久化；CDP 9222 实机动态偏移 (+60, +30) 与重置验证全量通过，详见 §2.31 与 §4.37。
 
 ---
 
@@ -664,6 +664,41 @@
     - 右侧扩展区子节点数量从 3 缩减为 **2**（`status-bar-meta-block` 与 `status-bar-btn-mode`）；
   - 桌面应用实机截图确认：底栏右侧空间大幅释放，与居中进度条、左侧封面播放组形成极佳的视觉留白与平衡。
 
+### 2.31 左侧星盘机芯齿轮与歌词轨道统一同心模块化与 XY 轴设置调节 - 2026-09-13 完成
+
+> **结论先行：左侧机械齿轮与极坐标歌词绝对同心绑定，以左侧边框为基准提供高帧率自由微调。** 用户提出“将左侧齿轮与歌词视为一个模块，并可以在设置中调节x轴和y轴，并将左侧边框视为基准，注意歌词需要与齿轮同圆心”。工程团队将分立的左侧 60 齿天文钟机芯与极坐标歌词轨道统一封装至 `.astrolabe-module-container` 刚性容器内，旋转中心与圆心绝对锁死在 `(cx=0, cy=320)`，切行跳齿保持 52px 黄金安全间距；水平 X 轴以左侧边框为基准（`left: var(--astrolabe-x, 0px)`），垂直 Y 轴以可用区域中轴线为基准（`top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%)`）；设置抽屉的外观与排印双板块同步挂载 X 轴（-300~600px）与 Y 轴（-300~300px）滑动调节条与恢复默认基准操作；CDP 9222 实机全量验证同心度与位移一致性。
+
+- **模块统一与几何同心锁定 (Concentric Rigid Binding)**:
+  1. **背景层彻底解耦 (`.astrolabe-ambient-svg`)**:
+     - 将漂浮多面体晶体层提取为全屏背景 SVG，不再附着于机芯局部坐标系，确保无论模块如何移动，背景环境呼吸感依然均匀铺满全视窗。
+  2. **统一机芯与歌词刚体容器 (`.astrolabe-module-container`)**:
+     - 尺寸锁定为固定物理像素 `720px × 640px`（`pointer-events: none; overflow: visible;`）；
+     - 水平定位严格以左侧边框为基准：`left: var(--astrolabe-x, 0px)`；
+     - 垂直定位以中轴线为基准居中微调：`top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%)`；
+     - 齿轮 SVG 锁定 `viewBox="0 0 720 640" width="720" height="640"`，旋转中心为 `(cx=0, cy=320)`；
+     - 歌词轮盘 `.lyrics-orbit-wheel` 放置于同容器内，原点锁定在 `left: 0px; top: 320px`，以 `0 0`（即容器内的 `0, 320`）为旋转原点；
+     - **同心验证结论**: 无论窗口如何缩放或 X/Y 轴在设置中如何调节，主表盘齿轮与歌词轮盘在像素级严格共轴同心，相对几何距离恒定为 0。
+- **全链路类型定义与配置持久化**:
+  1. **类型契约 (`src/types/config.ts`)**:
+     - 增加 `AstrolabeConfig { x: number; y: number }` 与默认值 `DEFAULT_ASTROLABE_CONFIG = { x: 0, y: 0 }`；
+     - 扩展 `WindowConfig` 挂载 `astrolabe: AstrolabeConfig`；
+     - 实现 `parseAstrolabeConfig(raw)` 严格校验，边界钳位 `x: [-300, 600]`，`y: [-300, 300]`，阻断非法输入与 NaN。
+  2. **主进程配置桥接 (`src/main/config.ts` & `src/main/index.ts`)**:
+     - `loadConfig` 与 `saveConfig` 完整承载 `astrolabe` 的反序列化与互斥链安全持久化；
+     - `applyConfigToWindow` 动态向 `:root` 注入 `--astrolabe-x` 与 `--astrolabe-y`，实现热更新零延迟生效。
+  3. **渲染层与设置面板联动 (`SettingsDrawer.tsx` & `App.tsx`)**:
+     - 在「外观与窗口」以及「字体与排印」两大核心模块各挂载「星盘机芯与歌词模块布局」卡片；
+     - 提供「X 轴位置 (左侧边框基准)」与「Y 轴位置 (垂直中线微调)」两根滑动条，以及「恢复居中基准」重置按钮；
+     - 滑动时直接同步 `document.documentElement.style.setProperty` 实现 60fps 零重绘延迟即时响应，并配合 50ms 累加防抖写入磁盘。
+- **实机自动化测试 (CDP 9222 探针)**:
+  - `pnpm typecheck`：0 错误；
+  - `pnpm build`：成功构建；
+  - CDP 9222 实机抓轨断言：
+    - 初始基准态：`container = (0, 0)`, `gear = (0, 0)`, `wheel = (0, 320)`，`--astrolabe-x = 0px`, `--astrolabe-y = 0px`；
+    - 动态偏移态（注入 `x=60, y=30`）：`container = (60, 30)`, `gear = (60, 30)`, `wheel = (60, 350)`，两者的旋转同心圆心（gear: `60+0, 30+320 = 60, 350` 与 wheel: `60, 350`）几何距离差值**严格为 0px**；
+    - 重置态：点击恢复居中后，容器与齿轮瞬间重置回 `(0, 0)` 基准，歌词轮盘重置回 `(0, 320)`；
+    - 设置抽屉交互：卡片与滑块渲染完整无报错，设置卡片在抽屉收起后界面干净无残留。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -714,6 +749,21 @@
 ```
 
 ---
+
+### 4.37 齿轮歌词模块化同心与 XY 轴微调三纪律：统一容器同轴 × 避免 inline 属性覆盖 :root × 动态重构双通道 (2026-09-13)
+
+在齿轮机芯与歌词轨道统一模块化以及设置调节中沉淀的工程纪律：
+
+1. **统一容器同轴锁定，严禁分立计算**:
+   - 齿轮与歌词轨道若分立在不同容器内各自根据 window 计算百分比，在窗口缩放与拖拽时极易产生亚像素舍入偏差导致的脱节；
+   - 将二者合并在固定物理网格的 `.astrolabe-module-container` 内部，坐标原点统一锁定在 `(0, 320)`，所有位移与旋转天然共轴，彻底断绝几何脱靶。
+2. **全局 CSS 变量分发切忌在子元素以 inline style 隐式覆盖**:
+   - 当在设置面板滑动滑块需要 60fps 高性能响应时，操作 `document.documentElement.style.setProperty('--astrolabe-x', ...)` 依赖 CSS 变量继承；
+   - 若子容器自身声明了 `style={{ '--astrolabe-x': ... }}` 内联样式，将导致 `:root` 变量被内联规则阻断遮蔽（Shadowing）；
+   - 纪律：内联属性仅在必要时作为局部兜底，常规场景应让容器自然透传继承 `:root`，React 仅在配置初始挂载与受控同步时维护全局变量。
+3. **主进程变更需协同构建，热更新与持久化闭环**:
+   - 当在 `src/types/config.ts` 与 `src/main/config.ts` 新增顶层或子配置项时，主进程编译产物 `out/main/index.js` 必须在 preview/dev 启动时装载；
+   - 同时在 `saveConfig` 中明确声明字段合并规则，避免主进程在 IPC `config:update` 阶段将新配置键作为未知属性丢弃。
 
 ### 4.36 桌面端系统级全局音量权责与播放器音量控件断舍离纪律 (2026-09-13)
 

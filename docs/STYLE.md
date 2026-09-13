@@ -81,6 +81,7 @@
 10. **抽屉无冗余副顶栏与重复分类徽标**：抽屉顶栏由容器统一权威展示，子面板严禁重复渲染无控件的副顶栏（如 `.settings-overview-toolbar` 的 `• 播放器偏好设置` 与 `实时热重载`）；二级详情导航条严禁在返回键右侧渲染分类名徽标（`.settings-toolbar-badge`），分类大标题由下方 Hero 权威承载，绝不套娃复读。
 11. **非交互读数元素纯文字化（去除外部图形边框与填充）**：艺人数量、歌单数量、各类滑动条数值读数、统计信息播放次数等不可交互读数，严禁套用带有背景和边框的图形容器（如 `.artist-count-badge`、`.playlist-count-badge`、`.liquid-slider-value`、`.stats-count-badge`）；统一去除 `background`、`border` 与 `border-radius`，保留微内边距（`0 2px`），以轻量纯文本形式融入界面；严格保留 `font-variant-numeric: tabular-nums` 防止数值刷新时产生任何横向布局抖动（Layout Shift）；保留原有 CSS 类名与 DOM 结构确保选择器兼容。
 12. **音量控制权责交还全局操作系统（纯净状态栏）**：播放器内置的软件音量调节与 Linux/KDE Plasma 全局系统音量、键盘多媒体键、外置硬件 DAC 旋钮重叠；底部状态栏彻底移除音量按键与音量滑块（`.status-bar-volume-block`），右侧扩展区仅保留曲目元数据与播放模式按键；底层 `pcmPlayer` 锁定 1.0 (unity gain) 零衰减原生输出。
+13. **左侧星盘齿轮与歌词模块绝对同心共轴（Unified Astrolabe Module）**：左侧天文钟机芯齿轮（`.astrolabe-gear-svg`）与极坐标圆弧歌词轨道（`.lyrics-orbit-wheel`）合并封装进统一容器（`.astrolabe-module-container`）；水平 X 轴以**左侧边框为绝对基准**（`left: var(--astrolabe-x, 0px)`），垂直 Y 轴以可用工作区中轴线为基准（`top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%)`）；齿轮旋转中心与歌词轮盘旋转原点在容器内绝对锁定于 `(cx=0, cy=320)`，无论窗口大小如何变化、无论 X/Y 轴在设置中如何微调，齿轮与歌词 100% 同轴共心共步进，安全间距严守 52px；在偏好设置抽屉中提供 X 轴（-300 ~ 600px）与 Y 轴（-300 ~ 300px）滑动调节与恢复默认基准操作，通过 `:root` 变量实现 60fps 零重绘延迟实时响应与防抖持久化。
 
 ---
 
@@ -118,6 +119,7 @@
 [x] UI 纯净化: 移除偏好设置一级总览副顶栏与二级导航分类徽标 (04ef167)
 [x] UI 纯净化: 将艺人数量、各类滑动条数值与统计播放次数等非交互读数去除外部边框改为纯文字 (e009ee9)
 [x] UI 纯净化: 彻底删除底部状态栏音量调节控件与业务逻辑 (687920c)
+[x] UI 架构升级: 左侧星盘机芯齿轮与歌词轨道统一同心模块化并支持偏好设置 XY 轴实时调节 (33160c0)
 [ ] 性能优化 P2: MPD TCP Client 短连接改造为连接池 / Keep-Alive 复用套接字，结合 idle 减少轮询
 [ ] M2-3 主工作区居中液态玻璃面板 (GlassPanel) / 页面切换与黑胶大舞台
 ```

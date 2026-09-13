@@ -24,6 +24,11 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 左侧星盘机芯齿轮与歌词轨道统一同心模块化与 XY 轴设置调节 (2026-09-13):
+  将左侧星盘 60 齿机械机芯与极坐标圆弧歌词轨道合并封装进统一容器 `.astrolabe-module-container`，旋转中心绝对锁定在 `(cx=0, cy=320)`，无论窗口大小如何变化或 X/Y 轴如何微调，二者 100% 同轴共心共步进，维持 52px 安全间距；
+  X 轴以左侧边框为基准（`--astrolabe-x: 0px`），Y 轴以垂直中轴线为基准（`--astrolabe-y: 0px`）；
+  偏好设置「外观与窗口」及「字体与排印」两大板块新增 X 轴（-300~600px）与 Y 轴（-300~300px）滑块调节及恢复居中基准按钮，60fps 即时响应与防抖持久化；
+  CDP 9222 实机抓轨断言同心圆心重合度差值严格为 0px，动态位移 (+60, +30) 与重置全量通过（提交 33160c0）。
 - [已完备] 彻底删除底部状态栏音量调节控件与业务逻辑 (2026-09-13):
   完全移除 StatusBar 右侧扩展区的静音按键（VolumeMuteIcon/VolumeLowIcon/VolumeHighIcon）与 72px 紧凑液态音量滑动条；
   清理 App.tsx 中 volume/isMuted 状态、isVolDraggingRef 节流防抖机制与 MPD setvol 同步；pcmPlayer 始终保持 1.0 (unity gain) 零衰减音频硬件直通；
