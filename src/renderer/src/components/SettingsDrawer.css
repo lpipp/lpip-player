@@ -68,10 +68,7 @@
   font-size: var(--font-size-hint, 12px);
   font-weight: 500;
   color: rgba(110, 231, 183, 0.85);
-  background: rgba(110, 231, 183, 0.1);
-  border: 1px solid rgba(110, 231, 183, 0.22);
-  border-radius: 8px;
-  padding: 2px 7px;
+  padding: 0 2px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.2px;
 }
@@ -471,10 +468,7 @@
   font-size: var(--font-size-hint, 12px);
   font-weight: 600;
   color: #6ee7b7;
-  background: rgba(110, 231, 183, 0.1);
-  border: 1px solid rgba(110, 231, 183, 0.22);
-  border-radius: 5px;
-  padding: 1px 6px;
+  padding: 0 2px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.2px;
 }
