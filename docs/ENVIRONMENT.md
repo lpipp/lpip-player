@@ -11,6 +11,7 @@
 | 项 | 值 |
 |---|---|
 | 项目路径 | `/home/lpipwei/Project/lpip-player` |
+| 远程仓库 | `https://github.com/lpipp/lpip-player` (origin/master) |
 | 包管理器 | pnpm 11.25.0（fnm multishell 环境） |
 | Node | v24.20.0 |
 | git 用户 | lpipwei / lpipwei@local |
