@@ -117,7 +117,7 @@
 }
 
 /* ------------------------------------------------------------
-   歌曲元数据卡片 (紧邻封面框右侧 14px 处)
+   歌曲元数据卡片 (紧邻封面框右侧 14px 处，锁定 140px 规整宽度)
    ------------------------------------------------------------ */
 .status-bar-meta-block {
   display: flex;
@@ -125,13 +125,17 @@
   justify-content: center;
   gap: 3px;
   margin-left: 14px;
-  max-width: 220px;
-  min-width: 100px;
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  overflow: hidden;
   text-align: left;
-  flex-shrink: 1;
+  flex-shrink: 0;
 }
 
 .status-bar-meta-title {
+  width: 100%;
+  max-width: 100%;
   font-family: var(--font-family-ui);
   font-size: calc(var(--font-size-ui, 13px) + 0.5px);
   font-weight: 600;
@@ -144,6 +148,9 @@
 }
 
 .status-bar-meta-sub {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -187,12 +194,15 @@
 }
 
 .status-bar-meta-artist {
+  min-width: 0;
+  flex: 1 1 auto;
   font-family: var(--font-family-hint);
   font-size: var(--font-size-hint, 12px);
   color: var(--theme-text-secondary, rgba(255, 255, 255, 0.5));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
 }
 
 /* ------------------------------------------------------------
