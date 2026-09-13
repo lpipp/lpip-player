@@ -134,7 +134,40 @@ export default function StatusBar({
         )}
       </div>
 
-      {/* 播放控制按键组: 位于封面框右侧 30px 处 */}
+      {/* 当前曲目元数据卡片: 紧邻封面框右侧 */}
+      <div
+        className="status-bar-meta-block"
+        title={
+          currentSong
+            ? `${currentSong.title} - ${currentSong.artist}${currentSong.album ? ` (${currentSong.album})` : ''}`
+            : 'lpip-player'
+        }
+      >
+        <div className="status-bar-meta-title">
+          {currentSong?.title || 'lpip-player'}
+        </div>
+        <div className="status-bar-meta-sub">
+          {currentSong && (() => {
+            // 音质徽标兜底: 未知 quality 统一落 STD 灰徽标, 拒绝裸 badge-undefined
+            const rawQuality = currentSong.quality ?? 'STD'
+            const normalized = String(rawQuality).toLowerCase()
+            const known = normalized === 'sq' || normalized === 'hi-res' || normalized === 'hq' || normalized === 'std'
+              ? normalized
+              : 'std'
+            const label = known === 'std' && normalized !== 'std' ? 'STD' : String(rawQuality)
+            return (
+              <span className={`status-bar-quality-badge badge-${known}`}>
+                {label}
+              </span>
+            )
+          })()}
+          <span className="status-bar-meta-artist">
+            {currentSong?.artist || '本地音乐播放器'}
+          </span>
+        </div>
+      </div>
+
+      {/* 播放控制按键组: 紧随歌曲信息右侧 */}
       <div className="status-bar-controls" aria-label="播放控制">
         {/* 上一曲按键 */}
         <button
@@ -194,41 +227,8 @@ export default function StatusBar({
         </button>
       </div>
 
-      {/* 右侧扩展区: 歌曲元数据展示、播放模式切换 */}
+      {/* 右侧扩展区: 播放模式切换 */}
       <div className="status-bar-right-section" aria-label="播放辅助控制">
-        {/* 当前曲目元数据卡片 */}
-        <div
-          className="status-bar-meta-block"
-          title={
-            currentSong
-              ? `${currentSong.title} - ${currentSong.artist}${currentSong.album ? ` (${currentSong.album})` : ''}`
-              : 'lpip-player'
-          }
-        >
-          <div className="status-bar-meta-title">
-            {currentSong?.title || 'lpip-player'}
-          </div>
-          <div className="status-bar-meta-sub">
-            {currentSong && (() => {
-              // 音质徽标兜底: 未知 quality 统一落 STD 灰徽标, 拒绝裸 badge-undefined
-              const rawQuality = currentSong.quality ?? 'STD'
-              const normalized = String(rawQuality).toLowerCase()
-              const known = normalized === 'sq' || normalized === 'hi-res' || normalized === 'hq' || normalized === 'std'
-                ? normalized
-                : 'std'
-              const label = known === 'std' && normalized !== 'std' ? 'STD' : String(rawQuality)
-              return (
-                <span className={`status-bar-quality-badge badge-${known}`}>
-                  {label}
-                </span>
-              )
-            })()}
-            <span className="status-bar-meta-artist">
-              {currentSong?.artist || '本地音乐播放器'}
-            </span>
-          </div>
-        </div>
-
         {/* 播放模式切换按键 (列表循环 / 随机播放 / 单曲循环) */}
         <button
           type="button"

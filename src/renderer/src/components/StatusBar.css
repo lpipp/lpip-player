@@ -117,13 +117,49 @@
 }
 
 /* ------------------------------------------------------------
-   播放控制按键区 (位于封面框右侧 30px 处)
+   歌曲元数据卡片 (紧邻封面框右侧 14px 处)
+   ------------------------------------------------------------ */
+.status-bar-meta-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  margin-left: 14px;
+  max-width: 220px;
+  min-width: 100px;
+  text-align: left;
+  flex-shrink: 1;
+}
+
+.status-bar-meta-title {
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
+  font-weight: 600;
+  color: var(--theme-text-primary, rgba(255, 255, 255, 0.92));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.status-bar-meta-sub {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------
+   播放控制按键区 (紧随歌曲信息右侧 28px 处)
    ------------------------------------------------------------ */
 .status-bar-controls {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 30px;
+  margin-left: 28px;
+  flex-shrink: 0;
   user-select: none;
 }
 
@@ -339,7 +375,7 @@
 }
 
 /* ------------------------------------------------------------
-   右侧扩展区 (Track Meta + Mode Toggle)
+   右侧扩展区 (Mode Toggle)
    ------------------------------------------------------------ */
 .status-bar-right-section {
   display: flex;
@@ -349,36 +385,6 @@
   margin-left: auto;
   flex-shrink: 0;
   user-select: none;
-}
-
-/* 歌曲元数据卡片 */
-.status-bar-meta-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-  max-width: 220px;
-  min-width: 120px;
-  text-align: right;
-}
-
-.status-bar-meta-title {
-  font-family: var(--font-family-ui);
-  font-size: calc(var(--font-size-ui, 13px) + 0.5px);
-  font-weight: 600;
-  color: var(--theme-text-primary, rgba(255, 255, 255, 0.92));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-.status-bar-meta-sub {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  line-height: 1;
 }
 
 .status-bar-quality-badge {
