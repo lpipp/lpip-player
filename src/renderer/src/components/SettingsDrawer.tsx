@@ -116,6 +116,36 @@ function RefreshIcon() {
   )
 }
 
+function MinusIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
+
+/**
+ * 辅助函数: 滑动条按步长安全微调并消除浮点精度偏差
+ */
+function stepSliderValue(current: number, delta: number, min: number, max: number, step: number): number {
+  const stepStr = step.toString()
+  const stepDecimals = stepStr.includes('.') ? stepStr.split('.')[1].length : 0
+  const curStr = current.toString()
+  const curDecimals = curStr.includes('.') ? curStr.split('.')[1].length : 0
+  const precision = Math.min(6, Math.max(stepDecimals, curDecimals))
+  const next = Math.min(max, Math.max(min, current + delta))
+  return Number(next.toFixed(precision))
+}
+
 /**
  * 原生开关控件 (Toggle Switch)
  */
@@ -153,6 +183,7 @@ function ToggleSwitch({
 
 /**
  * 原生滑轨控件 (Slider Control)
+ * 两侧配备 -/+ 物理微调按键，支持鼠标单击单步微调与长按连续步进
  */
 function SliderControl({
   value,
@@ -174,6 +205,75 @@ function SliderControl({
   desc?: string
   onChange: (val: number) => void
 }) {
+  const valueRef = useRef(value)
+  valueRef.current = value
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isMouseSteppingRef = useRef(false)
+
+  const stopRepeat = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    return stopRepeat
+  }, [stopRepeat])
+
+  const handleStep = useCallback(
+    (direction: -1 | 1) => {
+      const next = stepSliderValue(valueRef.current, direction * step, min, max, step)
+      if (next !== valueRef.current) {
+        onChange(next)
+      } else {
+        stopRepeat()
+      }
+    },
+    [min, max, step, onChange, stopRepeat]
+  )
+
+  const handleMouseDown = useCallback(
+    (direction: -1 | 1, e: React.MouseEvent) => {
+      if (e.button !== 0) return
+      isMouseSteppingRef.current = true
+      stopRepeat()
+      handleStep(direction)
+      timerRef.current = setTimeout(() => {
+        intervalRef.current = setInterval(() => {
+          handleStep(direction)
+        }, 60)
+      }, 350)
+    },
+    [handleStep, stopRepeat]
+  )
+
+  const handleMouseUp = useCallback(() => {
+    stopRepeat()
+    setTimeout(() => {
+      isMouseSteppingRef.current = false
+    }, 0)
+  }, [stopRepeat])
+
+  const handleClick = useCallback(
+    (direction: -1 | 1) => {
+      if (isMouseSteppingRef.current) {
+        return
+      }
+      handleStep(direction)
+    },
+    [handleStep]
+  )
+
+  const canStepDown = value > min
+  const canStepUp = value < max
+
   return (
     <div className="liquid-slider-block">
       <div className="liquid-slider-header">
@@ -182,20 +282,48 @@ function SliderControl({
         </div>
         <span className="liquid-slider-value">{displayValue}</span>
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(Number.parseFloat(e.target.value))}
-        className="liquid-slider-input"
-        aria-label={label}
-        aria-valuemin={min}
-        aria-valuemax={max}
-        aria-valuenow={value}
-        aria-valuetext={displayValue}
-      />
+      <div className="liquid-slider-row">
+        <button
+          type="button"
+          className="liquid-slider-step-btn minus"
+          disabled={!canStepDown}
+          onMouseDown={(e) => handleMouseDown(-1, e)}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onClick={() => handleClick(-1)}
+          aria-label={`${label} 减少`}
+          tabIndex={canStepDown ? 0 : -1}
+        >
+          <MinusIcon />
+        </button>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(Number.parseFloat(e.target.value))}
+          className="liquid-slider-input"
+          aria-label={label}
+          aria-valuemin={min}
+          aria-valuemax={max}
+          aria-valuenow={value}
+          aria-valuetext={displayValue}
+        />
+        <button
+          type="button"
+          className="liquid-slider-step-btn plus"
+          disabled={!canStepUp}
+          onMouseDown={(e) => handleMouseDown(1, e)}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onClick={() => handleClick(1)}
+          aria-label={`${label} 增加`}
+          tabIndex={canStepUp ? 0 : -1}
+        >
+          <PlusIcon />
+        </button>
+      </div>
     </div>
   )
 }
