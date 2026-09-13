@@ -5,3 +5,6 @@ dist/
 .DS_Store
 .agents/
 ORIGINAL_REQUEST.md
+*.pkg.tar.zst
+packaging/pkg/
+packaging/src/

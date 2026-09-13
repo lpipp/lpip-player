@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=lpip-player
+GenericName=Music Player
+GenericName[zh_CN]=音乐播放器
+Comment=本地音乐播放器: Electron + React + MPD, 液态玻璃 UI 与高级制表机械星盘美学
+Exec=/usr/bin/lpip-player %U
+Icon=lpip-player
+Type=Application
+StartupWMClass=lpip-player
+Categories=AudioVideo;Audio;Player;Music;
+Terminal=false
+Keywords=music;player;mpd;audio;
