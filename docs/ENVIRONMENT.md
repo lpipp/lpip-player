@@ -38,9 +38,17 @@
 
 ---
 
-## 2. git 状态（截至 c7cbd35）
+## 2. git 状态（截至 a0204ef）
 
 ```
+a0204ef perf(renderer): React 组件重渲染阻断隔离与艺人抽屉 GPU 视窗裁剪 (P1)
+c3d03b5 chore(lock): package.json 钉死精确版本后的锁文件 specifier 同步
+d56e64d docs: P0/P1/P2 全量并行修复批量落地实机验收文档同步 (PROGRESS §4.30, SESSION_PROMPT 置顶)
+6a8af86 fix(review): P0/P1/P2 全量并行修复批量落地
+d724098 docs: 更新开关无响应双因项目全量文档
+096135c fix(config): saveConfig 缺省回退不写盘, 未携带 showTranslation 不回填默认值
+3300ec0 feat(settings): 增加歌词翻译显隐开关, 配置与排印设置闭环
+ccc5ba7 fix(lyrics): 歌词行内双语拆分 U+2009 THIN SPACE
 c7cbd35 feat(stats): 悬浮胶囊第五按键重构为统计信息抽屉, MPD sticker playCount 排行+累计播放时长
 3977194 docs: 歌词滚轮预览交付文档同步 (PROGRESS §2.23+§4.26, SESSION_PROMPT 置顶)
 39a1842 feat(lyrics): 滚轮预览+单击确认跳转, 确认延迟可配置默认1.5s
@@ -96,25 +104,25 @@ src/
    ├─ index.html                CSP 策略与 DOM 挂载入口
    └─ src/
       ├─ main.tsx               React 19 根挂载
-      ├─ App.tsx                全局主视图控制器、快捷键调度与状态桥接中心 (含 .window-drag-bar 顶部 28px 沉浸式拖拽热区)
+      ├─ App.tsx                全局主视图控制器、快捷键调度与状态桥接中心 (含 .window-drag-bar 顶部 28px 沉浸式拖拽热区, 同曲状态引用稳定化与 useCallback 回调固化)
       ├─ styles/global.css      全套 CSS 变量体系、reset 与深色黑曜石主题、.window-drag-bar 拖拽样式与无边框微调
       ├─ utils/
       │  └─ typography.ts       字体族预设清单 (UI_FONT_PRESETS 等) 与全局 DOM CSS 变量注入 (applyTypographyToDOM)
       ├─ services/
       │  └─ pcmPlayer.ts        Model B / 方案 C WebAudio PCM 流式管道 (自适应硬件采样率/流世代淡入淡出/防抖调度)
       └─ components/
-         ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (多抽屉切换，导轨锁定 56px 零抖动；第 5 键统计信息 + StatsIcon，占位主题已移除)
+         ├─ SidebarCapsule.tsx  左侧悬浮长条胶囊伸缩抽屉 (React.memo 隔离, 多抽屉切换，导轨锁定 56px 零抖动；第 5 键统计信息 + StatsIcon)
          ├─ StatisticsDrawer.tsx 悬浮抽屉统计信息 (单级展示：摘要卡累计时长/总次数/曲目数 + playCount 降序排行 + 空态，前三翡翠高亮)
          ├─ StatusBar.tsx       底部磨砂玻璃状态栏 (.css 动静分离液态流动按键、等宽数字防抖进度条)
          ├─ LyricsOrbit.tsx     极坐标星盘歌词天文钟 (.css 擒纵阻尼齿轮跳齿、三级游标分划、全视窗暗角渐变)
-         ├─ MechanicalGear.tsx  右侧精密机械表机芯 (.css 蓝图矢量纯线条、多级减速齿轮与摆轮游丝)
-         ├─ SpectrumVisualizer.tsx 高级制表蓝图纯线条频谱律动 (.css Canvas 2D 零内存分配/自适应休眠)
-         ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css 二态开关 +/-、60fps 模糊检索列表)
-         ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/单曲移除/一键清空/定位正在播放)
-         ├─ ArtistDrawer.tsx    悬浮抽屉艺人分类 (.css 双级钻取画册流/圆形微棱头像/作品统计/单曲二态开关)
-         ├─ PlaylistDrawer.tsx  悬浮抽屉歌单管理 (.css 双级钻取画册流/歌单创建重命名删除/单曲增删/二态开关/MPD歌单协议闭环)
+         ├─ MechanicalGear.tsx  右侧精密机械表机芯 (React.memo 隔离, .css 蓝图矢量纯线条、多级减速齿轮与摆轮游丝)
+         ├─ SpectrumVisualizer.tsx 高级制表蓝图纯线条频谱律动 (React.memo 隔离, .css Canvas 2D 零内存分配/自适应休眠)
+         ├─ MusicLibraryList.tsx 悬浮抽屉曲库管理 (.css 二态开关 +/-、60fps 模糊检索列表、content-visibility: auto)
+         ├─ QueueDrawer.tsx     悬浮抽屉播放队列管理 (.css 原生拖拽重排/单曲移除/一键清空/content-visibility: auto)
+         ├─ ArtistDrawer.tsx    悬浮抽屉艺人分类 (.css 双级钻取画册流/圆形微棱头像/作品统计/单曲二态开关/content-visibility: auto)
+         ├─ PlaylistDrawer.tsx  悬浮抽屉歌单管理 (.css 双级钻取画册流/歌单创建重命名删除/单曲增删/二态开关/MPD歌单协议闭环/content-visibility: auto)
          ├─ SettingsDrawer.tsx  悬浮抽屉偏好设置 (.css 双级钻取画册流/6大模块精细控件包含字体与字形/液态玻璃开关滑块分段单选/配置原子持久化热重载)
-         └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (.css 硬件加速流式循环播放)
+         └─ WallpaperLayer.tsx  动态视频/静态图片壁纸图层 (React.memo 隔离, .css 硬件加速流式循环播放)
 ```
 
 - 全 src 零 any 逃逸，严格符合 TypeScript strict 要求

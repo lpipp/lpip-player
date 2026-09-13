@@ -24,6 +24,12 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] React 组件重渲染阻断隔离与艺人抽屉 GPU 视窗裁剪 (2026-09-13):
+  MechanicalGear / WallpaperLayer / SpectrumVisualizer / SidebarCapsule 四大核心组件全量 React.memo 隔离；
+  App.tsx 在 syncFromMpdStatus 中对 currentSong 实施同曲对象引用稳定化（若 file/id 未变复用既有对象引用），彻底切断自上而下的无谓属性失效；
+  handlePlaySong 与 handleAddToQueue 固化为 useCallback，阻断心跳节拍下长列表的遍历 VDOM diff；
+  ArtistDrawer.css 补齐现代 GPU 视窗裁剪 content-visibility: auto (0 60px/0 56px)，实现四大抽屉裁剪统一；
+  实测 3s 播放窗下齿轮与 436 首曲库列表 DOM 突变严格为 0，切歌即时秒播，activeSources=4/leadMs=78ms 稳健（提交 a0204ef）。
 - [已完备] P0/P1/P2 全量并行修复批量落地 + 实机验收 (2026-09-12):
   6 路只读审查挖出 P0×1 + P1×8 + P2×20 → 6 worker 并行修复 → 6 reviewer 复检 → 2 worker 补修 → 2 reviewer 终检全 PASS → 统一批量提交 6a8af86（27 文件 +909/−607）。
   P0：play-after-pause 重建增益 + 空 gain 丢块（实机 pause 后 sources=0，resume 后 5/92ms，稳态 4/84ms 健康窗内）；P1：MPD 数值注入守卫、共享默认拷贝、频谱 stale 闭包、飞轮/gear-2 十字臂、同戳 secondary 去重、滚轮触板累加、徽标别名、钻取竞态、队列 queueId 操作；P2：版本钉死零 caret、types 单源等。

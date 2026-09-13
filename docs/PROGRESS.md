@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
-> 更新时间: 2026-09-12
-> 当前阶段: M2-2（代码全量审查修复批量落地：P0 静音×1 + P1 注入/污染/闭包等×8 + P2×20 全部修复并实机验收；翻译显隐开关、U+2009 拆分、滚轮预览、统计抽屉、整洁化均已落地，原图档留待 M2-3 黑胶大舞台）
-> 最新进展: P0/P1/P2 全量并行修复批量落地（提交 6a8af86，27 文件 +909/−607）：play-after-pause 重建增益（实机 resume 后 sources=5/leadMs=92ms、稳态 4/84ms 健康窗内）、MPD 数值注入守卫、共享默认拷贝、频谱/齿轮/滚轮/徽标/钻取/队列同批修复；tsc 零错误 + diff-check 干净 + typography 11/11 + 6+2 路复检全 PASS + config.json 零漂移，详见 §4.30
+> 更新时间: 2026-09-13
+> 当前阶段: M2-2（性能优化 P1 阶段完成：React 核心展示组件 memo 隔离、状态心跳引用稳定化、回调 useCallback 持久化、艺人抽屉 GPU 视窗裁剪 content-visibility）
+> 最新进展: P1 性能优化全套落地实机验收（提交 a0204ef）：MechanicalGear / WallpaperLayer / SpectrumVisualizer / SidebarCapsule 全量 memo 隔离；App.tsx 同曲引用稳定化阻断无谓 re-render；handlePlaySong 与 handleAddToQueue useCallback 固化；ArtistDrawer 补齐 content-visibility: auto (0 60px/0 56px)；实测 3s 播放窗齿轮与 436 首曲库列表 DOM 突变严格为 0，activeSources=4，leadMs=78ms 健康窗内，详见 §2.25 与 §4.31
 
 ---
 
@@ -518,6 +518,23 @@
 - **测试闭环**: `pnpm typecheck` 通过；单测 11/11；`pnpm build` 通过（53 模块，JS 890.12kB，CSS 157.44kB 未动）；新增 `test-lyric-preview-e2e.mjs` 7 步全绿（默认 1500/滑条规格/可信滚轮步进+1 且零 seek/播放态超时回弹或暂停态常驻/单击收起/方向键清预览/暂停常驻）；`test-typography-e2e.mjs` 全绿无回退（含 Step 12 联动）；feat 已提交 `39a1842`，`config.json` 经比对零漂移（验证中落盘的 `lyricPreview` 已剔除恢复）。
 - **踩坑三则**: (1) React 合成 `onWheel` 只收可信事件，合成 `WheelEvent` dispatch 到 React 根监听不到 —— e2e 必须用 CDP `Input.dispatchMouseEvent mouseWheel`；(2) dev 主进程是常驻进程，改 `src/main` 后出盘 `out/main/index.js` 不自动更新，需重启 `pnpm dev`（`touch` 无效）；(3) e2e 中途会污染用户 `config.json`（滑条/配置更新落盘），断言前后必须用 `/tmp/lpip-config-bak.json` 比对，漂移要剔除恢复 —— 详见 §4.26。
 
+### 2.25 React 组件重渲染阻断隔离与艺人抽屉 GPU 视窗裁剪 (P1 性能优化) - 2026-09-13 完成
+
+> **结论先行：彻底阻断 500ms 进度心跳对静态机芯背景与侧边抽屉长列表的无谓传染，全量补齐 GPU 视窗裁剪。** 通过 `React.memo` 隔离 `MechanicalGear`、`WallpaperLayer`、`SpectrumVisualizer` 与 `SidebarCapsule`；在 `App.tsx` 的 `syncFromMpdStatus` 中对 `currentSong` 实施同曲引用稳定化；将透传给侧边抽屉的操作回调 `handlePlaySong` 与 `handleAddToQueue` 固化为 `useCallback`；在 `ArtistDrawer.css` 为艺人总览（`.artist-item`，238 项）与单曲列表（`.artist-song-item`）补齐 `content-visibility: auto` 与对应 `contain-intrinsic-size`。实测在播放态 3 秒连续心跳窗口下，机械齿轮与曲库长列表（436 首）DOM 突变严格为 0，切歌秒播零延迟，音频健康度稳健维持。
+
+- **功能定位**: 消除播放中心跳广播引发的高频 React VDOM Diff 与长列表重排开销，确保高刷新率与极低 CPU 占用。
+- **设计哲学与架构**:
+  1. **展示层 memo 隔离**: `MechanicalGear`（内含 800+ 行复杂渐开线齿轮轮廓数学运算与海量同心圆/轮辐 SVG 节点）与 `WallpaperLayer`、`SpectrumVisualizer`、`SidebarCapsule` 全部通过 `React.memo` 包裹，切断非相关 props 驱动的重绘；
+  2. **状态心跳引用稳定化**: MPD 500ms 轮询推送反序列化的 `status.currentSong` 对象，若 `file` 与 `id` 未发生改变，沿用既有状态引用，彻底阻断自上而下的无谓属性失效；
+  3. **回调函数引用持久化**: 传递给 `SidebarCapsule` 的 `handlePlaySong` 与 `handleAddToQueue` 采用 `useCallback` 固化引用，阻断抽屉打开态下数百条单曲项在心跳节拍下的逐项虚拟 DOM Diff；
+  4. **全量视窗裁剪覆盖**: `ArtistDrawer.css` 补齐 `content-visibility: auto; contain-intrinsic-size: 0 60px;`（`.artist-item`）与 `contain-intrinsic-size: 0 56px;`（`.artist-song-item`），使曲库、队列、歌单、艺人四大抽屉实现现代 GPU 视窗裁剪规范统一。
+- **性能保障与实测数据**:
+  - `pnpm typecheck` 严格 0 报错；
+  - `pnpm build` 顺利产出（55 模块，JS 910.16kB，CSS 166.56kB）；
+  - CDP 实机探针：播放态下 3 秒观测窗内（至少 6 次 500ms 状态广播），`MechanicalGear` DOM 突变严格为 0，曲库展开态下 436 首歌 DOM 突变严格为 0；
+  - 音频管道健康度：`isPlaying=true`，`activeSources=4`，`leadMs=78ms`（严格在 70~110ms 黄金抗抖区间内），采样率 48000Hz 自适应；
+  - 艺人抽屉 computed 扫描：238 位艺人卡片全部成功挂载 `content-visibility: auto`。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -568,6 +585,18 @@
 ```
 
 ---
+
+### 4.31 React 状态心跳引发的子树连带重渲染与 IPC 引用稳定化 (2026-09-13)
+
+1. **状态心跳对重型 SVG 与长列表的传染性重渲染**:
+   - **症状**: MPD 每 500ms 广播一次状态心跳，`App.tsx` 中的 `currentTime` 频繁自增触发 `App` 重渲染；由于 `MechanicalGear`（800+ 行复杂渐开线与微米同心圆 SVG）、`WallpaperLayer`、`SpectrumVisualizer` 未做 memo 隔离，每次心跳都在 JS 线程进行无意义的虚拟 DOM diff；
+   - **深层根因**: IPC 每 500ms 反序列化下发的 `status.currentSong` 是全新对象引用，若直接 `setCurrentSong(status.currentSong)` 会导致同曲下 `currentSong` 引用每 500ms 失效；外加透传给 `SidebarCapsule` 的 `handlePlaySong` 未做 `useCallback`，导致即使侧边栏展开着包含 436 首歌曲的曲库列表，全量列表项也会在每个心跳节拍做一轮 VDOM diff；
+   - **彻底根治方案**:
+     1. **展示层 Memo 隔离**: `MechanicalGear`、`WallpaperLayer`、`SpectrumVisualizer`、`SidebarCapsule` 统一 `export default memo(...)`；
+     2. **同曲状态引用稳定化**: 在 `syncFromMpdStatus` 中比对 `prev.file === status.currentSong.file && prev.id === status.currentSong.id ...`，同曲时直接返回 `prev` 保持引用恒定；
+     3. **回调函数持久化**: `handlePlaySong` 与 `handleAddToQueue` 固化为 `useCallback`，配合 `syncFromMpdStatusRef` 规避闭包过期；
+     4. **视窗裁剪全量补齐**: `ArtistDrawer.css` 补齐 `content-visibility: auto; contain-intrinsic-size: 0 60px;`（`.artist-item`）与 `0 56px;`（`.artist-song-item`）；
+     5. **实机验证数据**: 播放态 3 秒观测窗内（至少 6 次 500ms 广播），`MechanicalGear` 与 436 首曲库列表的 DOM 突变数严格为 **0**，切歌即时秒播，`activeSources=4/leadMs=78ms` 黄金抗抖区间稳固。
 
 ### 4.30 P0/P1/P2 全量并行修复批量落地 + 实机验收 (2026-09-12)
 
@@ -905,6 +934,14 @@ cushion 全程稳定 2.64s，无 `error`，无重建循环。
   - 第 5 项: 统计信息 (`StatisticsDrawer`)，单级展示（摘要卡 + playCount 降序排行），MPD sticker 计数 + stats.playtime 累计时长，主进程阈值状态机计数；
   - 第 6 项: 偏好设置 (`SettingsDrawer`)，双级钻取画册流、6大模块精细控件（包含外观/音频/频谱/MPD/关于，以及最新完备的“字体与字形”排印系统，支持 UI/提示/歌词正文/歌词翻译独立定制、CSS变量毫秒级热更与原子持久化）；
   - 全场景覆盖液态玻璃微光滑动条 (`.liquid-scrollbar`)。
+- **性能专项: P1 阶段渲染隔离与视窗裁剪完备 [已完成]**:
+  - `MechanicalGear`、`WallpaperLayer`、`SpectrumVisualizer`、`SidebarCapsule` 全量 `React.memo` 隔离；
+  - `App.tsx` 状态心跳实施同曲引用稳定化，阻断下游组件链式失效；
+  - `handlePlaySong` 与 `handleAddToQueue` 固化为 `useCallback`；
+  - `ArtistDrawer.css` 补齐现代 GPU 视窗裁剪 `content-visibility: auto`。
+- **性能专项: P2 阶段 MPD TCP 长连接与状态按需广播 [待开启]**:
+  - MPD TCP Client 短连接改造为连接池 / Keep-Alive 复用套接字，消除每小时 7200 次握手开销；
+  - 结合 MPD `idle` 事件机制实现按需推送。
 - **M2-3 阶段: 主工作区居中液态玻璃面板 (`GlassPanel`) / 页面切换与黑胶大舞台 [待开启]**:
   - 舞台中央半透明液态玻璃容器，配合播放器各页面（当前播放大封面与黑胶旋转动效、歌单列表、全屏歌词面板、系统设置面板）的无缝平滑切换。
 
