@@ -446,9 +446,10 @@ export default function App() {
       {/* 右侧精密机械表齿轮 (直径 500px，圆心距右边框 30px，外露 280px，垂直居中) */}
       <MechanicalGear />
 
-      {/* 极坐标星盘歌词轨道 (中央主工作区，支持加载当前歌曲真实 LRC 歌词) */}
+      {/* 极坐标星盘歌词轨道 (中央主工作区，支持加载当前歌曲真实 LRC 歌词与同心圆弧进度条) */}
       <LyricsOrbit
         currentTime={currentTime}
+        duration={duration}
         lyrics={effectiveLyrics}
         onSeek={handleSeek}
         isPlaying={isPlaying}
@@ -469,14 +470,11 @@ export default function App() {
       <StatusBar
         coverUrl={currentSong?.coverUrl}
         isPlaying={isPlaying}
-        currentTime={currentTime}
-        duration={duration}
         currentSong={currentSong}
         mode={mode}
         onPrev={handlePrev}
         onPlayPause={handlePlayPause}
         onNext={handleNext}
-        onSeek={handleSeek}
         onModeToggle={handleModeToggle}
       />
     </div>

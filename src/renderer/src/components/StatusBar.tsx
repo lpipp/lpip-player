@@ -1,29 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import type { MpdSong, PlaybackMode } from '../../../types/music'
 import './StatusBar.css'
-
-/**
- * 格式化时间为 mm:ss 或 hh:mm:ss 格式
- * @param seconds 总秒数
- */
-function formatTime(seconds: number): string {
-  if (isNaN(seconds) || seconds < 0) {
-    return '00:00'
-  }
-  const totalSecs = Math.floor(seconds)
-  const hrs = Math.floor(totalSecs / 3600)
-  const mins = Math.floor((totalSecs % 3600) / 60)
-  const secs = totalSecs % 60
-
-  const paddedMins = String(mins).padStart(2, '0')
-  const paddedSecs = String(secs).padStart(2, '0')
-
-  if (hrs > 0) {
-    const paddedHrs = String(hrs).padStart(2, '0')
-    return `${paddedHrs}:${paddedMins}:${paddedSecs}`
-  }
-  return `${paddedMins}:${paddedSecs}`
-}
 
 function ModeSequenceIcon() {
   return (
@@ -94,14 +71,11 @@ export interface StatusBarProps {
 export default function StatusBar({
   coverUrl,
   isPlaying: controlledIsPlaying,
-  currentTime: controlledCurrentTime,
-  duration: controlledDuration,
   currentSong,
   mode = 'sequence',
   onPrev,
   onPlayPause,
   onNext,
-  onSeek,
   onModeToggle
 }: StatusBarProps) {
   const [imgError, setImgError] = useState(false)
@@ -112,85 +86,13 @@ export default function StatusBar({
   }, [coverUrl])
 
   const [localIsPlaying, setLocalIsPlaying] = useState(false)
-  const [localCurrentTime, setLocalCurrentTime] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragPercent, setDragPercent] = useState(0)
-
-  const trackRef = useRef<HTMLDivElement>(null)
-
   const isPlaying = controlledIsPlaying !== undefined ? controlledIsPlaying : localIsPlaying
-  const rawDuration = controlledDuration !== undefined ? controlledDuration : 248
-  const duration = Math.max(0, rawDuration)
-  const safeDuration = duration > 0 ? duration : 1
-
-  // 当前有效播放秒数 (拖拽中以拖拽位置为准，否则以播放进度为准)
-  const currentSeconds = isDragging
-    ? dragPercent * duration
-    : controlledCurrentTime !== undefined
-      ? controlledCurrentTime
-      : localCurrentTime
-
-  // 进度百分比 (0 ~ 100)
-  const effectivePercent = duration > 0 ? Math.min(100, Math.max(0, (currentSeconds / safeDuration) * 100)) : 0
-
-  // 播放中且未受控时，开启 1 秒自增定时器
-  useEffect(() => {
-    if (controlledCurrentTime !== undefined || !isPlaying || isDragging) return
-    const timer = setInterval(() => {
-      setLocalCurrentTime((prev) => {
-        const next = prev + 1
-        return next > duration ? 0 : next
-      })
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [controlledCurrentTime, isPlaying, isDragging, duration])
 
   const handlePlayToggle = () => {
     if (controlledIsPlaying === undefined) {
       setLocalIsPlaying(!localIsPlaying)
     }
     onPlayPause?.()
-  }
-
-  // 根据鼠标位置计算播放滑轨百分比 (0 ~ 1)
-  const calcPercentFromEvent = useCallback((e: MouseEvent | React.MouseEvent): number => {
-    if (!trackRef.current) return 0
-    const rect = trackRef.current.getBoundingClientRect()
-    if (rect.width <= 0) return 0
-    const offsetX = e.clientX - rect.left
-    return Math.max(0, Math.min(1, offsetX / rect.width))
-  }, [])
-
-  // 播放进度拖拽/点击
-  const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return
-    e.preventDefault()
-
-    const initialPercent = calcPercentFromEvent(e)
-    setIsDragging(true)
-    setDragPercent(initialPercent)
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const p = calcPercentFromEvent(moveEvent)
-      setDragPercent(p)
-    }
-
-    const handleMouseUp = (upEvent: MouseEvent) => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-      setIsDragging(false)
-
-      const finalPercent = calcPercentFromEvent(upEvent)
-      // 保留浮点秒目标: 精确落在对应歌词行起点, 整秒截断会导致实际位置退回上一句歌词
-      const targetTime = finalPercent * duration
-      if (controlledCurrentTime === undefined) {
-        setLocalCurrentTime(targetTime)
-      }
-      onSeek?.(targetTime)
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
   }
 
 
@@ -292,41 +194,7 @@ export default function StatusBar({
         </button>
       </div>
 
-      {/* 音频播放进度条: 左侧当前时间、居中液态玻璃滑轨、右侧总时长 */}
-      <div className="status-bar-progress-section" aria-label="播放进度">
-        <span className="status-bar-time status-bar-time-current" aria-label="当前时间">
-          {formatTime(currentSeconds)}
-        </span>
-
-        <div
-          ref={trackRef}
-          className={`status-bar-progress-track ${isDragging ? 'is-dragging' : ''}`}
-          onMouseDown={handleProgressMouseDown}
-          role="slider"
-          aria-valuemin={0}
-          aria-valuemax={duration}
-          aria-valuenow={Math.round(currentSeconds)}
-          aria-valuetext={`${formatTime(currentSeconds)} / ${formatTime(duration)}`}
-          tabIndex={0}
-        >
-          <div className="status-bar-progress-rail">
-            <div
-              className="status-bar-progress-fill"
-              style={{ width: `${effectivePercent}%` }}
-            />
-            <div
-              className="status-bar-progress-thumb"
-              style={{ left: `${effectivePercent}%` }}
-            />
-          </div>
-        </div>
-
-        <span className="status-bar-time status-bar-time-duration" aria-label="总时长">
-          {formatTime(duration)}
-        </span>
-      </div>
-
-      {/* 右侧扩展区: 歌曲元数据展示、播放模式切换、音量滑块控制 */}
+      {/* 右侧扩展区: 歌曲元数据展示、播放模式切换 */}
       <div className="status-bar-right-section" aria-label="播放辅助控制">
         {/* 当前曲目元数据卡片 */}
         <div

@@ -27,6 +27,8 @@ export interface LyricsOrbitProps {
   activeIndex?: number
   /** 当前音频播放进度秒数 (联动进度条) */
   currentTime?: number
+  /** 音频总时长 (秒) */
+  duration?: number
   /** 当前行变更回调 (用于联动播放器进度) */
   onLineChange?: (index: number) => void
   /** 进度寻道跳转回调 */
@@ -168,34 +170,57 @@ function generateGearPath(
 }
 
 /**
- * 生成圆弧刻度线
+ * 极坐标转换笛卡尔坐标
  */
-function generateArcTicks(
+function polarToCartesian(
   cx: number,
   cy: number,
   radius: number,
-  tickLength: number,
-  startDeg: number,
-  endDeg: number,
-  stepDeg: number
-): Array<{ x1: number; y1: number; x2: number; y2: number; isMajor: boolean }> {
-  const ticks: Array<{ x1: number; y1: number; x2: number; y2: number; isMajor: boolean }> = []
-  for (let deg = startDeg; deg <= endDeg; deg += stepDeg) {
-    const rad = (deg * Math.PI) / 180
-    const cos = Math.cos(rad)
-    const sin = Math.sin(rad)
-    const isMajor = Math.abs(deg % (stepDeg * 4)) < 0.01
-
-    const len = isMajor ? tickLength * 1.8 : tickLength
-    ticks.push({
-      x1: cx + cos * (radius - len / 2),
-      y1: cy + sin * (radius - len / 2),
-      x2: cx + cos * (radius + len / 2),
-      y2: cy + sin * (radius + len / 2),
-      isMajor
-    })
+  angleDeg: number
+): { x: number; y: number } {
+  const rad = (angleDeg * Math.PI) / 180
+  return {
+    x: cx + radius * Math.cos(rad),
+    y: cy + radius * Math.sin(rad)
   }
-  return ticks
+}
+
+/**
+ * 生成 SVG 顺时针圆弧路径
+ */
+function describeArc(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number
+): string {
+  const start = polarToCartesian(cx, cy, radius, startAngle)
+  const end = polarToCartesian(cx, cy, radius, endAngle)
+  const arcSweep = endAngle - startAngle <= 180 ? '0' : '1'
+  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${radius} ${radius} 0 ${arcSweep} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
+}
+
+/**
+ * 格式化时间为 mm:ss 或 hh:mm:ss 纯文字格式
+ */
+function formatTime(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) {
+    return '00:00'
+  }
+  const totalSecs = Math.floor(seconds)
+  const hrs = Math.floor(totalSecs / 3600)
+  const mins = Math.floor((totalSecs % 3600) / 60)
+  const secs = totalSecs % 60
+
+  const paddedMins = String(mins).padStart(2, '0')
+  const paddedSecs = String(secs).padStart(2, '0')
+
+  if (hrs > 0) {
+    const paddedHrs = String(hrs).padStart(2, '0')
+    return `${paddedHrs}:${paddedMins}:${paddedSecs}`
+  }
+  return `${paddedMins}:${paddedSecs}`
 }
 
 /**
@@ -242,6 +267,7 @@ export default function LyricsOrbit({
   lyrics = DEFAULT_LYRICS,
   activeIndex: controlledIndex,
   currentTime,
+  duration,
   onLineChange,
   onSeek,
   animated = true,
@@ -250,6 +276,11 @@ export default function LyricsOrbit({
   previewTimeoutMs = 1500,
   astrolabePosition
 }: LyricsOrbitProps) {
+  // 圆弧进度条拖拽寻道态与 SVG 引用
+  const [isSeeking, setIsSeeking] = useState(false)
+  const [seekRatio, setSeekRatio] = useState(0)
+  const svgRef = useRef<SVGSVGElement>(null)
+
   // 当前活跃行索引 (支持非受控与受控双模式)
   const [internalIndex, setInternalIndex] = useState(4) // 默认定格在第4行《Luna domina》
   const activeIndex = controlledIndex !== undefined ? controlledIndex : internalIndex
@@ -352,7 +383,6 @@ export default function LyricsOrbit({
   const gearMinorTicks = useMemo(() => generateTicks(cx, cy, 288, 283, 120), [cx, cy])
   const gearMajorTicks = useMemo(() => generateTicks(cx, cy, 288, 277, 60), [cx, cy])
   const gearLongTicks = useMemo(() => generateTicks(cx, cy, 288, 270, 12), [cx, cy])
-
   // 4. 双级轻量化工程轮辐系统: 12 组主工程射线 + 24 根外缘错位半虚线子射线
   const gearRadialLines = useMemo(() => generateTicks(cx, cy, 243, 78, 12), [cx, cy])
   const gearSubRadialLines = useMemo(
@@ -360,11 +390,83 @@ export default function LyricsOrbit({
     [cx, cy]
   )
 
-  // 5. 歌词轨道圆弧上的精密刻度线 (沿 radius 360，跨度 -58° ~ +58°，每 1.8° 一格)
-  const orbitTicks = useMemo(
-    () => generateArcTicks(cx, cy, orbitRadius, 6, -58, 58, 1.8),
-    [cx, cy, orbitRadius]
+  // 5. 圆弧进度条几何参数配置 (半径 350px，跨度 -52° ~ +52°，总行程 104°)
+  const progressRadius = 350
+  const startDeg = -52
+  const endDeg = 52
+  const spanDeg = endDeg - startDeg
+
+  // 进度计算 (未拖拽时取实际播放进度，拖拽寻道时取实时滑动手感比例)
+  const effectiveDuration = duration !== undefined ? Math.max(0, duration) : 0
+  const currentSeconds = isSeeking
+    ? seekRatio * effectiveDuration
+    : (currentTime !== undefined ? Math.max(0, currentTime) : 0)
+
+  const progressRatio = effectiveDuration > 0
+    ? Math.min(1, Math.max(0, currentSeconds / effectiveDuration))
+    : 0
+
+  const currentProgressAngle = startDeg + progressRatio * spanDeg
+  const thumbPos = polarToCartesian(cx, cy, progressRadius, currentProgressAngle)
+  const railPath = describeArc(cx, cy, progressRadius, startDeg, endDeg)
+  const fillPath = progressRatio > 0.002
+    ? describeArc(cx, cy, progressRadius, startDeg, currentProgressAngle)
+    : ''
+
+  // 顶部当前时间与底部结束时间坐标 (切线对齐 x=215.5)
+  const timeLabelX = 215.5
+  const topTimeY = 28
+  const bottomTimeY = 620
+
+  // 根据鼠标位置计算圆弧极坐标进度比例 (0 ~ 1)
+  const calcRatioFromMouseEvent = useCallback(
+    (e: MouseEvent | React.MouseEvent) => {
+      if (!svgRef.current) return 0
+      const rect = svgRef.current.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return 0
+      const scaleX = rect.width / 720
+      const scaleY = rect.height / 640
+      const svgX = (e.clientX - rect.left) / scaleX
+      const svgY = (e.clientY - rect.top) / scaleY
+      const dx = svgX - cx
+      const dy = svgY - cy
+      const angleRad = Math.atan2(dy, dx)
+      const angleDeg = (angleRad * 180) / Math.PI
+      const clampedAngle = Math.max(startDeg, Math.min(endDeg, angleDeg))
+      const ratio = (clampedAngle - startDeg) / spanDeg
+      return Math.max(0, Math.min(1, ratio))
+    },
+    [cx, cy, startDeg, endDeg, spanDeg]
   )
+
+  // 圆弧进度条按压与拖拽寻道
+  const handleArcMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0 || effectiveDuration <= 0) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const initialRatio = calcRatioFromMouseEvent(e)
+    setIsSeeking(true)
+    setSeekRatio(initialRatio)
+
+    const onMouseMove = (moveEvt: MouseEvent) => {
+      const r = calcRatioFromMouseEvent(moveEvt)
+      setSeekRatio(r)
+    }
+
+    const onMouseUp = (upEvt: MouseEvent) => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+      setIsSeeking(false)
+      const finalRatio = calcRatioFromMouseEvent(upEvt)
+      const targetTime = finalRatio * effectiveDuration
+      seekLockUntilRef.current = Date.now() + 1200
+      onSeek?.(targetTime)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
 
   // 根据外部传入的 currentTime 自动同步歌词行
   useEffect(() => {
@@ -540,6 +642,7 @@ export default function LyricsOrbit({
           ------------------------------------------------------------ */}
       <div className="astrolabe-module-container">
         <svg
+          ref={svgRef}
           className="astrolabe-gear-svg"
           viewBox="0 0 720 640"
           width="720"
@@ -777,30 +880,65 @@ export default function LyricsOrbit({
             <circle cx={cx} cy={cy} r={2} fill="#6ee7b7" />
           </g>
 
-          {/* 3. 歌词圆弧同心导轨线 (半径 360px，虚线引导线) */}
-          <path
-            d={`M ${cx + Math.cos((-58 * Math.PI) / 180) * orbitRadius} ${cy + Math.sin((-58 * Math.PI) / 180) * orbitRadius}
-                A ${orbitRadius} ${orbitRadius} 0 0 1 ${cx + Math.cos((58 * Math.PI) / 180) * orbitRadius} ${cy + Math.sin((58 * Math.PI) / 180) * orbitRadius}`}
-            fill="none"
-            stroke="rgba(110, 231, 183, 0.45)"
-            strokeWidth="1.1"
-            strokeDasharray="3 4"
-          />
+          {/* 3. 极坐标同心圆弧型音频播放进度条 (Concentric Arc Progress Bar) */}
+          <g
+            className={`astrolabe-progress-group ${isSeeking ? 'is-seeking' : ''}`}
+            aria-label="圆弧播放进度条"
+          >
+            {/* 上方当前播放时间 (mm:ss, 薄荷绿纯文本) */}
+            <text
+              x={timeLabelX}
+              y={topTimeY}
+              textAnchor="middle"
+              className="astrolabe-progress-time-current"
+            >
+              {formatTime(currentSeconds)}
+            </text>
 
-          {/* 4. 轨道精密微细刻度线 (沿歌词轨道分布) */}
-          <g className="orbit-ticks-group">
-            {orbitTicks.map((t, idx) => (
-              <line
-                key={`otick-${idx}`}
-                x1={t.x1}
-                y1={t.y1}
-                x2={t.x2}
-                y2={t.y2}
-                stroke={t.isMajor ? '#6ee7b7' : 'rgba(255, 255, 255, 0.35)'}
-                strokeWidth={t.isMajor ? '1.2' : '0.8'}
-                strokeOpacity={t.isMajor ? 0.85 : 0.4}
+            {/* 进度底轨 (半透明白色质感圆弧) */}
+            <path
+              d={railPath}
+              className="astrolabe-progress-rail"
+            />
+
+            {/* 已播放进度填充弧 (薄荷绿发光高亮圆弧) */}
+            {fillPath ? (
+              <path
+                d={fillPath}
+                className="astrolabe-progress-fill"
               />
-            ))}
+            ) : null}
+
+            {/* 进度游标滑珠 (微晶圆珠) */}
+            <circle
+              cx={thumbPos.x}
+              cy={thumbPos.y}
+              r={isSeeking ? 6.5 : 5}
+              className="astrolabe-progress-thumb"
+            />
+
+            {/* 隐形高触感交互热区 (26px 宽透明轨迹，提供宽容的点击与拖拽手感) */}
+            <path
+              d={railPath}
+              className="astrolabe-progress-hitarea"
+              onMouseDown={handleArcMouseDown}
+              role="slider"
+              aria-valuemin={0}
+              aria-valuemax={effectiveDuration}
+              aria-valuenow={Math.round(currentSeconds)}
+              aria-valuetext={`${formatTime(currentSeconds)} / ${formatTime(effectiveDuration)}`}
+              tabIndex={0}
+            />
+
+            {/* 下方结束时间 / 总时长 (mm:ss, 次级半透明白纯文本) */}
+            <text
+              x={timeLabelX}
+              y={bottomTimeY}
+              textAnchor="middle"
+              className="astrolabe-progress-time-duration"
+            >
+              {formatTime(effectiveDuration)}
+            </text>
           </g>
         </svg>
 

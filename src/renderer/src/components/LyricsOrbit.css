@@ -304,3 +304,115 @@
 [data-theme='light'] .lyric-node.is-active .lyric-secondary {
   color: #047857;
 }
+
+/* ------------------------------------------------------------
+   极坐标圆弧型播放进度条 (Astrolabe Arc Progress Bar)
+   - 同轴锁定于星盘圆心 cx=0, cy=320
+   - 上方当前时间高亮显示，下方结束时间微光显示
+   - 交互热区 26px 宽，点击与拖拽精准寻道
+   ------------------------------------------------------------ */
+.astrolabe-progress-group {
+  pointer-events: auto;
+}
+
+.astrolabe-progress-rail {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 3.5px;
+  stroke-linecap: round;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.astrolabe-progress-fill {
+  fill: none;
+  stroke: #6ee7b7;
+  stroke-width: 3.5px;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.55));
+  transition: stroke-width 0.2s ease;
+}
+
+.astrolabe-progress-thumb {
+  fill: #ffffff;
+  stroke: #6ee7b7;
+  stroke-width: 2.2px;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.8)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  transition: r 0.18s cubic-bezier(0.16, 1, 0.3, 1), stroke-width 0.18s ease;
+}
+
+.astrolabe-progress-hitarea {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.001);
+  stroke-width: 26px;
+  cursor: pointer;
+  pointer-events: stroke;
+  outline: none;
+}
+
+.astrolabe-progress-group:hover .astrolabe-progress-rail,
+.astrolabe-progress-group.is-seeking .astrolabe-progress-rail {
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 4px;
+}
+
+.astrolabe-progress-group:hover .astrolabe-progress-fill,
+.astrolabe-progress-group.is-seeking .astrolabe-progress-fill {
+  stroke-width: 4px;
+}
+
+.astrolabe-progress-group:hover .astrolabe-progress-thumb,
+.astrolabe-progress-group.is-seeking .astrolabe-progress-thumb {
+  r: 6.5px;
+}
+
+.astrolabe-progress-time-current {
+  fill: #6ee7b7;
+  font-family: var(--font-family-hint, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(110, 231, 183, 0.4));
+}
+
+.astrolabe-progress-time-duration {
+  fill: var(--theme-text-secondary, rgba(255, 255, 255, 0.55));
+  font-family: var(--font-family-hint, monospace);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  user-select: none;
+  pointer-events: none;
+}
+
+[data-theme='light'] .astrolabe-progress-rail {
+  stroke: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .astrolabe-progress-group:hover .astrolabe-progress-rail,
+[data-theme='light'] .astrolabe-progress-group.is-seeking .astrolabe-progress-rail {
+  stroke: rgba(0, 0, 0, 0.16);
+}
+
+[data-theme='light'] .astrolabe-progress-fill {
+  stroke: #059669;
+  filter: drop-shadow(0 0 4px rgba(5, 150, 105, 0.35));
+}
+
+[data-theme='light'] .astrolabe-progress-thumb {
+  fill: #ffffff;
+  stroke: #059669;
+  filter: drop-shadow(0 0 4px rgba(5, 150, 105, 0.5)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+}
+
+[data-theme='light'] .astrolabe-progress-time-current {
+  fill: #059669;
+  filter: none;
+}
+
+[data-theme='light'] .astrolabe-progress-time-duration {
+  fill: rgba(30, 41, 59, 0.6);
+}
