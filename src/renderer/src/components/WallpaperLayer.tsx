@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import './WallpaperLayer.css'
 
 /**
@@ -21,7 +21,7 @@ interface VideoWallpaperState {
  * 专门承载 HTML5 硬件加速动态视频壁纸播放与响应式属性同步
  * 当当前壁纸为视频格式时自动激活，与静态图片及云母模式互不干扰
  */
-export default function WallpaperLayer() {
+function WallpaperLayer() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [state, setState] = useState<VideoWallpaperState>({
     isActive: false,
@@ -130,3 +130,6 @@ export default function WallpaperLayer() {
     </div>
   )
 }
+
+export default memo(WallpaperLayer)
+

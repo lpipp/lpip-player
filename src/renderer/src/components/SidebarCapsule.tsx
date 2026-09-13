@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { MpdSong } from '../../../types/music'
 import MusicLibraryList from './MusicLibraryList'
 import QueueDrawer from './QueueDrawer'
@@ -202,7 +202,7 @@ export interface SidebarCapsuleProps {
  * - 关闭机制: 鼠标移出弹窗超过配置文件指定的 closeBuffer (closeDistance) 距离后，
  *             等待 closeDelay 延迟平滑收回；若移回安全距离内自动取消收回
  */
-export default function SidebarCapsule({
+function SidebarCapsule({
   currentSong,
   currentSongId,
   onPlaySong,
@@ -468,3 +468,6 @@ export default function SidebarCapsule({
     </aside>
   )
 }
+
+export default memo(SidebarCapsule)
+

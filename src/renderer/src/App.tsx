@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import type { LyricLine, MpdSong, MpdStatus, PlaybackMode } from '../../types/music'
 import SidebarCapsule from './components/SidebarCapsule'
 import WallpaperLayer from './components/WallpaperLayer'
@@ -90,7 +90,21 @@ export default function App() {
   // 同步 MPD 实时状态数据模型
   const syncFromMpdStatus = (status: MpdStatus): void => {
     if (status.currentSong) {
-      setCurrentSong(status.currentSong)
+      // 引用稳定化: 若同曲未变 (file 与 id 一致), 沿用既有对象引用, 彻底阻断下游组件 (Sidebar/StatusBar/Lyrics) 无谓 re-render
+      setCurrentSong((prev) => {
+        if (
+          prev &&
+          prev.file === status.currentSong?.file &&
+          prev.id === status.currentSong?.id &&
+          prev.title === status.currentSong?.title &&
+          prev.artist === status.currentSong?.artist &&
+          prev.quality === status.currentSong?.quality &&
+          prev.coverUrl === status.currentSong?.coverUrl
+        ) {
+          return prev
+        }
+        return status.currentSong
+      })
       if (status.duration > 0 || status.currentSong.duration > 0) {
         setDuration(Math.round(status.duration || status.currentSong.duration))
       }
@@ -142,6 +156,10 @@ export default function App() {
       pcmPlayer.stop()
     }
   }
+
+  // 同步状态函数持久化引用 (供 memoized 回调消费, 避免闭包失效)
+  const syncFromMpdStatusRef = useRef(syncFromMpdStatus)
+  syncFromMpdStatusRef.current = syncFromMpdStatus
 
   // 挂载时初始化状态查询、应用全局配置与订阅 IPC 广播
   useEffect(() => {
@@ -347,8 +365,8 @@ export default function App() {
     pcmPlayer.setMuted(nextMuted)
   }
 
-  // 处理曲库与队列单曲选择与播放
-  const handlePlaySong = async (song: MpdSong): Promise<void> => {
+  // 处理曲库与队列单曲选择与播放 (useCallback 保持引用恒定, 阻断 SidebarCapsule 及其长列表重渲染)
+  const handlePlaySong = useCallback(async (song: MpdSong): Promise<void> => {
     setCurrentSong(song)
     setIsPlaying(true)
     setCurrentTime(0)
@@ -402,21 +420,21 @@ export default function App() {
         setCurrentSong(null)
         lastFileRef.current = null
         window.electronAPI.mpd.getStatus().then((status) => {
-          if (status) syncFromMpdStatus(status)
+          if (status) syncFromMpdStatusRef.current(status)
         })
       }
     }
-  }
+  }, [])
 
-  // 处理添加单曲至队列
-  const handleAddToQueue = async (_song: MpdSong): Promise<void> => {
+  // 处理添加单曲至队列 (useCallback 保持引用恒定)
+  const handleAddToQueue = useCallback(async (_song: MpdSong): Promise<void> => {
     if (window.electronAPI?.mpd) {
       const status = await window.electronAPI.mpd.getStatus()
       if (status) {
-        syncFromMpdStatus(status)
+        syncFromMpdStatusRef.current(status)
       }
     }
-  }
+  }, [])
 
   // 当当前歌曲缺失歌词时，优雅展示当前歌曲信息而非无关的默认拉丁歌词
   const effectiveLyrics = useMemo(() => {

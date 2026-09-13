@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import type { VisualizerConfig } from '../../../types/config'
 import { pcmPlayer } from '../services/pcmPlayer'
 import './SpectrumVisualizer.css'
@@ -59,7 +59,7 @@ const BAR_COUNT = 36
  *    - 布局定位于状态栏正上方 (bottom: 80px), 层级 Wallpaper(0) < Visualizer(5) < MechanicalGear(10) < StatusBar(100)
  *    - 绝对穿透 (pointer-events: none), 不阻碍任何交互
  */
-export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisualizerProps) {
+function SpectrumVisualizer({ isPlaying, config }: SpectrumVisualizerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
@@ -704,3 +704,6 @@ export default function SpectrumVisualizer({ isPlaying, config }: SpectrumVisual
     </div>
   )
 }
+
+export default memo(SpectrumVisualizer)
+

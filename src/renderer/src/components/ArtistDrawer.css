@@ -124,6 +124,9 @@
   outline: none;
   border: none;
   box-sizing: border-box;
+  /* 启用现代浏览器 GPU 视窗裁剪，大幅优化 200+ 艺人长列表排版渲染性能 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 60px;
 }
 
 .artist-item::before {
@@ -435,6 +438,9 @@
   outline: none;
   border: none;
   box-sizing: border-box;
+  /* 启用现代浏览器 GPU 视窗裁剪，优化单曲列表排版渲染性能 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 56px;
 }
 
 .artist-song-item::before {

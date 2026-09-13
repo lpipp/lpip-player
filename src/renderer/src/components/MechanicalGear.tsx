@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import './MechanicalGear.css'
 
 /**
@@ -149,7 +149,7 @@ function generateSpiralPath(
  *    - 纯线条高阶制表摆轮: 阿基米德螺旋储能游丝、16 颗配重微调螺钉、经典三臂轮辐与防震轴承；
  *    - 运动模式: 左右往复谐振摆动 (±65° 周期谐波振荡)。
  */
-export default function MechanicalGear({
+function MechanicalGear({
   className = '',
   animated = true
 }: MechanicalGearProps) {
@@ -865,3 +865,5 @@ export default function MechanicalGear({
     </div>
   )
 }
+
+export default memo(MechanicalGear)
