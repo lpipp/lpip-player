@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { MpdSong, PlaybackMode } from '../../../types/music'
+import type { VisualizerConfig } from '../../../types/config'
+import SpectrumVisualizer from './SpectrumVisualizer'
 import './StatusBar.css'
 
 function ModeSequenceIcon() {
@@ -63,6 +65,8 @@ export interface StatusBarProps {
   onSeek?: (timeSeconds: number) => void
   /** 播放模式切换回调 */
   onModeToggle?: () => void
+  /** 音频频谱律动配置项 */
+  visualizerConfig?: VisualizerConfig
 }
 
 /**
@@ -76,7 +80,8 @@ export default function StatusBar({
   onPrev,
   onPlayPause,
   onNext,
-  onModeToggle
+  onModeToggle,
+  visualizerConfig
 }: StatusBarProps) {
   const [imgError, setImgError] = useState(false)
 
@@ -242,6 +247,11 @@ export default function StatusBar({
             <ModeSequenceIcon />
           )}
         </button>
+      </div>
+
+      {/* 状态栏右侧音频频谱律动插槽 */}
+      <div className="status-bar-spectrum-slot" aria-hidden="true">
+        <SpectrumVisualizer isPlaying={isPlaying} config={visualizerConfig} />
       </div>
     </footer>
   )

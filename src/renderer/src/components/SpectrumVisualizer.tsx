@@ -687,7 +687,8 @@ function SpectrumVisualizer({ isPlaying, config }: SpectrumVisualizerProps) {
     return null
   }
 
-  const height = config?.height ?? 160
+  // 在状态栏上呈现时, 画布高度上限契合状态栏 80px 网格, 确保基线与波形完美内嵌
+  const height = Math.min(config?.height ?? 80, 80)
   const opacity = config?.opacity ?? 0.85
 
   return (

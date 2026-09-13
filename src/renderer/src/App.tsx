@@ -5,7 +5,6 @@ import WallpaperLayer from './components/WallpaperLayer'
 import StatusBar from './components/StatusBar'
 import MechanicalGear from './components/MechanicalGear'
 import LyricsOrbit from './components/LyricsOrbit'
-import SpectrumVisualizer from './components/SpectrumVisualizer'
 import { pcmPlayer } from './services/pcmPlayer'
 import {
   DEFAULT_MPD_CONFIG,
@@ -437,12 +436,6 @@ export default function App() {
       {/* 动态视频壁纸图层 (当配置视频壁纸时自动激活硬件加速播放) */}
       <WallpaperLayer />
 
-      {/* 高级制表纯线条蓝图音频频谱律动图层 (SpectrumVisualizer, z-index: 5, 定位于状态栏上方) */}
-      <SpectrumVisualizer
-        isPlaying={isPlaying}
-        config={visualizerConfig}
-      />
-
       {/* 右侧精密机械表齿轮 (直径 500px，圆心距右边框 30px，外露 280px，垂直居中) */}
       <MechanicalGear />
 
@@ -466,7 +459,7 @@ export default function App() {
         onAddToQueue={handleAddToQueue}
       />
 
-      {/* 窗口底部磨砂状态栏 (80px 纯净骨架与控制组) */}
+      {/* 窗口底部磨砂状态栏 (80px 纯净骨架与控制组，右侧插槽内嵌音频频谱律动) */}
       <StatusBar
         coverUrl={currentSong?.coverUrl}
         isPlaying={isPlaying}
@@ -476,6 +469,7 @@ export default function App() {
         onPlayPause={handlePlayPause}
         onNext={handleNext}
         onModeToggle={handleModeToggle}
+        visualizerConfig={visualizerConfig}
       />
     </div>
   )

@@ -475,6 +475,21 @@
 }
 
 /* ------------------------------------------------------------
+   状态栏右侧音频频谱律动插槽 (填充右侧留白区域)
+   ------------------------------------------------------------ */
+.status-bar-spectrum-slot {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+  margin-left: 20px;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ------------------------------------------------------------
    浅色主题适配 (Light Mode)
    ------------------------------------------------------------ */
 [data-theme='light'] .status-bar {
