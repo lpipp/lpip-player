@@ -24,6 +24,9 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 非交互读数去除图形框转纯文字 (2026-09-13):
+  将艺人分类抽屉艺人总数（.artist-count-badge）、歌单总数（.playlist-count-badge）、各类滑条数值读数（.liquid-slider-value）与统计信息播放次数（.stats-count-badge）等非交互性元素剥离外部背景与边框，转为轻量通透纯文字；
+  严格保留 font-variant-numeric: tabular-nums 等宽防抖特性，零布局重排；CDP 9222 实机探测 computed border=0、background=rgba(0,0,0,0) 全绿（提交 e009ee9）。
 - [已完备] 偏好设置一级总览副顶栏与二级导航分类徽标彻底移除 (2026-09-13):
   清除 SettingsDrawer 一级总览顶部的 settings-overview-toolbar（含“• 播放器偏好设置”与“实时热重载”）；
   清除二级详情导航栏右侧的 settings-toolbar-badge（与下方 Hero 重复的分类徽标）；

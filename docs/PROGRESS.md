@@ -1,8 +1,8 @@
 # lpip-player 开发进度记录 (Progress Log)
 
 > 更新时间: 2026-09-13
-> 当前阶段: M2-2（界面整洁化持续推进：移除偏好设置一级总览副顶栏 settings-overview-toolbar 与二级导航分类徽标 settings-toolbar-badge；移除卡片顶栏冗余徽标 settings-group-badge；清除无意义 HTML title 悬浮框；性能优化 P1 阶段完成）
-> 最新进展: 移除偏好设置一级总览副顶栏与二级导航分类徽标（提交 04ef167）：彻底移除偏好设置一级总览顶部的 settings-overview-toolbar（包含“• 播放器偏好设置”与“实时热重载”），消除与抽屉原生大标题的冗余重复；彻底移除二级详情页导航栏右侧的 settings-toolbar-badge（与下方 Hero 大标题重复的分类徽标）；CDP 9222 实机自动化验收全量通过，详见 §2.28 与 §4.34
+> 当前阶段: M2-2（界面整洁化持续推进：将艺人数量、各类滑动条数值与统计播放次数等非交互读数去除外部边框改为纯文字；移除偏好设置一级副顶栏与二级分类徽标；移除卡片顶栏冗余徽标；清除无意义 HTML title 悬浮框；性能优化 P1 阶段完成）
+> 最新进展: 非交互读数去框转纯文字（提交 e009ee9）：彻底去除艺人分类抽屉艺人总数（.artist-count-badge）、歌单总数（.playlist-count-badge）、各类滑条数值读数（.liquid-slider-value）与统计信息播放次数（.stats-count-badge）等非交互性元素的外部图形边框与背景填充，转为轻量通透的纯文本呈现；保持 tabular-nums 等宽防抖特性；CDP 9222 实机自动化验收全量通过，详见 §2.29 与 §4.35
 
 ---
 
@@ -611,6 +611,29 @@
     - 二级详情页：全部 6 大模块的 `hasToolbarBadge` 均恒为 **false**；
     - 字体排印模块的 `hasResetBtn: true` 与所有模块的 `hasBackBtn: true` 完好无损。
 
+### 2.29 非交互读数去除图形框转纯文字 (Non-Interactive Readings Pure Text) - 2026-09-13 完成
+
+> **结论先行：非交互读数与可点击徽标在视觉上彻底解耦，去除图形方框容器，以纯文本自然融入界面。** 用户提供 Klipper 截图明确圈出艺人分类抽屉右上角的 `238 位` 徽标，要求将无法交互的元素（如艺人数量、各类滑动条数值读数、统计信息播放次数等）去除外部图形框，改为纯文字元素。施工团队对四个核心非交互统计与读数类（`.artist-count-badge`、`.playlist-count-badge`、`.liquid-slider-value`、`.stats-count-badge`）进行了精准样式重构，剥离 `background`、`border` 与 `border-radius`，保留极细水平内边距 `0 2px` 与 `tabular-nums` 等宽特性。通过 CDP 9222 实机验证所有目标元素的 computed `borderTopWidth === '0px'`、`borderStyle === 'none'`、`backgroundColor === 'rgba(0, 0, 0, 0)'` 全量达标，界面视觉更显克制透气。
+
+- **重构范围与样式精炼**:
+  1. **艺人数量 (`.artist-count-badge`)**: 剥离原 `background: rgba(110, 231, 183, 0.1); border: 1px solid rgba(110, 231, 183, 0.2); border-radius: 10px; padding: 2px 7px;`，改为纯文字 `padding: 0 2px; color: rgba(110, 231, 183, 0.85);`；
+  2. **歌单数量 (`.playlist-count-badge`)**: 同步去除背景与边框，改为纯文字 `padding: 0 2px; color: rgba(110, 231, 183, 0.85);`；
+  3. **各类滑动条数值显示 (`.liquid-slider-value`)**: 剥离原 `background: rgba(110, 231, 183, 0.1); border: 1px solid rgba(110, 231, 183, 0.22); border-radius: 5px; padding: 1px 6px;`，改为纯文字 `padding: 0 2px; color: #6ee7b7;`；
+  4. **统计信息播放次数 (`.stats-count-badge`)**: 剥离原边框与背景，改为纯文字 `padding: 0 2px; color: rgba(110, 231, 183, 0.85);`；
+  5. **设置导航备用徽标 (`.settings-toolbar-badge`)**: 同步去框去底，保持规范一致。
+- **等宽防抖与兼容性保证**:
+  - 四处类名与 JSX 结构完全保留，确保测试选择器与外部自动化 100% 稳定；
+  - 核心属性 `font-variant-numeric: tabular-nums` 全量保留，确保数值动态更新与滑条拖拽时字符宽度恒定，彻底避免父容器横向跳动与重排（Layout Shift）。
+- **实机自动化验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 错误；
+  - `pnpm build`：成功构建；
+  - CDP 实机探测：
+    - `artistBadge`: text `"238 位"`, `borderTopWidth: "0px"`, `borderStyle: "none"`, `backgroundColor: "rgba(0, 0, 0, 0)"`, `fontVariantNumeric: "tabular-nums"`;
+    - `playlistBadge`: text `"1 组"`, `borderTopWidth: "0px"`, `borderStyle: "none"`, `backgroundColor: "rgba(0, 0, 0, 0)"`, `fontVariantNumeric: "tabular-nums"`;
+    - `sliderValue`: text `"0px"`, `borderTopWidth: "0px"`, `borderStyle: "none"`, `backgroundColor: "rgba(0, 0, 0, 0)"`, `fontVariantNumeric: "tabular-nums"`;
+    - `statsBadge`: text `"8 次"`, `borderTopWidth: "0px"`, `borderStyle: "none"`, `backgroundColor: "rgba(0, 0, 0, 0)"`, `fontVariantNumeric: "tabular-nums"`;
+  - 桌面应用窗口持续保留在桌面上，呈现整洁通透的艺人抽屉界面供用户核验。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 ```jsonc
@@ -661,6 +684,20 @@
 ```
 
 ---
+
+### 4.35 非交互读数去框转纯文字三纪律：去框留文 × 等宽防抖 × 兼容保类 (2026-09-13)
+
+1. **非交互读数不应套用操作型 Chip/Badge 容器**:
+   - 带有背景填充与发光边框的圆角框体在现代 GUI 设计中具有强烈的“可点击/可筛选”意符（Affordance）；
+   - 将数量（如 `238 位`、`1 组`）、滑动条当前数值（如 `40%`、`150ms`）以及播放次数（如 `8 次`）等纯信息展示套在图形框内，容易误导用户尝试点击，同时在视觉上增加了无意义的矩形色块与高频线条分割，破坏界面的通透性；
+   - 纪律：纯读数统一去除 `background`、`border` 与 `border-radius`，保留微小的左右内边距（`0 2px`），以轻量文字形态融入标题或滑块对齐线中。
+2. **等宽数字（tabular-nums）为防抖铁律**:
+   - 纯文字化后，数字字形的物理宽度对布局的敏感度更高（尤其是变动频繁的滑动条数值与实时播放次数）；
+   - 若缺失 `tabular-nums`，当数字由 `1` 变为 `8` 时字符宽度增加，会导致滑条右侧容器或右对齐行盒产生左右微跳（Layout Shift）；
+   - 纪律：所有数值型展示类必须严格声明 `font-variant-numeric: tabular-nums`，确保等宽排版、零跳动。
+3. **保留类名与 DOM 结构的重构安全原则**:
+   - 在将 Badge 类转为纯文字时，直接在 CSS 中重写属性，严禁在 JSX 中擅自重命名或删除 span 节点；
+   - 确保外部 e2e 探针、自动化测试与主题变量继承体系无缝平移，实现零破坏式演进。
 
 ### 4.34 抽屉标题单一性与导航分类徽标的收敛纪律 (2026-09-13)
 
