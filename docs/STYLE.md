@@ -83,6 +83,7 @@
 12. **音量控制权责交还全局操作系统（纯净状态栏）**：播放器内置的软件音量调节与 Linux/KDE Plasma 全局系统音量、键盘多媒体键、外置硬件 DAC 旋钮重叠；底部状态栏彻底移除音量按键与音量滑块（`.status-bar-volume-block`），右侧扩展区仅保留曲目元数据与播放模式按键；底层 `pcmPlayer` 锁定 1.0 (unity gain) 零衰减原生输出。
 13. **左侧星盘齿轮与歌词模块绝对同心共轴（Unified Astrolabe Module）**：左侧天文钟机芯齿轮（`.astrolabe-gear-svg`）与极坐标圆弧歌词轨道（`.lyrics-orbit-wheel`）合并封装进统一容器（`.astrolabe-module-container`）；水平 X 轴以**左侧边框为绝对基准**（`left: var(--astrolabe-x, 0px)`），垂直 Y 轴以可用工作区中轴线为基准（`top: calc(50% + var(--astrolabe-y, 0px)); transform: translateY(-50%)`）；齿轮旋转中心与歌词轮盘旋转原点在容器内绝对锁定于 `(cx=0, cy=320)`，无论窗口大小如何变化、无论 X/Y 轴在设置中如何微调，齿轮与歌词 100% 同轴共心共步进，安全间距严守 52px；在偏好设置抽屉中提供 X 轴（-300 ~ 600px）与 Y 轴（-300 ~ 300px）滑动调节与恢复默认基准操作，通过 `:root` 变量实现 60fps 零重绘延迟实时响应与防抖持久化。
 14. **滑轨控件双侧微调按键规范（Slider Stepper Controls）**：所有滑动条（`SliderControl`）两侧必须配备 `-` 与 `+` 微调按键；统一采用 22px × 22px 液态圆角方块与 11px SVG 线性图标；支持单次点击按 step 精确步进与 350ms/60ms 长按连续平滑步进；极值边界自动禁用（disabled 半透明且阻断点击）；数值计算必须经 `stepSliderValue` 浮点精度净化，阻断 IEEE 754 精度漂移。
+15. **圆弧型同心进度条与底栏极简化（Curved Arc Progress Bar & Bottom Decoupling）**：歌词轨道左侧原辅助虚线弧（`r=360px`）与刻度线彻底移除；在同一同心共轴体系内（`cx=0, cy=320`，半径 `r=350px`，跨度 `-52° ~ +52°`，总行程 104°）部署优雅的圆弧型音频播放进度条；进度条上方显示当前播放时间（`currentTime`，`mm:ss`，薄荷绿 `#6ee7b7` 纯文字），下方显示结束时间/总时长（`duration`，`mm:ss`，次级半透明近白纯文字），严禁添加多余外框；支持点击与拖拽寻道（26px 宽隐形高感交互热区，极坐标角度映射，实时响应拖拽，抬起时精准触发 seek 并施加寻道防抖锁定）；底部状态栏彻底移除原有直线进度条（`.status-bar-progress-section`）及相关时间指示，底栏左侧保留封面与控制按键，右侧保留歌曲信息与模式切换，视觉极度开阔清爽；圆弧进度条与时间文字作为单一刚体锁定在 `.astrolabe-module-container` 内部，随设置项中 X 轴/Y 轴位置微调 100% 同步平移，永不脱靶。
 
 ---
 
