@@ -2,7 +2,7 @@
 
 > 更新时间: 2026-09-13
 > 当前阶段: M2-2（界面交互与操控体验深度优化：当前播放歌曲信息移至状态栏封面右侧，播放控制紧随其后；背景漂浮几何多面体晶体彻底清除；歌词滚轮滑动反向滞后与动量积压 Bug 彻底根除；所有滑条两侧配备 - / + 物理微调按键；左侧星盘齿轮机芯与歌词轨道统一同心模块化并支持 XY 轴调节；底部状态栏音量调节控件与业务逻辑彻底移除；非交互数值读数去框转纯文字；歌词旁圆弧型同心进度条与底栏极简化）
-> 最新进展: 锁定状态栏当前曲目信息卡片为 140px 宽度并平滑省略截断，杜绝控制按键移位（提交 3bfda2c）：为根除因歌曲名或艺人名长短不一导致右侧播放控制按键（上一曲/播放/下一曲/模式）左右漂移位移的体验问题，通过 ask_question 对齐将 .status-bar-meta-block 锁死为 140px 规整宽度（约 10 个中文字符，flex-shrink: 0）；标题与副文本（音质徽标 + 艺人名）统一施加 min-width: 0、white-space: nowrap 与 text-overflow: ellipsis 防御性截断；CDP 9222 实机自动化抓轨长文本注入测试：无论歌曲名是一字、四字还是数十字超长交响乐，播控组 left 坐标严格恒定在 254px（位移量严格为 0px），详见 §2.38 与 §4.44。
+> 最新进展: 将音频频谱律动组件迁移内嵌至状态栏右侧留白插槽（提交 af10905）：根据用户指令与 ask_question 确认，将原本定位于状态栏上方绝对悬浮的音频频谱蓝图工程律动层（SpectrumVisualizer）迁移内嵌至状态栏内部；在 StatusBar.tsx 尾部挂载 .status-bar-spectrum-slot（flex: 1 1 auto, height: 100%, overflow: hidden, pointer-events: none），将频谱画布紧凑约束在状态栏右侧 686px 纯净留白区域（left: 462px ~ 1148px, bottom: 812px），波形高度自适应钳位至 80px 状态栏网格；左侧操作集群保持绝对纯粹且零遮挡，详见 §2.39 与 §4.45。
 
 ---
 
@@ -899,6 +899,28 @@
     - 空间位移差值检验：`deltaMetaWidth = 0px`，`deltaControlsLeft = 0px`；
     - 文本截断检验：`titleScrollWidth (420px) > titleWidth (140px)`，`artistScrollWidth (390px) > artistWidth (109px)`，省略号正常生效无溢出。
 
+### 2.39 音频频谱蓝图律动组件迁移内嵌至状态栏右侧留白插槽 (SpectrumVisualizer StatusBar Slot Integration) - 2026-09-13 完成
+
+> **结论先行：频谱律动告别全屏浮动，内嵌底栏右侧留白，动态美学与功能分区完美协同。** 用户提出“将频谱效果移动到状态栏上”，经 `ask_question` 对齐确认，采纳“仅放置在状态栏右侧留白区域（从控制按键右侧至窗口最右端约 700px 宽，左侧按键区保持纯净无频谱）”的精准定位方案。此前 `SpectrumVisualizer` 作为全屏绝对定位图层悬浮于状态栏正上方（`bottom: 80px`），跨越窗口全宽，会穿过左侧星盘齿轮与歌词轨道；同时底栏右侧拥有连续 750px 的空灵留白空间未被充分利用。施工团队在 `StatusBar.tsx` 尾部扩展了专用的 `.status-bar-spectrum-slot` 弹性插槽，将 `SpectrumVisualizer` 封装收敛至状态栏组件树内；画布高度自适应钳位至 80px 状态栏网格；全局维持 `pointer-events: none` 与 Canvas 2D 零内存分配；左侧播控核心操作区（封面+曲目+播控+模式）保持绝对纯净，右侧高斯磨砂玻璃区域呈现富有制表工艺质感的翡翠绿蓝图声浪律动。
+
+- **组件拓扑重构 (`App.tsx` & `StatusBar.tsx`)**:
+  - 从 `App.tsx` 顶层注销 `<SpectrumVisualizer>` 独立绝对图层，将其配置项 `visualizerConfig={visualizerConfig}` 向下透传给 `<StatusBar>`；
+  - 在 `StatusBar.tsx` 尾部挂载 `<div className="status-bar-spectrum-slot" aria-hidden="true"><SpectrumVisualizer isPlaying={isPlaying} config={visualizerConfig} /></div>`；
+  - 维持 `StatusBarProps` 契约完整性，实现状态栏右侧动态能力的高内聚组件化封装。
+- **盒模型与图层适配 (`StatusBar.css` & `SpectrumVisualizer.css`)**:
+  - `.status-bar-spectrum-slot`: 声明 `flex: 1 1 auto; min-width: 0; height: 100%; position: relative; overflow: hidden; pointer-events: none; margin-left: 20px; display: flex; align-items: flex-end;`；
+  - `.spectrum-visualizer-container`: 移除旧的 `bottom: var(--statusbar-height, 80px)`，重构为 `position: absolute; left: 0; right: 0; bottom: 0; width: 100%;`，自然贴合插槽底部；
+  - `SpectrumVisualizer.tsx`: 将渲染高度通过 `Math.min(config?.height ?? 80, 80)` 防御性钳位，杜绝过大配置值导致画布底部基准标尺线（`baseY = height - 4`）被状态栏 80px 容器截断丢失。
+- **实机自动化验收 (CDP 9222 硬件抓轨)**:
+  - `pnpm typecheck`：0 错误通过；
+  - `pnpm build`：成功构建产出（55 模块，JS 911.18 kB，CSS 163.88 kB）；
+  - CDP 实机硬件空间坐标（BoundingClientRect）物理采样：
+    - `statusBarChildren`: `['status-bar-cover', 'status-bar-meta-block', 'status-bar-controls', 'status-bar-spectrum-slot']`（层级树严格对齐）；
+    - `status-bar-controls`: `left: 254px, right: 442px, width: 188px`（完全锁定）；
+    - `status-bar-spectrum-slot`: `left: 462px, right: 1148px, width: 686px, height: 80px`（与播控组右边缘保持 20px 间距，横跨右侧留白）；
+    - `spectrum-visualizer-container`: `left: 462px, right: 1148px, top: 752px, bottom: 812px, width: 686px, height: 60px`（底部与底栏下边缘严丝合缝）；
+    - 事件穿透检验：`slot.pointerEvents = 'none'`, `viz.pointerEvents = 'none'`, `canvas.pointerEvents = 'none'` 全绿，播控按钮交互零阻碍。
+
 ## 3. 当前配置文件快照 (`~/.config/lpip-player/config.json`)
 
 
@@ -951,6 +973,23 @@
 ```
 
 ---
+
+### 4.45 动态频谱可视化容器从全局绝对浮动向组件化槽位收敛工程纪律：组件内聚性 × 弹性留白插槽 × 标尺基准防截断钳位 (2026-09-13)
+
+在将音频频谱蓝图律动层从顶层悬浮迁移内嵌至状态栏右侧留白插槽中沉淀的工程纪律：
+
+1. **从悬浮孤立图层向组件化插槽收敛（Component Cohesion & Slot Architecture）**:
+   - 过去 `SpectrumVisualizer` 作为 `App.tsx` 顶层绝对定位图层悬浮于底栏上方（`bottom: 80px`），贯穿全屏 1200px 宽度。这种全局绝对浮动不仅打碎了 UI 组件树的职责边界，还会让波形横跨左侧星盘机芯与歌词轨道，导致视觉噪音与元素冲突；
+   - 状态栏右侧存在约 700px 的纯净留白区域，天然适合作为声学律动的展示舞台；
+   - 纪律：通过在 `StatusBar.tsx` 中开辟专门的弹性插槽（`.status-bar-spectrum-slot`），将可视化组件收敛为状态栏的一个内聚子部件；状态栏对外只接收 `visualizerConfig`，对内自主管理其布局与渲染，消除了父级容器中无谓的全局绝对悬浮图层。
+2. **弹性插槽与自适应留白空间（Flex Elasticity & min-width Zero Defense）**:
+   - 状态栏内部采用 Flexbox 布局。左侧封面、信息块和控制组均为刚性尺寸（`flex-shrink: 0`），而频谱插槽被赋予 `flex: 1 1 auto; min-width: 0;`；
+   - 这种声明让插槽能够自动吞吐占满窗口剩余的所有水平物理空间（在 1200px 窗口下约为 686px），无论窗口如何缩放，频谱波形都能自适应延展与收缩，绝不挤压左侧交互按键；
+   - 插槽设置 `overflow: hidden; pointer-events: none;`，既确保频谱渲染绝对不会溢出底栏破坏外部界面，又保障了底层背景壁纸与界面操作的绝对通透。
+3. **坐标系基准标尺防截断钳位（Datum Baseline Clipping Defense）**:
+   - 许多可视化组件在绘制时依赖公式计算基准线，如 `baseY = height - 4`；
+   - 当可视化组件原本设计为 160px 或更高，一旦放入具有 `overflow: hidden` 的 80px 高度容器内，若不调整内部高度参数，计算出的 `baseY = 156px` 会直接跌落到容器可见范围（80px）之外，导致底部基准线与低频波谷全部被截断消失，造成“空白画布”假象；
+   - 纪律：内嵌至固定高度槽位时，必须在组件内部对绘制高度进行硬性防御钳位（`const effectiveHeight = Math.min(config?.height ?? 80, 80)`），确保画布坐标系的原点与基准线始终落在父容器可视区域的有效几何范围内。
 
 ### 4.44 交互控制区网格绝对锁定与零位移防御工程纪律：点击目标稳定 × 弹性与刚性边界 × Flexbox 文本截断加固 (2026-09-13)
 

@@ -24,6 +24,11 @@
 - 控制走 MPD 6600 纯文本 TCP 协议（手写原生 Client，零第三方库依赖）；运行时配置 ~/.config/lpip-player/config.json (支持 JSONC)
 
 【当前开发进度（最新进展置顶，倒序排列）】
+- [已完备] 将音频频谱律动组件迁移内嵌至状态栏右侧留白插槽 (2026-09-13):
+  根据用户指令与 ask_question 确认，将原本定位于状态栏上方悬浮的音频频谱蓝图律动层（SpectrumVisualizer）迁移内嵌至状态栏内部；
+  在 StatusBar.tsx 尾部挂载 .status-bar-spectrum-slot（flex: 1 1 auto, height: 100%, overflow: hidden, pointer-events: none）；
+  频谱画布紧凑约束在状态栏右侧 686px 纯净留白区域（left: 462px ~ 1148px, bottom: 812px），波形高度自适应钳位至 80px 状态栏网格；
+  左侧操作集群（封面+曲目信息+播控+模式）保持绝对纯粹，零线条杂音干扰；CDP 9222 抓轨验证层级与空间布局全绿（提交 af10905）。
 - [已完备] 锁定状态栏当前曲目信息卡片为 140px 宽度并平滑省略截断，杜绝控制按键移位 (2026-09-13):
   为根除因歌曲名或艺人名长短不一导致右侧播放控制按键（上一曲/播放/下一曲/模式）左右漂移位移的体验问题，通过 ask_question 对齐将 .status-bar-meta-block 锁死为 140px 规整宽度（约 10 个中文字符，flex-shrink: 0）；
   标题与副文本（音质徽标 + 艺人名）统一施加 min-width: 0、white-space: nowrap 与 text-overflow: ellipsis 防御性截断；
